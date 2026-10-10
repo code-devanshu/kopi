@@ -1,26 +1,141 @@
 @import "tailwindcss";
 
+/*
+ * Theme: the inline script in layout.tsx sets data-theme="light" | "dark" on <html>
+ * before paint (stored choice, else system preference). The media query below is
+ * the no-JS fallback.
+ */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
+
+  /* Light — cream, espresso, caramel */
+  --background: #faf6ef;
+  --surface: #fffdf9;
+  --surface-muted: #f3ebdf;
+  --foreground: #2b1d14;
+  --muted-foreground: #6b5444;
+  --border: #e6dacb;
+  --accent: #d08a3a;
+  --accent-foreground: #22160e;
+  --accent-text: #93561a;
+  --accent-soft: #f6e4cc;
+  --success: #3f7a4a;
+  --danger: #b4412f;
+  --shadow-color: 43 29 20;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --background: #16100c;
+    --surface: #1f1712;
+    --surface-muted: #2a2019;
+    --foreground: #f3e9dc;
+    --muted-foreground: #bfae9c;
+    --border: #3a2d23;
+    --accent: #d8954a;
+    --accent-foreground: #1a110b;
+    --accent-text: #e8ae6b;
+    --accent-soft: #3a2918;
+    --success: #7cc08a;
+    --danger: #f08a77;
+    --shadow-color: 0 0 0;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --background: #16100c;
+  --surface: #1f1712;
+  --surface-muted: #2a2019;
+  --foreground: #f3e9dc;
+  --muted-foreground: #bfae9c;
+  --border: #3a2d23;
+  --accent: #d8954a;
+  --accent-foreground: #1a110b;
+  --accent-text: #e8ae6b;
+  --accent-soft: #3a2918;
+  --success: #7cc08a;
+  --danger: #f08a77;
+  --shadow-color: 0 0 0;
 }
 
 @theme inline {
   --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent-text: var(--accent-text);
+  --color-accent-soft: var(--accent-soft);
+  --color-success: var(--success);
+  --color-danger: var(--danger);
+
+  --font-sans: var(--font-body);
+  --font-display: var(--font-heading);
+  --font-mono: var(--font-code);
+
+  --shadow-soft: 0 1px 2px rgb(var(--shadow-color) / 0.06),
+    0 8px 24px -8px rgb(var(--shadow-color) / 0.12);
+  --shadow-lifted: 0 2px 4px rgb(var(--shadow-color) / 0.06),
+    0 20px 40px -12px rgb(var(--shadow-color) / 0.22);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 5rem;
+  }
+
+  body {
+    background: var(--background);
+    color: var(--foreground);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-heading);
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  ::selection {
+    background: var(--accent-soft);
+    color: var(--foreground);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 6px;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* Subtle film grain, used only in the hero. */
+.hero-grain {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+  opacity: 0.08;
+  mix-blend-mode: multiply;
+}
+
+[data-theme="dark"] .hero-grain {
+  mix-blend-mode: soft-light;
+  opacity: 0.18;
 }
