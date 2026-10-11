@@ -117,7 +117,7 @@ If `NEXT_PUBLIC_SITE_URL` isn't set, the site uses `https://kopi.devanshuverma.i
 - [ ] **Waitlist email:** set `NEXT_PUBLIC_WEB3FORMS_KEY` (see below).
 - [ ] **Roadmap:** update the stage statuses in [`src/components/roadmap.tsx`](src/components/roadmap.tsx) as work moves along.
 - [ ] **Privacy:** add a privacy policy page and point the footer link at it.
-- [ ] **License:** add a `LICENSE` file at the repository root.
+- [x] **License:** MIT, in [`LICENSE`](../../LICENSE) at the repository root.
 
 ### Connecting the waitlist
 
@@ -195,7 +195,7 @@ Remember to set `NEXT_PUBLIC_WEB3FORMS_KEY`, and `NEXT_PUBLIC_SITE_URL` if the d
 
 ## Contributing
 
-See the [root README](../../README.md#contributing).
+See [CONTRIBUTING.md](../../CONTRIBUTING.md). Kopi is released under the [MIT License](../../LICENSE).
 
 <div align="center">
 <br />

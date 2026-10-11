@@ -23,7 +23,7 @@ const faqs: Array<{ question: string; answer: ReactNode }> = [
   {
     question: "Which platforms will it support?",
     answer:
-      "macOS and Windows are the focus for 1.0, with sync between them. If you'd like to see another platform, start a discussion on GitHub.",
+      "macOS and Windows are the focus for 1.0. Encrypted sync between them follows after 1.0. If you'd like to see another platform, start a discussion on GitHub.",
   },
   {
     question: "Is my data private?",
