@@ -60,7 +60,7 @@ A wider group of testers on both platforms, with the features rounded out.
 
 - ⏳ Feedback from the alphas on pinboards, settings and search
 - ⏳ Decide on encrypting the local database
-- ⏳ Signed builds and automatic updates
+- ⏳ Windows code signing and automatic updates
 - ⏳ Performance work on large histories
 - ⏳ Accessibility pass
 

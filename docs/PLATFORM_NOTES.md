@@ -88,7 +88,7 @@ Apple has added a permission model for reading the general pasteboard:
 ### Detecting clipboard changes
 
 - There's no change notification. Poll `NSPasteboard.general.changeCount`, which increments on each ownership change ([Apple docs](https://developer.apple.com/documentation/appkit/nspasteboard/changecount)).
-- Maccy polls every 0.5 s by default (`clipboardCheckInterval`, [source](https://github.com/p0deje/Maccy/blob/master/Maccy/Extensions/Defaults.Keys%2BNames.swift)). Kopi plans 250 ms while the user is active and backs off when idle. Reading an integer is cheap, but timers prevent App Nap, so measure energy impact in Activity Monitor.
+- Maccy polls every 0.5 s by default (`clipboardCheckInterval`, [source](https://github.com/p0deje/Maccy/blob/master/Maccy/Extensions/Defaults.Keys%2BNames.swift)). Kopi plans 250 ms while the user is active and backs off to 500 ms when idle. Reading an integer is cheap, but timers prevent App Nap, so measure energy impact in Activity Monitor.
 - Copies made within one polling interval collapse into one change. That's acceptable.
 
 ### Reading types

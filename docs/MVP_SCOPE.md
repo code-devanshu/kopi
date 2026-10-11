@@ -4,7 +4,7 @@ The macOS alpha is the first build we hand to testers. Its job is to prove that 
 
 ## Target
 
-- **macOS 14 Sonoma and later**, Apple silicon and Intel (universal build). It's tested on the current release (macOS 27) and the one before.
+- **macOS 14 Sonoma and later**, Apple silicon and Intel (universal build). It's tested on the minimum (macOS 14), the current release (macOS 27) and the one before (macOS 26).
 - Distributed as a notarized `.dmg` from GitHub Releases. If the Apple Developer Program account isn't ready yet, testers get an ad-hoc-signed build with install instructions.
 - Testers are people from the waitlist who said they'd like to test.
 
@@ -18,12 +18,12 @@ The macOS alpha is the first build we hand to testers. Its job is to prove that 
 | **Paste into the active app** | Return pastes into the app that was frontmost. ⌥Return pastes as plain text. Without Accessibility permission, it copies and shows "Press ⌘V". |
 | **Clip kinds** | `text`, `rich_text`, `link`, `image`, `file` and `color` are captured, previewed and pasted with their original formats. Images get thumbnails, links show their host, and colors show a swatch. `code` is detected with a simple heuristic and shown in a monospace font. |
 | **Pin + pinboards** | Pin or unpin a clip. Create, rename, recolor, reorder and delete pinboards, and add or remove clips. Pinned and pinboard clips are never removed by limits. |
-| **Privacy filter** | Concealed, transient and auto-generated content is never read or stored. Pause capture from the tray or the panel. See [PRIVACY_DESIGN.md](PRIVACY_DESIGN.md). |
+| **Privacy filter** | Concealed, transient and auto-generated content is never read or stored. Pause capture from the tray or the panel, indefinitely or for 5 minutes or 1 hour. See [PRIVACY_DESIGN.md](PRIVACY_DESIGN.md). |
 | **Excluded apps** | Seeded with common password managers. Add an app from a picker or from a clip ("Don't capture from this app"), and remove apps. |
-| **Settings** | Shortcut, history limits (count, age, size), kinds to capture, excluded apps, launch at login, theme (system, light, dark), clear history, and permission status with "Open System Settings" buttons. |
+| **Settings** | Shortcut, history limits (count, age, size), kinds to capture, excluded apps, launch at login, theme (system, light, dark), clear history (everything, the last hour or the last day), and permission status with "Open System Settings" buttons. |
 | **Launch at login** | A toggle in Settings and onboarding, using `SMAppService` (login item). |
 | **Tray icon** | Menu bar icon (template image) with: Open Kopi, Pause/Resume capture, Settings, About, Quit. |
-| **Onboarding** | First-run window that explains and requests Paste from Other Apps and Accessibility, sets the shortcut, and offers launch at login. |
+| **Onboarding** | First-run window that explains and requests Accessibility, sets the shortcut, and offers launch at login. It also explains and requests Paste from Other Apps, but only on macOS versions that enforce it (see [PLATFORM_NOTES.md](PLATFORM_NOTES.md#pasteboard-privacy-affects-the-whole-app)). |
 
 ### Quality bar
 

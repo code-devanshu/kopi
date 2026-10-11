@@ -126,7 +126,7 @@ On Windows, change notifications are pushed (`WM_CLIPBOARDUPDATE`). On macOS the
 
 | Module | Responsibility |
 | --- | --- |
-| `watcher` | Runs on its own thread. Detects clipboard changes, ignores changes Kopi made itself, records the source app, and passes the change to the privacy filter. Polling interval and backoff live here (macOS: 250 ms while active, 1 s after 60 s of no input; to be tuned in the spike). |
+| `watcher` | Runs on its own thread. Detects clipboard changes, ignores changes Kopi made itself, records the source app, and passes the change to the privacy filter. Polling interval and backoff live here (macOS: 250 ms while active, 500 ms after 60 s of no input, so capture always stays within the alpha's 0.5 s target; to be tuned in the spike). |
 | `privacy` | Decides whether a change may be read at all, using only the format list and source app: concealed, transient and auto-generated markers, the Windows exclusion formats, excluded apps, paused state and size limits. See [PRIVACY_DESIGN.md](PRIVACY_DESIGN.md). |
 | `classifier` | Turns raw formats into a clip: picks the kind (`text`, `rich_text`, `link`, `image`, `file`, `color`, `code`), extracts the plain text, computes the content hash and metadata. |
 | `storage` | Owns the SQLite connection pool (WAL mode, one writer thread), migrations, the content-addressed blob store and thumbnail generation. Upserts by content hash so repeated copies move to the top. |

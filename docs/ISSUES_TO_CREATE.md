@@ -27,7 +27,7 @@ macOS 27.2 removes the pasteboard-privacy developer flag, and background clipboa
 - What does a denied read return?
 - Does "Allow" survive a rebuild or an app update?
 
-Test on 27.2+ and on 15.x. Write up the results in PLATFORM_NOTES and update ADR 0003.
+Test on 27.2+, on 15.4+ (where `accessBehavior` first exists) and on 14, the minimum, which has no `accessBehavior`, to confirm that reads don't prompt there. Write up the results in PLATFORM_NOTES and update ADR 0003.
 
 ### 2. Spike: non-activating panel with `tauri-nspanel`
 
@@ -97,9 +97,9 @@ Depends on #1.
 
 **Labels:** `area: desktop`, `type: feature`, `privacy`, `good first issue`
 
-This is a pure-Rust filter that decides from the format list, source app and settings, before any read. It covers:
-- concealed, transient and auto-generated markers, plus the legacy markers
-- excluded apps, paused state, disabled kinds and the size limit
+This is a pure-Rust filter. It has two stages:
+- **before any read**, from the format list, source app and settings: concealed, transient and auto-generated markers, the legacy markers, excluded apps, paused state, and kinds known from the format list
+- **after the read, in memory**: the size limit and kinds known only from the content (link, code, color). Failing content is dropped without being stored or logged.
 
 Seed the default excluded apps and verify their bundle IDs. Write unit tests for every rule in [PRIVACY_DESIGN.md](PRIVACY_DESIGN.md).
 
@@ -177,7 +177,7 @@ Pinned and pinboard clips must be exempt from retention.
 - permission status with "Open System Settings" buttons
 
 **First-run onboarding:**
-- explain and request Paste from Other Apps and Accessibility
+- explain and request Accessibility, plus Paste from Other Apps on macOS versions that enforce it (skip that step elsewhere)
 - choose the shortcut
 - launch at login
 

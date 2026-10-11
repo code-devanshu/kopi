@@ -15,10 +15,10 @@ Kopi has to notice every copy, read every useful format (text, RTF, HTML, images
 
 Write a small platform layer (`crates/kopi-platform`) on the official bindings: **`objc2-app-kit`** for macOS and **`windows`** (windows-rs) for Windows. It sits behind a `Pasteboard` trait whose API forces a privacy-safe order:
 
-1. `change_count()`: macOS polls it (250 ms while active, backing off when idle). Windows gets a push from a message-only listener window.
+1. `change_count()`: macOS polls it (250 ms while active, backing off to 500 ms when idle). Windows gets a push from a message-only listener window.
 2. `types()`: format names only.
 3. The privacy filter decides from types and source app: concealed, transient or auto-generated markers, Windows exclusion formats, excluded apps, paused.
-4. `read(formats, max_bytes)`: only for allowed formats, up to size limits.
+4. `read(formats, max_bytes)`: only for allowed formats, up to size limits. The checks that need content (the size limit, and kinds such as link, code or color that are recognised from the text) run here, in memory. Content that fails them is dropped without being stored or logged.
 
 On macOS, the layer also exposes `accessBehavior`, so the app can show a clear permission state.
 
