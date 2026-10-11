@@ -1,8 +1,8 @@
 # Issues to create: macOS alpha
 
-These are the GitHub issues for the macOS alpha ([MVP_SCOPE.md](MVP_SCOPE.md)), in a sensible order. Start with the three spikes: they can change the design. Delete this file once the issues exist.
+These are the GitHub issues for the macOS alpha ([MVP_SCOPE.md](MVP_SCOPE.md)), in a sensible order. Start with the three spikes: they can change the design. All of them now exist on GitHub, and each heading links to its issue. The issues are the source of truth from here on; this file is kept as a record.
 
-## Labels to create first
+## Labels
 
 | Label | Color | Description |
 | --- | --- | --- |
@@ -17,7 +17,7 @@ These are the GitHub issues for the macOS alpha ([MVP_SCOPE.md](MVP_SCOPE.md)), 
 
 ---
 
-### 1. Spike: pasteboard privacy on macOS 27.2+
+### 1. Spike: pasteboard privacy on macOS 27.2+ ([#4](https://github.com/code-devanshu/kopi/issues/4))
 
 **Labels:** `area: desktop`, `platform: macos`, `type: spike`, `privacy`
 
@@ -29,7 +29,7 @@ macOS 27.2 removes the pasteboard-privacy developer flag, and background clipboa
 
 Test on 27.2+, on 15.4+ (where `accessBehavior` first exists) and on 14, the minimum, which has no `accessBehavior`, to confirm that reads don't prompt there. Write up the results in PLATFORM_NOTES and update ADR 0003.
 
-### 2. Spike: non-activating panel with `tauri-nspanel`
+### 2. Spike: non-activating panel with `tauri-nspanel` ([#5](https://github.com/code-devanshu/kopi/issues/5))
 
 **Labels:** `area: desktop`, `platform: macos`, `type: spike`
 
@@ -41,7 +41,7 @@ Prove the panel window:
 
 Use Tauri 2.12 and `tauri-nspanel` 2.1. Document the setup and any gotchas, such as webview focus or IME.
 
-### 3. Spike: paste into the active app on macOS
+### 3. Spike: paste into the active app on macOS ([#6](https://github.com/code-devanshu/kopi/issues/6))
 
 **Labels:** `area: desktop`, `platform: macos`, `type: spike`
 
@@ -53,7 +53,7 @@ Write a clip to the pasteboard, hide the panel and post ⌘V with `CGEvent`. Cov
 
 Test in TextEdit, Safari, Chrome, VS Code, Terminal, Slack and Notes, and record what fails.
 
-### 4. Scaffold `apps/desktop` and the Rust workspace
+### 4. Scaffold `apps/desktop` and the Rust workspace ([#7](https://github.com/code-devanshu/kopi/issues/7))
 
 **Labels:** `area: desktop`, `type: feature`
 
@@ -67,7 +67,7 @@ Create the following:
 
 Add `dev:desktop` and `build:desktop` scripts at the root.
 
-### 5. Storage: schema, migrations and blob store
+### 5. Storage: schema, migrations and blob store ([#8](https://github.com/code-devanshu/kopi/issues/8))
 
 **Labels:** `area: desktop`, `type: feature`
 
@@ -79,7 +79,7 @@ Implement [DATA_MODEL.md](DATA_MODEL.md) in `kopi-core`:
 
 Benchmark insert, search and startup at 100k clips, and record the numbers in the PR.
 
-### 6. macOS clipboard watcher
+### 6. macOS clipboard watcher ([#9](https://github.com/code-devanshu/kopi/issues/9))
 
 **Labels:** `area: desktop`, `platform: macos`, `type: feature`, `privacy`
 
@@ -91,9 +91,9 @@ Build the `Pasteboard` and `ForegroundApp` traits and their macOS implementation
 - ignoring Kopi's own writes
 - exposing `accessBehavior`
 
-Depends on #1.
+Depends on [#4](https://github.com/code-devanshu/kopi/issues/4).
 
-### 7. Privacy filter and excluded apps
+### 7. Privacy filter and excluded apps ([#10](https://github.com/code-devanshu/kopi/issues/10))
 
 **Labels:** `area: desktop`, `type: feature`, `privacy`, `good first issue`
 
@@ -103,7 +103,7 @@ This is a pure-Rust filter. It has two stages:
 
 Seed the default excluded apps and verify their bundle IDs. Write unit tests for every rule in [PRIVACY_DESIGN.md](PRIVACY_DESIGN.md).
 
-### 8. Classifier and duplicate handling
+### 8. Classifier and duplicate handling ([#11](https://github.com/code-devanshu/kopi/issues/11))
 
 **Labels:** `area: desktop`, `type: feature`, `good first issue`
 
@@ -115,7 +115,7 @@ Turn raw formats into a clip:
 
 Include table-driven tests, especially for links, colors and code detection.
 
-### 9. Search
+### 9. Search ([#12](https://github.com/code-devanshu/kopi/issues/12))
 
 **Labels:** `area: desktop`, `type: feature`
 
@@ -128,7 +128,7 @@ Implement the `search_clips` command:
 
 Target: under 50 ms per keystroke at 100k clips.
 
-### 10. Panel UI: history, search and preview
+### 10. Panel UI: history, search and preview ([#13](https://github.com/code-devanshu/kopi/issues/13))
 
 **Labels:** `area: desktop`, `type: feature`
 
@@ -142,7 +142,7 @@ Build the React panel:
 
 Respect light and dark mode and reduced motion.
 
-### 11. Paste engine
+### 11. Paste engine ([#14](https://github.com/code-devanshu/kopi/issues/14))
 
 **Labels:** `area: desktop`, `platform: macos`, `type: feature`
 
@@ -152,9 +152,9 @@ Implement `paste_clip` and `copy_clip` from [ADR 0004](decisions/0004-paste-simu
 - hide the panel and post ⌘V when Accessibility is granted, otherwise copy and show a toast
 - bump `last_used_at` and `use_count`
 
-Depends on #3.
+Depends on [#6](https://github.com/code-devanshu/kopi/issues/6).
 
-### 12. Pins and pinboards
+### 12. Pins and pinboards ([#15](https://github.com/code-devanshu/kopi/issues/15))
 
 **Labels:** `area: desktop`, `type: feature`
 
@@ -166,7 +166,7 @@ Core and UI for:
 
 Pinned and pinboard clips must be exempt from retention.
 
-### 13. Settings window and onboarding
+### 13. Settings window and onboarding ([#16](https://github.com/code-devanshu/kopi/issues/16))
 
 **Labels:** `area: desktop`, `platform: macos`, `type: feature`, `privacy`
 
@@ -181,7 +181,7 @@ Pinned and pinboard clips must be exempt from retention.
 - choose the shortcut
 - launch at login
 
-### 14. Retention, clear history and cleanup
+### 14. Retention, clear history and cleanup ([#17](https://github.com/code-devanshu/kopi/issues/17))
 
 **Labels:** `area: desktop`, `type: feature`, `privacy`
 
@@ -194,7 +194,7 @@ Covers:
 
 Include tests for each rule in [DATA_MODEL.md](DATA_MODEL.md#retention-and-cleanup).
 
-### 15. Alpha release pipeline
+### 15. Alpha release pipeline ([#18](https://github.com/code-devanshu/kopi/issues/18))
 
 **Labels:** `area: desktop`, `platform: macos`
 
