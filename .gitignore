@@ -1,8 +1,8 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
-/node_modules
-/.pnp
+node_modules/
+.pnp
 .pnp.*
 .yarn/*
 !.yarn/patches
@@ -11,18 +11,31 @@
 !.yarn/versions
 
 # testing
-/coverage
+coverage/
 
 # next.js
-/.next/
-/out/
+.next/
+out/
+next-env.d.ts
 
-# production
-/build
+# build output
+build/
+dist/
 
-# misc
-.DS_Store
-*.pem
+# tauri / rust (apps/desktop, coming later)
+src-tauri/target/
+target/
+src-tauri/gen/schemas/
+
+# vercel
+.vercel/
+
+# env files (only the example is committed)
+.env*
+!.env.example
+
+# typescript
+*.tsbuildinfo
 
 # debug
 npm-debug.log*
@@ -30,13 +43,7 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
-!.env.example
-
-# vercel
-.vercel
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
+# os and editor
+.DS_Store
+Thumbs.db
+*.pem
