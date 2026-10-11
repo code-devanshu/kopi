@@ -1,6 +1,7 @@
 {
   "name": "kopi",
   "private": true,
+  "license": "MIT",
   "packageManager": "pnpm@12.11.2",
   "scripts": {
     "dev:web": "pnpm --filter @kopi/web dev",

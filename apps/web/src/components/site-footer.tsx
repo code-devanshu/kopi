@@ -75,7 +75,19 @@ export function SiteFooter() {
         </nav>
       </Container>
       <Container className="border-t border-border py-6 text-sm text-muted-foreground">
-        <p>© 2026 Kopi</p>
+        <p>
+          © 2026 Kopi ·{" "}
+          <a
+            href={siteConfig.links.license}
+            data-track="license_click"
+            data-track-location="footer"
+            target="_blank"
+            rel="noreferrer"
+            className="transition-colors hover:text-foreground"
+          >
+            MIT licensed
+          </a>
+        </p>
       </Container>
     </footer>
   );

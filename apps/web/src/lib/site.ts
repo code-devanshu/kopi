@@ -7,6 +7,7 @@ export const siteConfig = {
   url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://kopi.devanshuverma.in",
   links: {
     github: "https://github.com/code-devanshu/kopi",
+    license: "https://github.com/code-devanshu/kopi/blob/main/LICENSE",
     twitter: "https://x.com/your-handle", // TODO: real X/Twitter profile
     contact: "mailto:code.devanshu@gmail.com", // TODO: real contact address
     privacy: "#privacy", // TODO: link to a privacy policy page once one exists
