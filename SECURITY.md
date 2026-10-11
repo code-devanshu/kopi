@@ -8,7 +8,7 @@ A clipboard manager sees almost everything you copy: passwords, tokens, addresse
 
 Report them privately instead, in either of these ways:
 
-- Email **<SECURITY_EMAIL>** with "Kopi security" in the subject.
+- Email **<code.devanshu@gmail.com>** with "Kopi security" in the subject.
 - Use GitHub's [private vulnerability reporting](https://github.com/code-devanshu/kopi/security/advisories/new).
 
 Please include:
