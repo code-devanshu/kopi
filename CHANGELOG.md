@@ -17,5 +17,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Rust workspace with the `kopi-core` and `kopi-platform` crates.
 - CI for the desktop app on macOS: rustfmt, Clippy, tests, a bindings check, lint and an app build.
 - Storage in `kopi-core`: SQLite (WAL) with migrations, the full schema and FTS5 trigram search index, upsert by content hash, content-addressed blob files for data over 64 KiB, and PNG thumbnails made on a background thread. Includes a 100k-clip benchmark.
+- macOS clipboard watcher: `Pasteboard`, `ForegroundApp` and `UserIdle` traits in `kopi-platform` with an AppKit implementation, and a watcher thread in `kopi-core` that polls `changeCount` (250 ms, 500 ms when idle), reads format names before any content, checks the pasteboard access grant, takes the source app from `org.nspasteboard.source` or the frontmost app, ignores Kopi's own writes, and reads only the captured formats from every item. `cargo run -p kopi-core --example watch` shows it working.
 
 [Unreleased]: https://github.com/code-devanshu/kopi/commits/main
