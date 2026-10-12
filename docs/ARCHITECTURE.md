@@ -141,7 +141,7 @@ On Windows, change notifications are pushed (`WM_CLIPBOARDUPDATE`). On macOS the
 | --- | --- |
 | Hotkeys | `tauri-plugin-global-shortcut`. The default shortcut is ⇧⌘V on macOS. It can be changed in Settings. |
 | Panel window | Borderless, always on top, hidden from the Dock and app switcher, hides when it loses focus. On macOS it's converted to a non-activating `NSPanel` with `tauri-nspanel`, so it can appear over full-screen apps without activating Kopi. See [PLATFORM_NOTES.md](PLATFORM_NOTES.md#panel-window). |
-| Tray | Tauri's `tray-icon` feature. Menu: open Kopi, pause capture, settings, quit. On macOS the activation policy is `Accessory`, so there's no Dock icon. |
+| Tray | Tauri's `tray-icon` feature. Menu: open Kopi, pause capture, settings, quit. On macOS the activation policy is `Accessory` and Info.plist sets `LSUIElement`, so there's no Dock icon, not even a flash at launch. |
 | Other plugins | `autostart` (launch at login), `single-instance`, `window-state` (settings window only), `log`. Later: `updater`. |
 | Commands | `search_clips`, `get_clip`, `paste_clip`, `copy_clip`, `delete_clips`, `set_pinned`, `pinboard_*`, `get_settings`, `update_settings`, `excluded_apps_*`, `clear_history`, `set_paused`, `permission_status`, `open_permission_settings` |
 | Events | `clip:added`, `clip:updated`, `clip:removed`, `history:cleared`, `capture:paused`, `permissions:changed`, `panel:shown` |
