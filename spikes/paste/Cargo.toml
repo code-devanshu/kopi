@@ -1,0 +1,22 @@
+[package]
+name = "kopi-paste-spike"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+publish = false
+
+# Standalone: not part of a workspace.
+[workspace]
+
+[build-dependencies]
+tauri-build = { version = "2.7", features = [] }
+
+[dependencies]
+tauri = { version = "2.12", features = ["macos-private-api", "tray-icon"] }
+tauri-nspanel = "2.1"
+tauri-plugin-global-shortcut = "2.4"
+objc2 = "0.6"
+objc2-app-kit = "0.3"
+objc2-foundation = "0.3"
+core-foundation = "0.10"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
