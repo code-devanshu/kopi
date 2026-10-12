@@ -76,14 +76,22 @@ Apple has added a permission model for reading the general pasteboard:
 - **API (macOS 15.4+):** `NSPasteboard.accessBehavior` returns `.default`, `.ask`, `.alwaysAllow` or `.alwaysDeny` ([Apple docs](https://developer.apple.com/documentation/appkit/nspasteboard/accessbehavior-swift.enum)). Per Apple, the general pasteboard's default "is to ask upon programmatic access". The first alert moves the app to `.ask`, and from then on the user can switch it between Ask, Allow and Deny in System Settings. Access that's "user originated and paste related" (⌘V, a Paste button) is always allowed.
 - **Reading without an alert:** `detectedPatterns(for:)` and `detectedMetadata(for:)` inspect the first item "without notifying the person using the app" ([Apple docs](https://developer.apple.com/documentation/appkit/nspasteboard)).
 - **History:** it was a developer preview in macOS 15.4 (`defaults write <bundle id> EnablePasteboardPrivacyDeveloperPreview -bool yes`). It reportedly wasn't enforced in macOS 26 ([Michael Tsai](https://mjtsai.com/blog/2025/05/12/pasteboard-privacy-preview-in-macos-15-4/)). The **macOS 27.2 beta 2 release notes remove that developer-preview default** ([summary of the notes](https://betaprofile.dev/macos-27-2-beta-2/), [second summary](https://blakecrosley.com/blog/macos-27-release-notes)). Users report that apps reading the clipboard are now restricted by default ([Parallels forum, Oct 2026](https://forum.parallels.com/threads/problem-with-clipboard-macos-27.371175/)). This isn't confirmed by Apple or on real hardware yet ([open probe](https://github.com/admax12959/OneShot/issues/15)).
-- **Unknown:** whether reading `changeCount` or `types` triggers the alert. One researcher saw no alert from `changeCount` on 15.7 ([deskhopplus#41](https://github.com/myn/deskhopplus/issues/41)). That test was on a non-sandboxed, ad-hoc-signed helper whose state was already `alwaysAllow`, so it proves little.
+- **Spike results** ([spike 0001](spikes/0001-macos-pasteboard-access.md), macOS 26.6.2 and 27.0.1):
+  - `changeCount`, `types` and `pasteboardItems.count` never trigger the alert. The first `string`/`data` read of each copy does.
+  - Clicking **Allow Paste** in the alert covers only that one copy, and the app stays in `.ask`. It is not a standing grant.
+  - The standing grant lives in System Settings → Privacy & Security, with the options Ask, Always Allow and Deny. Always Allow sets `.alwaysAllow`, and it survived an OS upgrade and a reboot.
+  - On 26.6.2 an unanswered read blocks for about 60 s, then returns `nil`.
+  - **Nothing is enforced on 27.0.1.** Without the developer-preview flag, `accessBehavior` is `.alwaysAllow` and reads work even when System Settings says Ask.
+  - **With the flag on, 27.0.1 hangs instead of alerting.** The Trusted UI service that shows the alert isn't registered, so pasteboard reads (and sometimes `accessBehavior`) block the main thread with no time limit. Don't use the flag on 27.0.1.
+  - **Pasteboard calls must stay on the main thread.** On 27.0.1, `accessBehavior` called from a background queue raises `NSInternalInconsistencyException` and the app aborts.
 
 **What this means for Kopi:**
 
 1. Treat "Paste from Other Apps: Allow" as a **required permission** on macOS 27.2+, like Accessibility. Onboarding explains why and sends the user to System Settings → Privacy & Security. Apple asks apps to guide users there through onboarding rather than deep-linking from the alert.
-2. Check `accessBehavior` at launch and whenever the panel opens. Show a clear "Kopi can't see your clipboard" state for `.ask` and `.alwaysDeny`, instead of failing silently.
-3. Read in this order: `changeCount`, then `types`, then the privacy filter, and only then the content. This minimises reads and keeps concealed content unread.
-4. The first spike must answer: does `changeCount`/`types` prompt, does Allow survive app updates (TCC is tied to the code signature), and what does a denied read return?
+2. Check `accessBehavior` at launch and whenever the panel opens. Show a clear "Kopi can't see your clipboard" state for `.default`, `.ask` and `.alwaysDeny`, instead of failing silently.
+3. Read in this order: `changeCount`, then `types`, then the privacy filter, and only then the content. The first three never prompt, so Kopi can detect copies and skip concealed content without an alert.
+4. Read content only when `accessBehavior` is `.alwaysAllow`. A read without the grant blocks the main thread, which is also Tauri's event loop, and it can't be moved to a background thread.
+5. Still open: enforcement on real macOS 27.2, and whether the grant survives an app update (TCC is tied to the code signature). Test both before building macOS onboarding.
 
 ### Detecting clipboard changes
 

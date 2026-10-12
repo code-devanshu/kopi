@@ -1,7 +1,7 @@
 # 0003. Watch the clipboard with our own native platform layer
 
-- **Status:** Accepted, pending the macOS pasteboard-privacy spike
-- **Date:** 2026-10-11
+- **Status:** Accepted. Revisited after the macOS pasteboard-privacy spike ([spike 0001](../spikes/0001-macos-pasteboard-access.md)).
+- **Date:** 2026-10-11, revised 2026-10-12
 
 ## Context
 
@@ -20,7 +20,7 @@ Write a small platform layer (`crates/kopi-platform`) on the official bindings: 
 3. The privacy filter decides from types and source app: concealed, transient or auto-generated markers, Windows exclusion formats, excluded apps, paused.
 4. `read(formats, max_bytes)`: only for allowed formats, up to size limits. The checks that need content (the size limit, and kinds such as link, code or color that are recognised from the text) run here, in memory. Content that fails them is dropped without being stored or logged.
 
-On macOS, the layer also exposes `accessBehavior`, so the app can show a clear permission state.
+On macOS, the layer also exposes `accessBehavior`, so the app can show a clear permission state. `read` refuses to run unless `accessBehavior` is `alwaysAllow`, and all pasteboard calls run on the main thread.
 
 ## Alternatives considered
 
@@ -35,5 +35,8 @@ On macOS, the layer also exposes `accessBehavior`, so the app can show a clear p
 ## Consequences
 
 - **Good:** full control over what is read and when, and it honours every privacy marker. One code path per OS, unit-testable behind traits.
-- **Bad:** more code to own, including unsafe FFI. The macOS pasteboard API has threading caveats that the spike must check (reads off the main thread).
-- **Risk:** if macOS prompts on `changeCount` or `types` without the Allow permission, Kopi can't work at all until the user grants it. Onboarding must make that grant clear, and the app must detect and explain `.ask` and `.alwaysDeny`. This ADR is revisited after the spike.
+- **Bad:** more code to own, including unsafe FFI. Pasteboard calls must run on the main thread. On macOS 27.0.1, `accessBehavior` called from a background queue aborts the app.
+- **Confirmed by the spike:** `changeCount` and `types` never prompt, so steps 1–3 work without any permission and concealed content is never read.
+- **Risk:** once macOS enforces paste privacy (reportedly 27.2), Kopi needs **Always Allow** in System Settings → Privacy & Security. Clicking Allow in the alert covers only one copy, so without the setting Kopi would raise an alert for every copy. Onboarding must make the grant clear, and the app must detect and explain `.default`, `.ask` and `.alwaysDeny`.
+- **Risk:** a content read without the grant blocks the main thread, which is also Tauri's event loop: about 60 s on the 26.6.2 preview, and with no time limit on the 27.0.1 preview. Gating reads on `alwaysAllow` should avoid this. If enforced 27.2 still blocks, move pasteboard reads into a helper process that can be killed, at the cost of a second binary to sign and a second grant.
+- **Don't rely on the developer-preview flag** (`EnablePasteboardPrivacyDeveloperPreview`) for testing. On 27.0.1 it hangs pasteboard calls instead of showing the alert. Retest on real macOS 27.2 before building macOS onboarding.
