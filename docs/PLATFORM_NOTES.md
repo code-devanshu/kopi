@@ -137,16 +137,26 @@ These checks use only `types`, before any content is read.
 
 ### Pasting into the active app
 
-1. Write the clip's formats to the pasteboard, with `org.nspasteboard.source` set to Kopi's bundle ID so the watcher ignores it.
-2. Close the panel. With a non-activating panel the target app is still frontmost. Otherwise, activate the remembered `NSRunningApplication`.
-3. Post ⌘V with `CGEvent(keyboardEventSource:virtualKey:keyDown:)` to `.cgSessionEventTap`, using a `combinedSessionState` source.
+Verified in [spike 0003](spikes/0003-macos-paste.md) on macOS 27.0.1, in Notes, TextEdit, Safari, Chrome, VS Code and Terminal.
+
+1. Check `AXIsProcessTrusted()`. If it's false, stop here: leave the clip on the pasteboard and show "Copied. Press ⌘V".
+2. On the main thread, find the key code for V in the current layout (see Keyboard layouts below).
+3. Write the clip's formats to the pasteboard, with `org.nspasteboard.source` set to Kopi's bundle ID so the watcher ignores it. Plain text plus `public.html` kept the formatting in TextEdit and Notes.
+4. Hide the panel. With the non-activating panel, the target app is still frontmost and key. Otherwise, activate the remembered `NSRunningApplication`.
+5. Right away, with no delay, post V down and V up with `CGEventCreateKeyboardEvent`:
+   - a `combinedSessionState` event source
+   - flags set explicitly to `kCGEventFlagMaskCommand | NX_DEVICELCMDKEYMASK` (`0x100008`)
+   - posted to `kCGSessionEventTap`
+
+   In the spike, this posted 0.5–1.4 ms after hiding, and no app missed it.
 
 Gotchas:
 
-- **Permission:** posting events into other apps needs **Accessibility** (System Settings → Privacy & Security → Accessibility). Check it with `AXIsProcessTrustedWithOptions` and prompt with `kAXTrustedCheckOptionPrompt` ([Apple docs](https://developer.apple.com/documentation/applicationservices/1459186-axisprocesstrustedwithoptions)). `CGPreflightPostEventAccess` and `CGRequestPostEventAccess` (macOS 10.15+) are the event-specific variants.
-- **Keyboard layouts:** the virtual key code for V differs between layouts. Look it up from the current layout, and handle "⌘ switches to QWERTY" layouts ([Maccy #482](https://github.com/p0deje/Maccy/issues/482)).
-- **Held modifiers:** the user may still be holding ⇧ from ⇧⌘V. Set explicit flags on the event, and consider waiting for modifier release.
-- **Dev builds:** TCC grants (Accessibility, pasteboard) are tied to the code signature. Ad-hoc-signed builds can lose them on every rebuild, so sign dev builds with a stable identity.
+- **Permission:** posting events into other apps needs **Accessibility** (System Settings → Privacy & Security → Accessibility). Without it, `CGEventPost` **drops the events silently**, so check `AXIsProcessTrusted()` first. Ask with `AXIsProcessTrustedWithOptions` and `kAXTrustedCheckOptionPrompt` ([Apple docs](https://developer.apple.com/documentation/applicationservices/1459186-axisprocesstrustedwithoptions)). That call returns false at once and shows the alert, so poll `AXIsProcessTrusted()` afterwards. The grant takes effect without a relaunch. **Don't use `CGPreflightPostEventAccess`**: it stayed false while Accessibility was granted and pastes worked.
+- **Keyboard layouts:** the virtual key code for V differs between layouts. Run `UCKeyTranslate` on `TISCopyCurrentKeyboardLayoutInputSource()` with ⌘ held (modifier state 1), scan key codes 0–127 for "v", and fall back to 9. Of 264 layouts, that gives 9 on Latin and non-Latin layouts and on "Dvorak – QWERTY ⌘", 47 on Dvorak, 43 on Dvorak – Right-Handed and 8 on Turkish F. Without ⌘ held, "Dvorak – QWERTY ⌘" gives the wrong key and 122 non-Latin layouts give none ([Maccy #482](https://github.com/p0deje/Maccy/issues/482)). Text Input Sources must be read on the main thread.
+- **Held modifiers:** the user may still be holding ⇧⌘ from the hotkey, and Return is usually still down. `CGEventSetFlags` replaces the event's flags, so the held ⇧ doesn't reach the app. No need to wait for release.
+- **No success signal:** nothing reports whether the paste landed. An Accessibility query right after a rich-text paste can time out (−25204) while the app is busy, so don't use it to verify.
+- **Dev builds:** TCC grants (Accessibility, pasteboard) are tied to the code signature. Ad-hoc-signed builds lose them on every rebuild, so sign dev builds with a stable identity.
 - **Sandbox:** posting events and background pasteboard reads don't fit the App Sandbox. Kopi ships outside the Mac App Store.
 
 ### Distribution
