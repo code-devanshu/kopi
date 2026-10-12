@@ -32,4 +32,4 @@ The full schema is in [DATA_MODEL.md](../DATA_MODEL.md).
 
 - **Good:** one dependency, one file, transactional, and fast enough for 100k+ clips. Easy to inspect while debugging.
 - **Bad:** a trigram index is roughly 3× the indexed text, which we cap at 64 KiB per clip. Files and rows can drift after a crash, so we need an orphan sweep at startup.
-- **Follow-up:** benchmark insert, search and startup at 100k clips in the storage spike, and tune the bm25 and recency blend with real data.
+- **Follow-up:** tune the bm25 and recency blend with real data. The 100k-clip benchmark (`crates/kopi-core/examples/storage_bench.rs`, results in PR #25) found that ranking every match costs 60 to 150 ms for very common terms, while newest-first reads straight off the index in under 20 ms. The search module has to keep ranking within the typing budget.

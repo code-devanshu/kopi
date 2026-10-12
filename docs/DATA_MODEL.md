@@ -187,8 +187,10 @@ CREATE TRIGGER clips_ad AFTER DELETE ON clips BEGIN
   INSERT INTO clips_fts(clips_fts, rowid, plain_text, source_app_name)
   VALUES ('delete', old.id, old.plain_text, old.source_app_name);
 END;
--- Only re-index when indexed columns change, not on every last_used_at bump:
-CREATE TRIGGER clips_au AFTER UPDATE OF plain_text, source_app_name ON clips BEGIN
+-- Only re-index when an indexed value actually changes, not on every last_used_at bump
+-- or repeat copy from the same app:
+CREATE TRIGGER clips_au AFTER UPDATE OF plain_text, source_app_name ON clips
+WHEN old.plain_text IS NOT new.plain_text OR old.source_app_name IS NOT new.source_app_name BEGIN
   INSERT INTO clips_fts(clips_fts, rowid, plain_text, source_app_name)
   VALUES ('delete', old.id, old.plain_text, old.source_app_name);
   INSERT INTO clips_fts(rowid, plain_text, source_app_name)
@@ -203,7 +205,7 @@ Why these choices:
 - **1–2 character queries**: trigram can't match these, so the search module falls back to `plain_text LIKE '%q%'` over the most recent 5,000 clips. That's fast enough and covers short searches.
 - **Ranking**: we order by `bm25(clips_fts, 1.0, 0.3)` (text matters more than the app name), then blend with recency, so a recent exact match beats an old one. The weights get tuned with real data.
 - **Highlighting**: `snippet()` provides the match context shown in the list.
-- **Index size**: trigram indexes are larger than word indexes (roughly 3× the text). With 64 KiB of `plain_text` per clip at most, this stays manageable. We'll measure it at 100k clips in the storage spike.
+- **Index size**: trigram indexes are larger than word indexes. In the storage benchmark (`cargo run --release -p kopi-core --example storage_bench`), 100k clips holding 122 MiB of text gave a 205 MiB index, about 1.7× the text, in a 376 MiB database.
 
 Example query (filters are optional):
 
