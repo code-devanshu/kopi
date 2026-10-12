@@ -28,4 +28,4 @@ Build the desktop app with **Tauri v2** (stable line, 2.12.x as of Oct 2026). Th
 
 - **Good:** small binaries and low memory, one UI codebase, and a Rust core with direct access to native APIs through `objc2` and `windows-rs`. The web stack is shared with the website.
 - **Bad:** webview rendering differs slightly between WKWebView and WebView2, so the UI is tested on both. Some native behaviour (non-activating panels, full-screen spaces) needs community plugins or our own `objc2` code.
-- **Risk:** the panel's activation behaviour on macOS is the riskiest part of the UI. It gets a spike before the UI is built on it.
+- **Risk:** the panel's activation behaviour on macOS is the riskiest part of the UI. It gets a spike before the UI is built on it. [Spike 0002](../spikes/0002-macos-nspanel.md) showed that tauri-nspanel 2.1 handles it on macOS 27.0.1: the panel gets keyboard focus over full-screen apps without activating Kopi.
