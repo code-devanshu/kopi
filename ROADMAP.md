@@ -36,7 +36,7 @@ Decide what Kopi looks like and how it's built before writing the app.
 
 First usable builds for early testers on macOS. The full scope is in [docs/MVP_SCOPE.md](docs/MVP_SCOPE.md).
 
-- ⏳ Tauri app scaffold in `apps/desktop`
+- ✅ Tauri app scaffold in `apps/desktop`
 - ⏳ Clipboard watcher for text, rich text, links, images, files and colors
 - ⏳ Local history stored in SQLite
 - ⏳ Full-text search with type and source-app filters

@@ -1,7 +1,7 @@
 # Architecture
 
 > [!NOTE]
-> Kopi is in the design phase and no desktop code exists yet. This document describes the planned design for the macOS alpha. It will change as the spikes in [ISSUES_TO_CREATE.md](ISSUES_TO_CREATE.md) report back. To comment, open a [discussion](https://github.com/code-devanshu/kopi/discussions) or a pull request against this file.
+> Kopi is in the design phase. The desktop app is only a scaffold so far ([#7](https://github.com/code-devanshu/kopi/issues/7)). This document describes the planned design for the macOS alpha. It will change as the spikes in [ISSUES_TO_CREATE.md](ISSUES_TO_CREATE.md) report back. To comment, open a [discussion](https://github.com/code-devanshu/kopi/discussions) or a pull request against this file.
 
 Related docs:
 
@@ -259,7 +259,7 @@ kopi/
 └── packages/                  # Shared JS packages (none yet)
 ```
 
-TypeScript types for command payloads are generated from the Rust types (for example with `specta` or `ts-rs`) so the UI and the core can't drift apart. That choice is made in the scaffold issue.
+TypeScript bindings for the commands and their types are generated from the Rust code with [`tauri-specta`](https://github.com/specta-rs/tauri-specta), so the UI and the core can't drift apart. Dev builds and `cargo test -p kopi-desktop` write them to `apps/desktop/src/lib/bindings.ts`, and CI fails if the committed file is out of date. We chose it over `ts-rs` because it also generates typed wrappers for the commands and events, not just the types. The UI calls commands through `src/lib/ipc.ts`.
 
 ## Permissions on macOS
 

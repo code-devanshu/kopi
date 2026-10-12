@@ -22,10 +22,10 @@ next-env.d.ts
 build/
 dist/
 
-# tauri / rust (apps/desktop, coming later)
-src-tauri/target/
+# tauri / rust
+**/src-tauri/target/
 target/
-src-tauri/gen/schemas/
+**/src-tauri/gen/schemas/
 
 # vercel
 .vercel/

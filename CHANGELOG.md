@@ -13,5 +13,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - MIT License, contributing guide, code of conduct and security policy.
 - Roadmap and a draft architecture doc.
 - Issue templates, a pull request template and CI for the website.
+- Desktop app scaffold in `apps/desktop` (Tauri 2, React, TypeScript), with a menu bar icon, single-instance and launch-at-login plugins, and TypeScript bindings generated from the Rust commands.
+- Rust workspace with the `kopi-core` and `kopi-platform` crates.
+- CI for the desktop app on macOS: rustfmt, Clippy, tests, a bindings check, lint and an app build.
 
 [Unreleased]: https://github.com/code-devanshu/kopi/commits/main

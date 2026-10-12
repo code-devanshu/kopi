@@ -6,7 +6,7 @@ By taking part, you agree to follow the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Where help is useful right now
 
-The desktop app hasn't been started yet. For now, the most useful contributions are:
+The desktop app is only a scaffold so far. For now, the most useful contributions are:
 
 - **Design:** layouts, flows, icons and onboarding for the app. Share mockups in an issue or a discussion.
 - **Architecture:** read [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and weigh in on the open questions, especially if you know the macOS or Windows clipboard APIs, Tauri, Rust or encryption.
@@ -29,6 +29,7 @@ You need:
 
 - **Node.js 20.9 or newer.** CI uses Node 24, so that's the safest choice.
 - **pnpm.** The version is pinned in the root `package.json`. Run `corepack enable` and the right version is used automatically.
+- **For the desktop app only:** Rust (install with [rustup](https://rustup.rs), then `rustup component add clippy rustfmt`) and the Xcode Command Line Tools (`xcode-select --install`). See [apps/desktop/README.md](apps/desktop/README.md).
 
 ```bash
 git clone https://github.com/<your-username>/kopi.git
@@ -46,13 +47,23 @@ pnpm lint
 pnpm build:web
 ```
 
+If you changed the desktop app or the Rust crates, also run:
+
+```bash
+cargo fmt --all --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+pnpm build:desktop
+```
+
 ## Project structure
 
 ```text
 kopi/
 ├── apps/
 │   ├── web/          # Website (Next.js, TypeScript, Tailwind CSS)
-│   └── desktop/      # Desktop app (Tauri), not started yet
+│   └── desktop/      # Desktop app (Tauri, React, TypeScript)
+├── crates/           # Rust crates: kopi-core and kopi-platform
 ├── packages/         # Shared code, empty for now
 ├── docs/             # Architecture notes
 └── .github/          # Issue templates, PR template and CI
@@ -97,7 +108,7 @@ Write the summary in the imperative ("add", not "added"), keep it under about 72
 
 1. Fork the repository and create a branch from `main`.
 2. Keep each pull request focused on one change. Small pull requests get reviewed faster.
-3. Run `pnpm lint` and `pnpm build:web`, and fix any errors.
+3. Run the checks above, and fix any errors.
 4. Open the pull request and fill in the template. Link the issue it closes, such as `Closes #12`.
 5. Add screenshots or a short recording for anything visual.
 6. CI must pass. A maintainer will review, may ask for changes, and will merge when it's ready.

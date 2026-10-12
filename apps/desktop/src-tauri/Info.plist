@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Merged into the bundle's Info.plist by `tauri build`. -->
+<plist version="1.0">
+<dict>
+	<!-- Menu bar app: no Dock icon and no app switcher entry, not even at launch. -->
+	<key>LSUIElement</key>
+	<true/>
+</dict>
+</plist>

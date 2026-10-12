@@ -29,7 +29,7 @@ An open-source clipboard manager for macOS and Windows.
 <br />
 
 > [!NOTE]
-> Kopi is in the design stage. There's no app to download yet. This repo holds the website today, and the desktop app will join it in `apps/desktop`. Join the [waitlist](https://kopi.devanshuverma.in/#waitlist) to hear when the first alpha is ready.
+> Kopi is in the design stage. There's no app to download yet. This repo holds the website and an early scaffold of the desktop app in `apps/desktop`. Join the [waitlist](https://kopi.devanshuverma.in/#waitlist) to hear when the first alpha is ready.
 
 ## Planned features
 
@@ -66,15 +66,18 @@ See [ROADMAP.md](ROADMAP.md) for what's in each phase. The planned technical des
 ```text
 kopi/
 ├── apps/
-│   └── web/              # Website (Next.js): kopi.devanshuverma.in
+│   ├── web/              # Website (Next.js): kopi.devanshuverma.in
+│   └── desktop/          # Desktop app (Tauri, React): a scaffold so far
+├── crates/
+│   ├── kopi-core/        # Rust core, no Tauri
+│   └── kopi-platform/    # OS APIs behind small traits
 ├── packages/             # Shared packages (empty for now)
 ├── docs/                 # Architecture notes and images
 ├── .github/              # Issue templates, PR template and CI
+├── Cargo.toml            # Rust workspace
 ├── package.json          # Workspace scripts
 └── pnpm-workspace.yaml
 ```
-
-The desktop app (Tauri, in `apps/desktop`) hasn't been started yet.
 
 ## Run the website locally
 
@@ -93,6 +96,8 @@ Then open [http://localhost:3000](http://localhost:3000). The waitlist form work
 | --- | --- |
 | `pnpm dev:web` | Start the website's dev server |
 | `pnpm build:web` | Build the website |
+| `pnpm dev:desktop` | Run the desktop app in development (needs Rust, see [apps/desktop/README.md](apps/desktop/README.md)) |
+| `pnpm build:desktop` | Build `Kopi.app` |
 | `pnpm build` | Build every package |
 | `pnpm lint` | Lint every package |
 

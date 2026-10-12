@@ -6,6 +6,8 @@
   "scripts": {
     "dev:web": "pnpm --filter @kopi/web dev",
     "build:web": "pnpm --filter @kopi/web build",
+    "dev:desktop": "pnpm --filter @kopi/desktop dev",
+    "build:desktop": "pnpm --filter @kopi/desktop build",
     "lint": "pnpm -r lint",
     "build": "pnpm -r build"
   }
