@@ -13,7 +13,7 @@ Kopi can't avoid the signing question, though. It needs the Accessibility and pa
 
 1. **Don't join the Apple Developer Program.** Kopi isn't Developer ID signed or notarized.
 2. **Sign releases with a self-signed code-signing certificate**, kept in the repository secrets. Its designated requirement is `identifier "in.devanshuverma.kopi" and certificate leaf = H"…"`, which is the same for every build, so permissions survive updates. The Release workflow imports it itself, because Tauri's `APPLE_CERTIFICATE` import only finds Apple-issued certificates, and refuses to build a release without it ([RELEASING.md](../RELEASING.md#signing)).
-3. **Accept Gatekeeper's block on the first open**, and make it as easy as possible: the install guide, the release notes, a `.dmg` background and install routes that don't quarantine the app ([#39](https://github.com/code-devanshu/kopi/issues/39)).
+3. **Accept Gatekeeper's block on the first open**, and make it as easy as possible: the install guide, the release notes, a `.dmg` background that shows the steps and a one-line install from Terminal that doesn't quarantine the app ([#39](https://github.com/code-devanshu/kopi/issues/39)). The script only installs a Kopi signed with the certificate.
 4. **Update in place with the Tauri updater** ([#38](https://github.com/code-devanshu/kopi/issues/38)), which signs updates with its own key, so testers don't download and approve every build.
 
 ## Alternatives considered
@@ -23,6 +23,7 @@ Kopi can't avoid the signing question, though. It needs the Accessibility and pa
 | Developer ID and notarization | $99 a year, every year. It's the only way to remove the first-open block, but Kopi can live with that block. |
 | Ad-hoc signing only | Free, but testers lose their permissions on every update, which breaks pasting and history until they allow them again. |
 | Mac App Store | Needs the same paid program, and Kopi can't run in the App Sandbox ([ADR 0004](0004-paste-simulation-approach.md)). |
+| Homebrew cask | The official tap has dropped casks that fail Gatekeeper since Homebrew 5, and disabled them on 2026-09-01, and `--no-quarantine` is gone. A personal tap still works, but Homebrew quarantines what it downloads, so it would need to clear the flag itself, as the install script does without needing Homebrew. Worth adding if testers ask for it. |
 
 ## Consequences
 

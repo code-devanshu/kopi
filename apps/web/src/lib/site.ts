@@ -5,6 +5,8 @@ export const siteConfig = {
   description:
     "Kopi is an open-source clipboard manager for macOS, with Windows next. Unlimited history, instant search and pinboards, kept on your computer. The macOS alpha is free to download.",
   url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://kopi.devanshuverma.in",
+  // /install.sh redirects to scripts/install.sh on main, in next.config.ts.
+  installCommand: "curl -fsSL https://kopi.devanshuverma.in/install.sh | bash",
   links: {
     github: "https://github.com/code-devanshu/kopi",
     // The releases page, not a file, so it doesn't change with every alpha.

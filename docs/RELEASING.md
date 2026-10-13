@@ -30,6 +30,20 @@ Each build sets `CFBundleVersion` to the workflow's run number, so every build i
 
 If the workflow fails after it creates the release, fix the problem and rerun the failed job. A rerun replaces the files on the draft. To rebuild from a different commit, delete the draft release and the tag, then tag again.
 
+## The `.dmg` window
+
+The `.dmg` opens to a window that shows the drag to Applications and how to open Kopi the first time. The background is `apps/desktop/src-tauri/dmg/background.tiff`, drawn by `make-background.swift` next to it, and the window size and icon positions are `bundle.macOS.dmg` in `tauri.conf.json`. To change it, edit the script, run `swift apps/desktop/src-tauri/dmg/make-background.swift` and keep the positions in both files the same.
+
+Finder lays out the window when the `.dmg` is built, so building one on your Mac (`pnpm --filter @kopi/desktop tauri build --bundles dmg`) opens a Finder window for a few seconds. `pnpm build:desktop` only builds the app. Tauri skips the layout on CI unless `TAURI_BUNDLER_DMG_IGNORE_CI` is set, which the workflow does, and the workflow fails if the `.dmg` has no background.
+
+## The install script
+
+[`scripts/install.sh`](../scripts/install.sh) installs the newest release from Terminal: `curl -fsSL https://kopi.devanshuverma.in/install.sh | bash`. The website redirects `/install.sh` to the script on `main`, so a change to it is live once it's merged.
+
+It reads the newest release from the `updater` release's `latest.json`, so it offers a release once the Updater workflow has. It downloads that release's `.dmg`, checks the `.sha256` and checks that the app's designated requirement names the signing certificate, then copies Kopi to `/Applications`. Files curl downloads aren't quarantined, so Gatekeeper doesn't block Kopi.
+
+The script names the certificate by its hash. **With a new certificate, update `requirement` in the script** in the same change, or it refuses every release.
+
 ## Trying the workflow without releasing
 
 In **Actions → Release → Run workflow**, run it on a branch. It builds the `.dmg` and the update, and keeps them as a workflow artifact for 14 days. It doesn't create a release or a `latest.json`. Use this to test changes to the workflow or a new signing certificate before tagging.

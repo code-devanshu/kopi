@@ -250,6 +250,12 @@ jobs:
             echo
             echo "> [!IMPORTANT]"
             echo "> Kopi isn't notarized by Apple, so macOS blocks it the first time you open it. [Installing Kopi]($install) shows how to open it and allow its permissions."
+            echo
+            echo "Or install it from Terminal, and macOS won't block it:"
+            echo
+            echo '```sh'
+            echo "curl -fsSL https://kopi.devanshuverma.in/install.sh | bash"
+            echo '```'
           } > notes.md
 
           flags=(--draft --verify-tag --title "Kopi $NAME" --notes-file notes.md --generate-notes)
