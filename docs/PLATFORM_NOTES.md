@@ -100,6 +100,8 @@ Apple has added a permission model for reading the general pasteboard:
 - There's no change notification. Poll `NSPasteboard.general.changeCount`, which increments on each ownership change ([Apple docs](https://developer.apple.com/documentation/appkit/nspasteboard/changecount)).
 - Maccy polls every 0.5 s by default (`clipboardCheckInterval`, [source](https://github.com/p0deje/Maccy/blob/master/Maccy/Extensions/Defaults.Keys%2BNames.swift)). Kopi plans 250 ms while the user is active and backs off to 500 ms when idle. Reading an integer is cheap, but timers prevent App Nap, so measure energy impact in Activity Monitor.
 - Copies made within one polling interval collapse into one change. That's acceptable.
+- An app writes with `clearContents` and then `writeObjects`, and only the first bumps `changeCount`. A poll that lands in between sees the new count with no types, so the watcher retries an empty pasteboard for a few polls before dropping that change. It also waits 30 ms after spotting a new count before reading the types.
+- `NSPasteboardItem`s belong to the copy they were fetched for. If a new copy lands mid-read, their data comes back empty rather than mixing in the new copy. `read` also checks `changeCount` before and after, and returns nothing if it moved.
 
 ### Reading types
 

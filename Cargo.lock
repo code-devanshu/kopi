@@ -2061,6 +2061,8 @@ dependencies = [
  "blake3",
  "image",
  "kopi-platform",
+ "objc2",
+ "objc2-app-kit",
  "rusqlite",
  "serde_json",
  "tempfile",
@@ -2086,6 +2088,13 @@ dependencies = [
 [[package]]
 name = "kopi-platform"
 version = "0.1.0"
+dependencies = [
+ "dispatch2",
+ "objc2",
+ "objc2-app-kit",
+ "objc2-foundation",
+ "thiserror 2.0.21",
+]
 
 [[package]]
 name = "libappindicator"

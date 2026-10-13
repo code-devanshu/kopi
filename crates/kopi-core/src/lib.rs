@@ -4,6 +4,7 @@
 //! arrive with the features that need them. See `docs/ARCHITECTURE.md`.
 
 pub mod storage;
+pub mod watcher;
 
 pub use kopi_platform::{Os, current_os};
 
