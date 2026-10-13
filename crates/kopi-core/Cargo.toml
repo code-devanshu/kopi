@@ -12,6 +12,7 @@ publish.workspace = true
 kopi-platform.workspace = true
 blake3 = "1.8"
 image = { version = "0.25", default-features = false, features = ["png", "tiff", "bmp"] }
+plist = "1.10"
 rusqlite = { version = "0.40", features = ["bundled"] }
 serde_json.workspace = true
 thiserror = "2"
