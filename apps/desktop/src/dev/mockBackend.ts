@@ -12,9 +12,11 @@
 //   ?paste=error    makes pasting and copying fail
 //   ?noboards       starts with no pinboards
 //   ?granted        Settings shows every permission granted. Without it, neither is.
+//   ?granted=some   Accessibility is granted, and Paste from Other Apps isn't
 //   ?shortcut=taken makes recording a shortcut fail, as when another app holds it
 //   ?page=history   opens Settings on that page
-// Open /settings.html for the Settings window.
+//   ?step=done      opens onboarding on that step
+// Open /settings.html for the Settings window, and /onboarding.html for onboarding.
 // In the console, kopiDev.copy("text") adds a clip as a copy would.
 import { emit } from "@tauri-apps/api/event";
 import { mockIPC } from "@tauri-apps/api/mocks";
@@ -197,7 +199,7 @@ let excluded: ExcludedApp[] = [
   { id: "com.apple.keychainaccess", name: "Keychain Access", isDefault: true },
   { id: "com.apple.Passwords", name: "Passwords", isDefault: true },
 ];
-const granted = params.has("granted");
+const granted = params.get("granted");
 
 function clearHistory(range: ClearRange, keepPinned: boolean): number {
   const hour = 3_600_000;
@@ -353,13 +355,23 @@ mockIPC(
       case "running_apps":
         return APPS.slice(0, 5).map(([id, name]) => ({ id, name }));
       case "permission_status":
-        return { accessibility: granted, pasteFromOtherApps: granted ? "allowed" : "notAsked" };
+        return {
+          accessibility: granted !== null,
+          pasteFromOtherApps: granted === null || granted === "some" ? "notAsked" : "allowed",
+        };
       case "request_permission":
       case "open_permission_settings":
         console.info(`kopi: ${cmd} ${a.permission}`);
         return null;
       case "open_settings":
         window.open("/settings.html", "_blank");
+        return null;
+      case "finish_onboarding":
+        console.info(`kopi: finish_onboarding${a.openPanel ? ", then open the panel" : ""}`);
+        if (a.openPanel) location.assign("/");
+        return null;
+      case "open_privacy_design":
+        window.open("https://github.com/code-devanshu/kopi/blob/main/docs/PRIVACY_DESIGN.md", "_blank");
         return null;
     }
     throw `mock backend: no command ${cmd}`;
@@ -370,6 +382,9 @@ mockIPC(
 const page = params.get("page");
 if (page) sessionStorage.setItem("kopi.settings.page", page);
 
+const step = params.get("step");
+if (step) sessionStorage.setItem("kopi.onboarding.step", step);
+
 const preview = params.get("preview");
 if (preview) localStorage.setItem("kopi.preview", preview);
 
@@ -377,7 +392,7 @@ const theme = params.get("theme");
 if (theme) document.documentElement.dataset.theme = theme;
 
 // A dark page behind the transparent panel, as on a desktop.
-if (!location.pathname.endsWith("/settings.html")) {
+if (!/\/(settings|onboarding)\.html$/.test(location.pathname)) {
   document.documentElement.style.background = "#7a6a5c";
   document.body.style.padding = "0";
 }

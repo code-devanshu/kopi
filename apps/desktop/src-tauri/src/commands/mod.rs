@@ -2,6 +2,7 @@
 
 pub mod clips;
 pub mod history;
+pub mod onboarding;
 pub mod paste;
 pub mod pinboards;
 pub mod search;
