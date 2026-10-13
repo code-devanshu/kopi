@@ -1,0 +1,182 @@
+name: Release
+
+# Builds a universal macOS .dmg. A version tag (v0.1.0, or v0.1.0-alpha.1 for a prerelease)
+# attaches it to a draft GitHub Release. A manual run only keeps it as a workflow artifact.
+# See docs/RELEASING.md.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  macos:
+    name: Build universal .dmg
+    runs-on: macos-latest
+    permissions:
+      # Creates the draft release.
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+
+      # No Rust cache: release builds start clean.
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin, x86_64-apple-darwin
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Check the version
+        id: version
+        run: |
+          version=$(node -p "require('./apps/desktop/package.json').version")
+          crate=$(cargo metadata --no-deps --format-version 1 --locked \
+            | jq -r '.packages[] | select(.name == "kopi-desktop") | .version')
+          if [ "$crate" != "$version" ]; then
+            echo "::error::apps/desktop/package.json is $version but Cargo.toml is $crate."
+            exit 1
+          fi
+          name=$version
+          prerelease=false
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            case "$GITHUB_REF_NAME" in
+              "v$version") ;;
+              "v$version"-*) prerelease=true ;;
+              *)
+                echo "::error::The tag $GITHUB_REF_NAME doesn't match the app version $version."
+                exit 1
+                ;;
+            esac
+            name=${GITHUB_REF_NAME#v}
+          else
+            name=$version-dev.$GITHUB_RUN_NUMBER
+          fi
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        id: build
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          # A secret that isn't set comes through empty. Unset it, so Tauri doesn't try to use it.
+          for name in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY \
+            APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; do
+            [ -n "${!name}" ] || unset "$name"
+          done
+
+          # Without a certificate, Tauri signs ad hoc ("-" in tauri.conf.json).
+          if [ -n "${APPLE_CERTIFICATE:-}" ] && [ -n "${APPLE_SIGNING_IDENTITY:-}" ]; then
+            if [ -n "${APPLE_ID:-}" ] && [ -n "${APPLE_PASSWORD:-}" ] && [ -n "${APPLE_TEAM_ID:-}" ]; then
+              signing=notarized
+            else
+              signing=developer-id
+              echo "::warning::Signing with Developer ID without notarization. Set APPLE_ID, APPLE_PASSWORD and APPLE_TEAM_ID to notarize."
+            fi
+          elif [ -n "${APPLE_CERTIFICATE:-}${APPLE_SIGNING_IDENTITY:-}" ]; then
+            echo "::error::Developer ID signing needs both APPLE_CERTIFICATE and APPLE_SIGNING_IDENTITY."
+            exit 1
+          else
+            signing=ad-hoc
+            echo "::warning::No signing certificate, so this build is signed ad hoc. Testers have to approve it in System Settings."
+          fi
+          echo "signing=$signing" >> "$GITHUB_OUTPUT"
+
+          # CFBundleVersion goes up with every run, so each build is newer than the last to macOS.
+          pnpm --filter @kopi/desktop tauri build --target universal-apple-darwin --bundles dmg \
+            --config "{\"bundle\":{\"macOS\":{\"bundleVersion\":\"$GITHUB_RUN_NUMBER\"}}}"
+
+      - name: Check the build
+        id: check
+        env:
+          SIGNING: ${{ steps.build.outputs.signing }}
+          NAME: ${{ steps.version.outputs.name }}
+        run: |
+          mkdir dist
+          dmg=dist/Kopi_${NAME}_universal.dmg
+          mv target/universal-apple-darwin/release/bundle/dmg/*.dmg "$dmg"
+
+          # Checks the app in the .dmg, as testers get it.
+          volume=$(mktemp -d)
+          hdiutil attach "$dmg" -quiet -readonly -nobrowse -mountpoint "$volume"
+          trap 'hdiutil detach "$volume"' EXIT
+          app=$volume/Kopi.app
+          executable=$(/usr/libexec/PlistBuddy -c "Print :CFBundleExecutable" "$app/Contents/Info.plist")
+          archs=" $(lipo -archs "$app/Contents/MacOS/$executable") "
+          echo "Architectures:$archs"
+          if [[ "$archs" != *" arm64 "* || "$archs" != *" x86_64 "* ]]; then
+            echo "::error::Kopi.app isn't universal."
+            exit 1
+          fi
+          codesign --verify --deep --strict --verbose=2 "$app"
+          if [ "$SIGNING" = notarized ]; then
+            xcrun stapler validate "$app"
+            spctl --assess --type execute --verbose=2 "$app"
+          fi
+
+          (cd dist && shasum -a 256 "$(basename "$dmg")" > "$(basename "$dmg").sha256")
+          echo "dmg=$dmg" >> "$GITHUB_OUTPUT"
+
+          {
+            echo "### Kopi $NAME"
+            echo
+            echo "- Signing: **$SIGNING**"
+            echo "- SHA-256: \`$(cut -d' ' -f1 "$dmg.sha256")\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Kopi_${{ steps.version.outputs.name }}_universal
+          path: dist/
+          retention-days: 14
+
+      - name: Attach to a draft release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          NAME: ${{ steps.version.outputs.name }}
+          PRERELEASE: ${{ steps.version.outputs.prerelease }}
+          SIGNING: ${{ steps.build.outputs.signing }}
+          DMG: ${{ steps.check.outputs.dmg }}
+        run: |
+          # A rerun replaces the files on the release the first run made.
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release upload "$TAG" "$DMG" "$DMG.sha256" --clobber
+            exit 0
+          fi
+
+          install="https://github.com/$GITHUB_REPOSITORY/blob/$TAG/docs/INSTALL_ALPHA.md"
+          {
+            echo "Download \`$(basename "$DMG")\`. It runs on Apple silicon and Intel Macs with macOS 14 or later."
+            echo
+            if [ "$SIGNING" = notarized ]; then
+              echo "This build is signed and notarized. See [installing Kopi]($install) for the permissions it needs."
+            else
+              echo "> [!IMPORTANT]"
+              echo "> This build isn't notarized, so macOS blocks it the first time. [Installing Kopi]($install) shows how to open it and allow its permissions."
+            fi
+          } > notes.md
+
+          flags=(--draft --verify-tag --title "Kopi $NAME" --notes-file notes.md --generate-notes)
+          [ "$PRERELEASE" = true ] && flags+=(--prerelease)
+          gh release create "$TAG" "$DMG" "$DMG.sha256" "${flags[@]}"

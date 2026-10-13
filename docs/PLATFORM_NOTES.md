@@ -166,6 +166,7 @@ Gotchas:
 
 - Use Developer ID signing plus notarization (Apple Developer Program). Since macOS 15 Sequoia, users can no longer Control-click to open un-notarized apps. They have to approve them in System Settings → Privacy & Security ([The Hacker News](https://thehackernews.com/2024/08/apples-new-macos-sequoia-tightens.html)). That's acceptable for a small alpha, not for 1.0.
 - Tauri's bundler supports signing and notarization through environment variables in CI ([Tauri docs](https://v2.tauri.app/distribute/sign/macos/)).
+- **Set up in [#18](https://github.com/code-devanshu/kopi/issues/18):** the Release workflow builds a universal `.dmg` for a version tag. It signs and notarizes when the Developer ID secrets are set and signs ad hoc when they aren't. See [RELEASING.md](RELEASING.md), and [INSTALL_ALPHA.md](INSTALL_ALPHA.md) for what testers do.
 
 ### macOS's own clipboard history
 
