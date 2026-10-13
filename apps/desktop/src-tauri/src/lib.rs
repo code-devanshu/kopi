@@ -3,6 +3,9 @@
 mod commands;
 mod tray;
 
+use std::sync::Arc;
+
+use kopi_core::storage::Store;
 use tauri::{Manager, WindowEvent};
 use tauri_plugin_autostart::MacosLauncher;
 
@@ -15,6 +18,7 @@ pub fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
         commands::app_info,
         commands::launch_at_login,
         commands::set_launch_at_login,
+        commands::search::search_clips,
     ])
 }
 
@@ -38,6 +42,11 @@ pub fn run() {
         .invoke_handler(specta.invoke_handler())
         .setup(move |app| {
             specta.mount_events(app);
+
+            // ~/Library/Application Support/in.devanshuverma.kopi on macOS,
+            // %LOCALAPPDATA%\in.devanshuverma.kopi on Windows.
+            let store = Store::open(app.path().app_local_data_dir()?)?;
+            app.manage(Arc::new(store));
 
             // No Dock icon or app switcher entry. Info.plist sets LSUIElement for bundled
             // builds; this covers `tauri dev`.

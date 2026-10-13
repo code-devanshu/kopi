@@ -5,11 +5,15 @@
 //! ```
 //!
 //! Clips are made up from a fixed seed: mostly short text, plus links, code and some long
-//! pastes. Each clip is its own transaction, as when copying for real.
+//! pastes. Each clip is its own transaction, as when copying for real. Searches go through
+//! `kopi_core::search`, 50 clips a page with snippets, as the panel asks for them. The words
+//! come from a small vocabulary, so most searches match a large share of the history: a worse
+//! case than real use.
 
 use std::path::Path;
 use std::time::{Duration, Instant};
 
+use kopi_core::search::SearchQuery;
 use kopi_core::storage::{ClipKind, NewClip, NewFormat, Platform, Store};
 
 const WORDS: &[&str] = &[
@@ -77,6 +81,8 @@ const QUERIES: &[&str] = &[
     "résumé",
     "x7y",
 ];
+const SHORT_QUERIES: &[&str] = &["a", "x", "#4", "fn", "🙂", "東京", "zq"];
+const MIXED_QUERIES: &[&str] = &["invoice q3", "fn handler", "pull 7", "deploy a", "zzzq x"];
 
 struct Rng(u64);
 
@@ -169,78 +175,41 @@ fn mib(path: &Path) -> f64 {
     std::fs::metadata(path).map_or(0.0, |m| m.len() as f64 / 1024.0 / 1024.0)
 }
 
-/// Three ways to run a search, to see what the ranking costs. Each returns 50 rows with a
-/// snippet.
-const SEARCHES: &[(&str, &str)] = &[
-    (
-        // The query in docs/DATA_MODEL.md. SQLite builds the snippet for every match before it
-        // sorts, so common words get slow.
-        "ranked, as documented",
-        "SELECT c.id, snippet(clips_fts, 0, '[', ']', '…', 12)
-         FROM clips_fts
-         JOIN clips c ON c.id = clips_fts.rowid
-         WHERE clips_fts MATCH ?1
-         ORDER BY bm25(clips_fts, 1.0, 0.3) - (c.last_used_at / 8.64e10)
-         LIMIT 50",
-    ),
-    (
-        // Same order, but rank first and build snippets only for the 50 that are shown.
-        "ranked, snippets last",
-        "WITH top AS (
-           SELECT c.id FROM clips_fts
-           JOIN clips c ON c.id = clips_fts.rowid
-           WHERE clips_fts MATCH ?1
-           ORDER BY bm25(clips_fts, 1.0, 0.3) - (c.last_used_at / 8.64e10)
-           LIMIT 50)
-         SELECT rowid, snippet(clips_fts, 0, '[', ']', '…', 12)
-         FROM clips_fts WHERE clips_fts MATCH ?1 AND rowid IN (SELECT id FROM top)",
-    ),
-    (
-        // No relevance at all: newest first, which FTS5 can read straight off the index.
-        "newest first",
-        "SELECT rowid, snippet(clips_fts, 0, '[', ']', '…', 12)
-         FROM clips_fts WHERE clips_fts MATCH ?1
-         ORDER BY rowid DESC LIMIT 50",
-    ),
-];
-
-fn search(store: &Store, sql: &str, query: &str) -> usize {
-    let quoted = format!("\"{}\"", query.replace('"', "\"\""));
-    store
-        .with_reader(|conn| {
-            let mut stmt = conn.prepare_cached(sql)?;
-            let rows = stmt.query_map([quoted], |row| row.get::<_, String>(1))?;
-            Ok(rows.count())
-        })
-        .unwrap()
+/// One search as the panel runs it, returning how many clips it found.
+fn search(store: &Store, query: &SearchQuery) -> usize {
+    kopi_core::search::search(store, query).unwrap().hits.len()
 }
 
-/// The fallback for 1 and 2 character queries: LIKE over the most recent 5,000 clips.
-fn search_short(store: &Store, query: &str) -> usize {
-    store
-        .with_reader(|conn| {
-            let mut stmt = conn.prepare_cached(
-                "SELECT id FROM (SELECT id, plain_text FROM clips ORDER BY last_used_at DESC LIMIT 5000)
-                 WHERE plain_text LIKE '%' || ?1 || '%' LIMIT 50",
-            )?;
-            let rows = stmt.query_map([query], |row| row.get::<_, i64>(0))?;
-            Ok(rows.count())
-        })
-        .unwrap()
-}
-
-/// The first screen of the panel: the 50 most recent clips.
-fn recent(store: &Store) -> usize {
-    store
-        .with_reader(|conn| {
-            let mut stmt = conn.prepare_cached(
-                "SELECT id, kind, substr(plain_text, 1, 200), source_app_name, last_used_at
-                 FROM clips ORDER BY last_used_at DESC LIMIT 50",
-            )?;
-            let rows = stmt.query_map([], |row| row.get::<_, i64>(0))?;
-            Ok(rows.count())
-        })
-        .unwrap()
+/// Runs each query 20 times and prints the timings.
+fn bench_searches(store: &Store, name: &str, queries: &[&str], filter: &SearchQuery) {
+    let query = |text: &str| SearchQuery {
+        text: text.into(),
+        ..filter.clone()
+    };
+    for q in queries {
+        search(store, &query(q));
+    }
+    println!("\nSearch: {name} (20 runs per query)");
+    let mut all = Vec::new();
+    for q in queries {
+        let mut samples = Vec::new();
+        let mut rows = 0;
+        for _ in 0..20 {
+            let t = Instant::now();
+            rows = search(store, &query(q));
+            samples.push(t.elapsed());
+        }
+        all.extend(samples.iter().copied());
+        samples.sort();
+        println!(
+            "  {:<12} {:>2} rows  p50 {:>8.3} ms  max {:>8.3} ms",
+            format!("{q:?}"),
+            rows,
+            ms(samples[10]),
+            ms(samples[19])
+        );
+    }
+    println!("  all queries: {}", percentiles(all));
 }
 
 fn main() {
@@ -295,44 +264,47 @@ fn main() {
     println!("\nCopy again (bump an existing clip), 1,000 times");
     println!("  {}", percentiles(samples));
 
-    // Search.
-    for (name, sql) in SEARCHES {
-        for q in QUERIES {
-            search(&store, sql, q);
-        }
-        println!("\nSearch: {name} (20 runs per query)");
-        let mut all = Vec::new();
-        for q in QUERIES {
-            let mut samples = Vec::new();
-            let mut rows = 0;
-            for _ in 0..20 {
-                let t = Instant::now();
-                rows = search(&store, sql, q);
-                samples.push(t.elapsed());
-            }
-            all.extend(samples.iter().copied());
-            samples.sort();
-            println!(
-                "  {:<12} {:>2} rows  p50 {:>8.3} ms  max {:>8.3} ms",
-                format!("{q:?}"),
-                rows,
-                ms(samples[10]),
-                ms(samples[19])
-            );
-        }
-        println!("  all queries: {}", percentiles(all));
-    }
-
-    let mut samples = Vec::new();
-    for q in ["a", "x", "#4", "fn", "🙂", "東京", "zq"] {
-        for _ in 0..20 {
-            let t = Instant::now();
-            search_short(&store, q);
-            samples.push(t.elapsed());
-        }
-    }
-    println!("\nSearch, 1-2 characters (LIKE over the recent 5,000)");
-    println!("  {}", percentiles(samples));
+    // Search, 50 clips a page with snippets, as the panel asks for them.
+    let none = SearchQuery::default();
+    bench_searches(&store, "3+ characters", QUERIES, &none);
+    bench_searches(
+        &store,
+        "3+ characters, code only",
+        QUERIES,
+        &SearchQuery {
+            kind: Some(ClipKind::Code),
+            ..none.clone()
+        },
+    );
+    bench_searches(
+        &store,
+        "3+ characters, from Slack only",
+        QUERIES,
+        &SearchQuery {
+            source_app_id: Some("com.tinyspeck.slackmacgap".into()),
+            ..none.clone()
+        },
+    );
+    bench_searches(&store, "1-2 characters", SHORT_QUERIES, &none);
+    bench_searches(
+        &store,
+        "1-2 characters, code only",
+        SHORT_QUERIES,
+        &SearchQuery {
+            kind: Some(ClipKind::Code),
+            ..none.clone()
+        },
+    );
+    bench_searches(&store, "mixed", MIXED_QUERIES, &none);
+    bench_searches(
+        &store,
+        "page 3 (offset 100)",
+        &["deploy", "github", "fn"],
+        &SearchQuery {
+            offset: 100,
+            ..none.clone()
+        },
+    );
 
     // Size on disk, after a checkpoint so the WAL is folded in.
     drop(store);
@@ -362,7 +334,7 @@ fn main() {
         let t = Instant::now();
         let store = Store::open(dir.path()).unwrap();
         opens.push(t.elapsed());
-        recent(&store);
+        search(&store, &SearchQuery::default());
         firsts.push(t.elapsed());
     }
     println!("\nStartup (warm page cache, 10 runs)");

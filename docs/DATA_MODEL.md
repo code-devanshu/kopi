@@ -213,26 +213,34 @@ Why these choices:
 
 - **External content** (`content='clips'`): the text is stored once, and the FTS table holds only the index.
 - **Trigram tokenizer**: clipboard search is mostly about fragments, such as part of a URL, a variable name or the middle of a token. Trigram matches any substring of 3 or more characters. A word tokenizer can't find `ithub` in `github.com`.
-- **1–2 character queries**: trigram can't match these, so the search module falls back to `plain_text LIKE '%q%'` over the most recent 5,000 clips. That's fast enough and covers short searches.
-- **Ranking**: we order by `bm25(clips_fts, 1.0, 0.3)` (text matters more than the app name), then blend with recency, so a recent exact match beats an old one. The weights get tuned with real data.
-- **Highlighting**: `snippet()` provides the match context shown in the list.
+- **1–2 character words**: trigram can't match these. Next to a longer word, they narrow its matches with `LIKE`. On their own, the search module matches them with `LIKE` (case aside for ASCII) against the most recent 5,000 clips, newest first. That's fast enough and covers short searches.
+- **Ranking**: `bm25()` counts every match in the index before it scores one, which costs 15–30 ms for a common fragment at 100k clips, whatever the `LIMIT`. So the search module reads the newest 1,000 matches straight off the index (by rowid) with their text length, and ranks them in Rust. It uses bm25's length normalisation with FTS5's constants (k1 = 1.2, b = 0.75) for one match per clip, against a fixed 1 KiB average length, blended with recency that halves every 3 days before the newest match. So a recent match comes first, and a short clip that is mostly the search beats a long paste that mentions it a little later. Older matches past the 1,000 aren't ranked. The weights get tuned with real data.
+- **Highlighting**: `snippet()` provides the match context shown in the list, about 64 characters, for the returned page only. The matches are marked with the noncharacters U+FDD0 and U+FDD1 and handed to the UI as spans, so no markup is involved. `LIKE` matches get the same spans from Rust.
 - **Index size**: trigram indexes are larger than word indexes. In the storage benchmark (`cargo run --release -p kopi-core --example storage_bench`), 100k clips holding 122 MiB of text gave a 205 MiB index, about 1.7× the text, in a 376 MiB database.
 
-Example query (filters are optional):
+The two queries behind a search of 3+ characters (filters are optional):
 
 ```sql
-SELECT c.id, c.kind, c.source_app_name, c.last_used_at,
-       snippet(clips_fts, 0, '[', ']', '…', 12) AS snippet
-FROM clips_fts
-JOIN clips c ON c.id = clips_fts.rowid
+-- 1. The newest matches, ranked in Rust.
+SELECT clips_fts.rowid, c.last_used_at,
+       coalesce(octet_length(c.plain_text), 0) + coalesce(octet_length(c.source_app_name), 0)
+FROM clips_fts CROSS JOIN clips c ON c.id = clips_fts.rowid   -- keep the index outermost
 WHERE clips_fts MATCH :q
-  AND (:kind IS NULL OR c.kind = :kind)
-  AND (:app  IS NULL OR c.source_app_id = :app)
-ORDER BY bm25(clips_fts, 1.0, 0.3) - (c.last_used_at / 8.64e10) -- recency boost, tuned later
-LIMIT 50 OFFSET :offset;
+  AND c.kind = :kind AND c.source_app_id = :app
+  AND EXISTS (SELECT 1 FROM pinboard_items p WHERE p.pinboard_id = :board AND p.clip_id = c.id)
+ORDER BY clips_fts.rowid DESC
+LIMIT 1000;
+
+-- 2. Snippets for the page, in one pass over the rowids it spans.
+SELECT snippet(clips_fts, 0, char(0xFDD0), char(0xFDD1), '…', 64), c.*
+FROM clips_fts CROSS JOIN clips c ON c.id = clips_fts.rowid
+WHERE clips_fts MATCH :q AND clips_fts.rowid BETWEEN :low AND :high
+  AND +clips_fts.rowid IN (SELECT value FROM json_each(:page_ids));
 ```
 
-The user's text is always escaped into an FTS5 string literal (wrapped in double quotes, with inner quotes doubled). It's never passed through as raw query syntax.
+Looking up a match by rowid makes FTS5 seek every trigram again (about 0.2 ms each for common ones), so the page is read in one pass when matches are dense. When the first query found fewer than 1,000, the matches are rare or the filters were selective, and the page's rows are looked up one by one instead.
+
+The user's text is split on whitespace and each word is escaped into an FTS5 string literal (wrapped in double quotes, with inner quotes doubled), and all of them must match. It's never passed through as raw query syntax.
 
 ## Indexes
 

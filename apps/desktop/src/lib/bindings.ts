@@ -10,6 +10,8 @@ export const commands = {
 	launchAtLogin: () => typedError<boolean, string>(__TAURI_INVOKE("launch_at_login")),
 	/**  Turns launch at login on or off. */
 	setLaunchAtLogin: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("set_launch_at_login", { enabled })),
+	/**  Searches the history, or lists the most recent clips when the text is empty. */
+	searchClips: (query: SearchQuery) => typedError<SearchPage, string>(__TAURI_INVOKE("search_clips", { query })),
 };
 
 /* Types */
@@ -18,7 +20,65 @@ export type AppInfo = {
 	os: Os,
 };
 
+/**  What a clip is. */
+export type ClipKind = "text" | "rich_text" | "link" | "image" | "file" | "color" | "code";
+
+/**  What the classifier found out about a clip. Which fields are set depends on the kind. */
+export type ClipMetadata = {
+	/**  Image width and height in pixels. */
+	w?: number | null,
+	h?: number | null,
+	/**  Color as red, green, blue and alpha, 0–255. */
+	rgba?: number[] | null,
+	/**  A link's host. */
+	host?: string | null,
+	/**  How many files, and their names. */
+	count?: number | null,
+	names?: string[] | null,
+	/**  A code clip's language, when one clearly stands out. */
+	lang?: string | null,
+};
+
 export type Os = "macos" | "windows" | "other";
+
+/**  One clip in the results. */
+export type SearchHit = {
+	id: number,
+	kind: ClipKind,
+	contentHash: string,
+	sourceAppName: string | null,
+	sourceAppId: string | null,
+	/**  Unix milliseconds. */
+	lastUsedAt: number,
+	pinned: boolean,
+	metadata: ClipMetadata | null,
+	/**  The text around the first match, or the start of the text. Empty for images. */
+	snippet: Span[],
+};
+
+export type SearchPage = {
+	hits: SearchHit[],
+	/**  Whether asking again from `offset + hits.length` would find more. */
+	hasMore: boolean,
+};
+
+/**  What to search for. Empty text lists the most recent clips. */
+export type SearchQuery = {
+	/**  Words to find anywhere in a clip's text or its app's name. All of them must match. */
+	text?: string,
+	kind?: ClipKind | null,
+	sourceAppId?: string | null,
+	pinboardId?: number | null,
+	offset?: number,
+	/**  At most 200. Zero means 50. */
+	limit?: number,
+};
+
+/**  A run of snippet text. `matched` runs are what the search found. */
+export type Span = {
+	text: string,
+	matched: boolean,
+};
 
 /* Tauri Specta runtime */
 async function typedError<T, E>(result: Promise<T>): Promise<{ status: "ok"; data: T } | { status: "error"; error: E }> {

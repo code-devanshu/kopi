@@ -2077,6 +2077,7 @@ version = "0.1.0"
 dependencies = [
  "kopi-core",
  "serde",
+ "serde_json",
  "specta",
  "specta-typescript",
  "tauri",
