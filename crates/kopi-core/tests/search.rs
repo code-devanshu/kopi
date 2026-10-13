@@ -303,6 +303,22 @@ fn filters_apply_to_every_kind_of_search() {
         ..SearchQuery::default()
     });
     assert_eq!(ids(&both), [text]);
+
+    // Pinned clips, on every path.
+    assert!(f.store.set_pinned(code, true).unwrap());
+    assert!(f.store.set_pinned(text, true).unwrap());
+    let pinned = |text: &str| {
+        ids(&f.run(SearchQuery {
+            text: text.into(),
+            pinned: true,
+            ..SearchQuery::default()
+        }))
+    };
+    assert_eq!(pinned(""), [text, code]);
+    assert_eq!(pinned("release"), [text, code]);
+    assert_eq!(pinned("fn"), [text, code]);
+    assert_eq!(pinned("notes"), [text]);
+    assert_eq!(pinned("Safari"), [] as [i64; 0]);
 }
 
 #[test]

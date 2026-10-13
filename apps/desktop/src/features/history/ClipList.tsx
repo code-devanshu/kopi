@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent } from "react";
 import type { SearchHit } from "../../lib/ipc";
 import { ClipRow, ROW_HEIGHT } from "./ClipRow";
 
@@ -17,6 +17,8 @@ type Props = {
   thumbnailAttempts: ReadonlyMap<string, number>;
   onSelect: (index: number) => void;
   onPick: (index: number) => void;
+  onMenu: (index: number, x: number, y: number) => void;
+  onDragStart: (index: number, e: PointerEvent) => void;
   onNearEnd: () => void;
   /** How many rows fit, for Page Up and Page Down. */
   onPageSize: (rows: number) => void;
@@ -32,6 +34,8 @@ export function ClipList({
   thumbnailAttempts,
   onSelect,
   onPick,
+  onMenu,
+  onDragStart,
   onNearEnd,
   onPageSize,
 }: Props) {
@@ -93,6 +97,8 @@ export function ClipList({
             thumbnailAttempt={thumbnailAttempts.get(hit.contentHash) ?? 0}
             onSelect={onSelect}
             onPick={onPick}
+            onMenu={onMenu}
+            onDragStart={onDragStart}
           />
         ))}
       </div>

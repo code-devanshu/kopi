@@ -13,6 +13,7 @@
 mod blobs;
 mod migrate;
 mod model;
+mod pinboards;
 mod thumbs;
 
 use std::fs;
@@ -25,7 +26,10 @@ use rusqlite::{Connection, OpenFlags, OptionalExtension, TransactionBehavior, pa
 
 pub use blobs::BlobStore;
 pub use migrate::SCHEMA_VERSION;
-pub use model::{Clip, ClipFormat, ClipKind, ExcludedApp, NewClip, NewFormat, Platform, Upserted};
+pub use model::{
+    Clip, ClipFormat, ClipKind, ExcludedApp, NewClip, NewFormat, Pinboard, Platform, Upserted,
+};
+pub use pinboards::{KEPT, MAX_PINBOARD_NAME_CHARS};
 pub use thumbs::{THUMBNAIL_SIZE, ThumbnailDone, ThumbnailListener};
 
 use thumbs::{Source, SourceFormat, Thumbnailer};
@@ -53,6 +57,10 @@ pub enum StorageError {
     InvalidHash(String),
     #[error("stored data is invalid: {0}")]
     Corrupt(String),
+    /// The caller asked for something the store doesn't allow, such as a pinboard without a
+    /// name. The message is fit to show the user.
+    #[error("{0}")]
+    Invalid(String),
 }
 
 pub type StorageResult<T> = Result<T, StorageError>;

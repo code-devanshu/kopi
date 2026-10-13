@@ -17,6 +17,9 @@ function key(combo: string): Key {
     P: ["p", "KeyP"],
     A: ["a", "KeyA"],
     C: ["c", "KeyC"],
+    K: ["k", "KeyK"],
+    "[": ["[", "BracketLeft"],
+    "]": ["]", "BracketRight"],
   };
   const [k, code] = codes[name] ?? [name, name];
   return {
@@ -66,6 +69,15 @@ const cases: [string, boolean, Action | null][] = [
   ["cmd+alt+C", false, { type: "copy", plain: true }],
   ["cmd+shift+C", false, null],
   ["C", false, null],
+  ["cmd+P", true, { type: "pin" }],
+  ["cmd+alt+P", false, null],
+  ["cmd+shift+P", false, null],
+  ["cmd+K", true, { type: "menu" }],
+  ["K", false, null],
+  ["cmd+[", false, { type: "view", by: -1 }],
+  ["cmd+]", true, { type: "view", by: 1 }],
+  ["cmd+shift+]", false, null],
+  ["]", false, null],
 ];
 
 test.each(cases)("%s (typing: %s)", (combo, typing, want) => {

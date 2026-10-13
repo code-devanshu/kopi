@@ -168,6 +168,21 @@ pub struct ClipFormat {
     pub data: Vec<u8>,
 }
 
+/// A row of `pinboards`, with how many clips it holds.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Pinboard {
+    pub id: i64,
+    pub uuid: String,
+    pub name: String,
+    /// `#RRGGBB`, or none for the plain marker.
+    pub color: Option<String>,
+    /// Its place among the pinboards, from 0.
+    pub position: i64,
+    pub created_at: i64,
+    pub updated_at: i64,
+    pub clip_count: i64,
+}
+
 /// A row of `excluded_apps`: an app Kopi never captures from.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExcludedApp {

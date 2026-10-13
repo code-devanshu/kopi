@@ -60,6 +60,8 @@ pub struct SearchQuery {
     pub source_app_id: Option<String>,
     #[specta(type = Option<Number>)]
     pub pinboard_id: Option<i64>,
+    /// Only pinned clips.
+    pub pinned: bool,
     pub offset: u32,
     /// At most 200. Zero means 50.
     pub limit: u32,
@@ -72,6 +74,7 @@ impl From<SearchQuery> for search::SearchQuery {
             kind: q.kind.map(Into::into),
             source_app_id: q.source_app_id,
             pinboard_id: q.pinboard_id,
+            pinned: q.pinned,
             offset: q.offset,
             limit: q.limit,
         }
@@ -257,6 +260,7 @@ mod tests {
             "kind": "rich_text",
             "sourceAppId": "com.apple.Safari",
             "pinboardId": 7,
+            "pinned": true,
             "offset": 50,
             "limit": 25,
         }))
@@ -265,8 +269,8 @@ mod tests {
         assert_eq!(query.kind, Some(storage::ClipKind::RichText));
         assert_eq!(query.source_app_id.as_deref(), Some("com.apple.Safari"));
         assert_eq!(
-            (query.pinboard_id, query.offset, query.limit),
-            (Some(7), 50, 25)
+            (query.pinboard_id, query.pinned, query.offset, query.limit),
+            (Some(7), true, 50, 25)
         );
     }
 }

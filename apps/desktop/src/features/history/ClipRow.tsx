@@ -1,5 +1,5 @@
 import { Pin } from "lucide-react";
-import { memo, useState } from "react";
+import { memo, useState, type PointerEvent } from "react";
 import { KindIcon } from "../../components/KindIcon";
 import { thumbnailUrl } from "../../lib/assets";
 import { ago, hex, KIND_LABELS } from "../../lib/format";
@@ -17,6 +17,10 @@ type Props = {
   thumbnailAttempt: number;
   onSelect: (index: number) => void;
   onPick: (index: number) => void;
+  /** Right-click: the clip's menu, at the pointer. */
+  onMenu: (index: number, x: number, y: number) => void;
+  /** A press that may become a drag onto a pinboard. */
+  onDragStart: (index: number, e: PointerEvent) => void;
 };
 
 export const ClipRow = memo(function ClipRow({
@@ -27,6 +31,8 @@ export const ClipRow = memo(function ClipRow({
   thumbnailAttempt,
   onSelect,
   onPick,
+  onMenu,
+  onDragStart,
 }: Props) {
   const meta = [detail(hit), hit.sourceAppName, ago(hit.lastUsedAt, now)].filter(Boolean);
   return (
@@ -40,6 +46,11 @@ export const ClipRow = memo(function ClipRow({
       onMouseDown={(e) => e.preventDefault()}
       onClick={() => onSelect(index)}
       onDoubleClick={() => onPick(index)}
+      onPointerDown={(e) => onDragStart(index, e)}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        onMenu(index, e.clientX, e.clientY);
+      }}
     >
       <Leading hit={hit} attempt={thumbnailAttempt} />
       <div className="row-body">

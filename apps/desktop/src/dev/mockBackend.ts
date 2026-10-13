@@ -10,6 +10,7 @@
 //   ?paste=pasted   pastes as with Accessibility granted. Without it, a paste only copies, as
 //                   when Accessibility isn't granted, which is the case that shows a message.
 //   ?paste=error    makes pasting and copying fail
+//   ?noboards       starts with no pinboards
 // In the console, kopiDev.copy("text") adds a clip as a copy would.
 import { emit } from "@tauri-apps/api/event";
 import { mockIPC } from "@tauri-apps/api/mocks";
@@ -18,6 +19,7 @@ import type {
   ClipDetail,
   ClipKind,
   ClipMetadata,
+  Pinboard,
   SearchHit,
   SearchPage,
   SearchQuery,
@@ -97,6 +99,36 @@ if (!params.has("empty")) {
   }
 }
 
+// Pinboards, and the clips on each, top first.
+let nextBoardId = 1;
+let boards: Pinboard[] = [];
+const items = new Map<number, number[]>();
+
+function addBoard(name: string, color: string | null): Pinboard {
+  const trimmed = name.trim();
+  if (!trimmed) throw "a pinboard needs a name";
+  const board = { id: nextBoardId++, name: trimmed, color, clipCount: 0 };
+  boards.push(board);
+  items.set(board.id, []);
+  return board;
+}
+
+function boardList(): Pinboard[] {
+  return boards.map((b) => ({ ...b, clipCount: items.get(b.id)?.length ?? 0 }));
+}
+
+function board(id: number): Pinboard {
+  const b = boards.find((b) => b.id === id);
+  if (!b) throw "That pinboard was deleted.";
+  return b;
+}
+
+if (!params.has("empty") && !params.has("noboards")) {
+  items.set(addBoard("Work", "#D08A3A").id, [2, 6, 8]);
+  items.set(addBoard("Snippets", "#4A78B5").id, [3]);
+  items.set(addBoard("Colors", "#8A63A8").id, [4, 11]);
+}
+
 function matches(c: Clip, words: string[]): boolean {
   const hay = `${c.text ?? ""} ${c.sourceAppName ?? ""}`.toLowerCase();
   return words.every((w) => hay.includes(w));
@@ -104,11 +136,19 @@ function matches(c: Clip, words: string[]): boolean {
 
 function search(query: SearchQuery): SearchPage {
   const words = (query.text ?? "").toLowerCase().split(/\s+/).filter(Boolean);
+  const onBoard = query.pinboardId != null ? (items.get(query.pinboardId) ?? []) : null;
   const found = clips
     .filter((c) => !query.kind || c.kind === query.kind)
     .filter((c) => !query.sourceAppId || c.sourceAppId === query.sourceAppId)
+    .filter((c) => !query.pinned || c.pinned)
+    .filter((c) => !onBoard || onBoard.includes(c.id))
     .filter((c) => matches(c, words))
-    .sort((a, b) => b.lastUsedAt - a.lastUsedAt || b.id - a.id);
+    .sort((a, b) =>
+      // A pinboard lists in its own order until there's text to rank.
+      onBoard && !words.length
+        ? onBoard.indexOf(a.id) - onBoard.indexOf(b.id)
+        : b.lastUsedAt - a.lastUsedAt || b.id - a.id,
+    );
   const offset = query.offset ?? 0;
   const limit = Math.min(query.limit || 50, 200);
   const hits: SearchHit[] = found.slice(offset, offset + limit).map((c) => ({
@@ -156,9 +196,68 @@ mockIPC(
       case "delete_clips": {
         const ids = (a.ids as number[]).filter((id) => clips.some((c) => c.id === id));
         clips = clips.filter((c) => !ids.includes(c.id));
+        for (const [board, on] of items) items.set(board, on.filter((id) => !ids.includes(id)));
         if (ids.length) void emit("clip:removed", { ids });
         return null;
       }
+      case "set_pinned": {
+        const c = clips.find((c) => c.id === a.id);
+        if (c && c.pinned !== a.pinned) {
+          c.pinned = a.pinned as boolean;
+          void emit("clip:updated", { id: c.id });
+        }
+        return null;
+      }
+      case "pinboard_list":
+        return boardList();
+      case "pinboard_create": {
+        const b = addBoard(a.name as string, a.color as string | null);
+        void emit("pinboards:changed");
+        return b;
+      }
+      case "pinboard_rename": {
+        const name = (a.name as string).trim();
+        if (!name) throw "a pinboard needs a name";
+        board(a.id as number).name = name;
+        void emit("pinboards:changed");
+        return null;
+      }
+      case "pinboard_recolor":
+        board(a.id as number).color = a.color as string | null;
+        void emit("pinboards:changed");
+        return null;
+      case "pinboard_reorder": {
+        const ids = a.ids as number[];
+        boards.sort((x, y) => {
+          const i = ids.indexOf(x.id);
+          const j = ids.indexOf(y.id);
+          return (i < 0 ? Infinity : i) - (j < 0 ? Infinity : j);
+        });
+        void emit("pinboards:changed");
+        return null;
+      }
+      case "pinboard_delete":
+        boards = boards.filter((b) => b.id !== a.id);
+        items.delete(a.id as number);
+        void emit("pinboards:changed");
+        return null;
+      case "pinboard_add_clips": {
+        board(a.id as number);
+        const on = items.get(a.id as number)!;
+        const add = (a.clipIds as number[]).filter((id) => !on.includes(id));
+        items.set(a.id as number, [...add, ...on]);
+        if (add.length) void emit("pinboards:changed");
+        return null;
+      }
+      case "pinboard_remove_clips": {
+        const on = items.get(a.id as number) ?? [];
+        const left = on.filter((id) => !(a.clipIds as number[]).includes(id));
+        items.set(a.id as number, left);
+        if (left.length !== on.length) void emit("pinboards:changed");
+        return null;
+      }
+      case "clip_pinboards":
+        return boards.filter((b) => items.get(b.id)?.includes(a.id as number)).map((b) => b.id);
       case "source_apps":
         return sourceApps();
       case "paste_clip": {

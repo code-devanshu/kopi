@@ -46,6 +46,26 @@ export const commands = {
 	pasteClip: (id: ClipId, plain: boolean) => typedError<PasteOutcome, string>(__TAURI_INVOKE("paste_clip", { id, plain })),
 	/**  Puts a clip on the clipboard without pasting it. `plain` copies only its plain text. */
 	copyClip: (id: ClipId, plain: boolean) => typedError<null, string>(__TAURI_INVOKE("copy_clip", { id, plain })),
+	/**  Pins or unpins a clip, and sends `clip:updated`. */
+	setPinned: (id: ClipId, pinned: boolean) => typedError<null, string>(__TAURI_INVOKE("set_pinned", { id, pinned })),
+	/**  Every pinboard, in the user's order. */
+	pinboardList: () => typedError<Pinboard[], string>(__TAURI_INVOKE("pinboard_list")),
+	/**  Adds a pinboard after the others. */
+	pinboardCreate: (name: string, color: string | null) => typedError<Pinboard, string>(__TAURI_INVOKE("pinboard_create", { name, color })),
+	/**  Renames a pinboard. */
+	pinboardRename: (id: PinboardId, name: string) => typedError<null, string>(__TAURI_INVOKE("pinboard_rename", { id, name })),
+	/**  Sets a pinboard's color, `#RRGGBB`, or clears it. */
+	pinboardRecolor: (id: PinboardId, color: string | null) => typedError<null, string>(__TAURI_INVOKE("pinboard_recolor", { id, color })),
+	/**  Puts the pinboards in this order. Any left out keep their order after them. */
+	pinboardReorder: (ids: PinboardId[]) => typedError<null, string>(__TAURI_INVOKE("pinboard_reorder", { ids })),
+	/**  Deletes a pinboard. Its clips stay in the history. */
+	pinboardDelete: (id: PinboardId) => typedError<null, string>(__TAURI_INVOKE("pinboard_delete", { id })),
+	/**  Puts clips at the top of a pinboard. Clips already on it are skipped. */
+	pinboardAddClips: (id: PinboardId, clipIds: ClipId[]) => typedError<null, string>(__TAURI_INVOKE("pinboard_add_clips", { id, clipIds })),
+	/**  Takes clips off a pinboard. They stay in the history. */
+	pinboardRemoveClips: (id: PinboardId, clipIds: ClipId[]) => typedError<null, string>(__TAURI_INVOKE("pinboard_remove_clips", { id, clipIds })),
+	/**  The ids of the pinboards a clip is on, for its menu. */
+	clipPinboards: (id: ClipId) => typedError<PinboardId[], string>(__TAURI_INVOKE("clip_pinboards", { id })),
 };
 
 /** Events */
@@ -55,6 +75,7 @@ export const events = {
 	clipUpdated: makeEvent<ClipUpdated>("clip:updated"),
 	panelHidden: makeEvent<PanelHidden>("panel:hidden"),
 	panelShown: makeEvent<PanelShown>("panel:shown"),
+	pinboardsChanged: makeEvent<PinboardsChanged>("pinboards:changed"),
 	thumbnailReady: makeEvent<ThumbnailReady>("thumbnail:ready"),
 };
 
@@ -140,6 +161,25 @@ export type PasteOutcome =
  */
 "copied";
 
+/**  A pinboard, for the switcher. */
+export type Pinboard = {
+	id: number,
+	name: string,
+	/**  `#RRGGBB`, or none for the plain marker. */
+	color: string | null,
+	/**  How many clips it holds. */
+	clipCount: number,
+};
+
+/**  A pinboard's id, as a command argument. */
+export type PinboardId = number;
+
+/**
+ *  Pinboards were added, changed, reordered or deleted, or clips were added to or taken off
+ *  one. The panel reloads the switcher and the list.
+ */
+export type PinboardsChanged = null;
+
 /**  One clip in the results. */
 export type SearchHit = {
 	id: number,
@@ -168,6 +208,8 @@ export type SearchQuery = {
 	kind?: ClipKind | null,
 	sourceAppId?: string | null,
 	pinboardId?: number | null,
+	/**  Only pinned clips. */
+	pinned?: boolean,
 	offset?: number,
 	/**  At most 200. Zero means 50. */
 	limit?: number,
