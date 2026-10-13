@@ -32,4 +32,4 @@ The core action is: press the hotkey, pick a clip, and have it appear in the app
 
 - **Good:** works in nearly every app, pastes rich text, images and files, and behaves the way users expect from other clipboard managers.
 - **Bad:** macOS needs the Accessibility permission, which is a big ask, so onboarding explains it and the app works without it. Pasting overwrites the user's current clipboard. Restoring it afterwards is a possible later setting. On macOS, spike 0003 found that no delay is needed between hiding the panel and the keystroke. Windows timing is still to be checked.
-- **Constraint:** Kopi can't ship in the Mac App Store (sandbox plus Accessibility). It's distributed with Developer ID and notarization.
+- **Constraint:** Kopi can't ship in the Mac App Store (sandbox plus Accessibility). It's distributed directly, signed with a self-signed certificate and not notarized ([ADR 0006](0006-macos-distribution-without-notarization.md)).
