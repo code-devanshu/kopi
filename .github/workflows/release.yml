@@ -115,8 +115,12 @@ jobs:
 
       - name: Build
         id: build
+        # Finder lays out the .dmg window, and can hang instead of failing.
+        timeout-minutes: 30
         env:
           APPLE_SIGNING_IDENTITY: ${{ steps.signing.outputs.identity }}
+          # Tauri skips the .dmg window's layout and background on CI unless this is set.
+          TAURI_BUNDLER_DMG_IGNORE_CI: "true"
           # Signs the update, which the app checks against the public key in tauri.conf.json.
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
@@ -168,6 +172,11 @@ jobs:
           echo "Architectures:$archs"
           if [[ "$archs" != *" arm64 "* || "$archs" != *" x86_64 "* ]]; then
             echo "::error::Kopi.app isn't universal."
+            exit 1
+          fi
+          # The background shows how to open Kopi the first time, so a .dmg without it is a bug.
+          if [ ! -f "$volume/.background/background.tiff" ] || [ ! -f "$volume/.DS_Store" ]; then
+            echo "::error::The .dmg has no background or window layout."
             exit 1
           fi
           codesign --verify --deep --strict --verbose=2 "$app"
