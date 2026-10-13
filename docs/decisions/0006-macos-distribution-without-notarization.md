@@ -26,7 +26,7 @@ Kopi can't avoid the signing question, though. It needs the Accessibility and pa
 
 ## Consequences
 
-- **Good:** no cost. Permissions should survive updates ([#21](https://github.com/code-devanshu/kopi/issues/21) checks this on real hardware).
+- **Good:** no cost. Permissions survive updates: a build installed over another signed build kept both Accessibility and Paste from Other Apps on macOS 27.0.1.
 - **Bad:** every new user has to find **Open Anyway** in System Settings, which macOS 15 made harder. Some people won't install an app that macOS warns about. Until the updater ships, each downloaded update is blocked again too.
 - **Risk:** the certificate's private key can sign apps that macOS treats as Kopi, so it stays in the repository secrets and a password manager. Losing it means a new certificate, and testers allow the permissions once more.
 - Windows signing is a separate decision, see [PLATFORM_NOTES.md](../PLATFORM_NOTES.md#code-signing-and-smartscreen).

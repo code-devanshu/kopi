@@ -68,7 +68,7 @@ Press **⇧⌘V** in any app to open Kopi. You can choose another shortcut in th
 1. Quit Kopi from its menu bar menu.
 2. Install the new build as in steps 1 to 3, and replace the old one in Applications.
 
-Kopi should keep its permissions across updates. If Kopi stops pasting or stops saving what you copy after an update, even though System Settings shows it as allowed:
+Kopi keeps its permissions across updates. If Kopi stops pasting or stops saving what you copy after an update, even though System Settings shows it as allowed:
 
 1. In **System Settings → Privacy & Security → Accessibility**, select **Kopi** and click **−** to remove it.
 2. Open **Set Up Kopi…** from the menu bar and allow it again.
