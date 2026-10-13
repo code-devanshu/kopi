@@ -4,6 +4,20 @@ Thanks for trying Kopi. This guide covers installing the alpha on a Mac, allowin
 
 The alpha needs **macOS 14 Sonoma or later**, on Apple silicon or Intel. There's one download for both.
 
+## The quick way: install from Terminal
+
+Open Terminal and run:
+
+```sh
+curl -fsSL https://kopi.devanshuverma.in/install.sh | bash
+```
+
+It downloads the newest release, checks it isn't damaged and that it's signed with Kopi's certificate, copies Kopi to Applications and opens it. If Kopi is already running, it quits it first. It may ask for your password if your account can't write to Applications.
+
+macOS doesn't block Kopi installed this way, because it only checks apps downloaded by a browser or another app that marks them. Skip to [4. Set it up](#4-set-it-up). To read the script before you run it, it's [scripts/install.sh](../scripts/install.sh).
+
+Or install it by hand, in steps 1 to 3.
+
 ## 1. Download
 
 Download `Kopi_<version>_universal.dmg` from the [releases page](https://github.com/code-devanshu/kopi/releases).
@@ -19,7 +33,7 @@ It should print `OK`.
 ## 2. Install
 
 1. Open the `.dmg`.
-2. Drag **Kopi** onto **Applications**.
+2. Drag **Kopi** onto **Applications**. The window also shows the steps for opening it the first time.
 3. Eject the disk image.
 
 Keep Kopi in Applications. Launch at login points to where the app is, so it stops working if you move the app.
@@ -69,7 +83,7 @@ Kopi checks for updates every few hours and installs them in the background. Whe
 
 To stop Kopi checking by itself, turn off **Update automatically** in Settings. **Check for Updates…** still works. Updates come from this project's GitHub releases, and Kopi sends nothing about you or your clips to check for them.
 
-If you install your first build from before the updater, or want to update by hand:
+If you install your first build from before the updater, or want to update by hand, run the [install command](#the-quick-way-install-from-terminal) again. Or:
 
 1. Quit Kopi from its menu bar menu.
 2. Install the new build as in steps 1 to 3, and replace the old one in Applications.

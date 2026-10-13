@@ -1,6 +1,7 @@
 import { Download, Star } from "lucide-react";
 
 import { HeroCardStack } from "@/components/hero/hero-card-stack";
+import { InstallCommand } from "@/components/hero/install-command";
 import { PlatformNote } from "@/components/hero/platform-note";
 import { buttonStyles } from "@/components/ui/button-styles";
 import { Reveal } from "@/components/ui/reveal";
@@ -62,6 +63,10 @@ export function Hero() {
           </Reveal>
 
           <Reveal delay={0.2} className="mt-6">
+            <InstallCommand />
+          </Reveal>
+
+          <Reveal delay={0.25} className="mt-6">
             <PlatformNote />
           </Reveal>
         </div>

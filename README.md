@@ -39,11 +39,21 @@ An open-source clipboard manager for macOS, with Windows next.
 
 Kopi needs **macOS 14 Sonoma or later**, on Apple silicon or Intel.
 
+The quickest way is to run this in Terminal:
+
+```sh
+curl -fsSL https://kopi.devanshuverma.in/install.sh | bash
+```
+
+It installs the newest release in Applications and opens it. macOS doesn't block Kopi installed this way. The script is [scripts/install.sh](scripts/install.sh), and it only installs a Kopi signed with Kopi's certificate.
+
+Or download it:
+
 1. Download `Kopi_<version>_universal.dmg` from the newest release on the [releases page](https://github.com/code-devanshu/kopi/releases).
 2. Open it and drag **Kopi** onto **Applications**.
 3. Open Kopi. **macOS blocks it the first time**, because Kopi isn't notarized: notarization needs a paid Apple developer account, and Kopi is free. On macOS 15 and later, click **Done**, then **Open Anyway** in **System Settings → Privacy & Security**. On macOS 14, Control-click Kopi in Applications and choose **Open**.
 
-You do this once. Kopi installs its updates itself, and macOS doesn't block those. [docs/INSTALL_ALPHA.md](docs/INSTALL_ALPHA.md) walks through every step, the permissions Kopi asks for and how to remove it. The reasons behind not notarizing are in [ADR 0006](docs/decisions/0006-macos-distribution-without-notarization.md).
+You do this once, and the `.dmg` window shows these steps too. Kopi installs its updates itself, and macOS doesn't block those. [docs/INSTALL_ALPHA.md](docs/INSTALL_ALPHA.md) walks through every step, the permissions Kopi asks for and how to remove it. The reasons behind not notarizing are in [ADR 0006](docs/decisions/0006-macos-distribution-without-notarization.md).
 
 ## What it does
 

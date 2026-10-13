@@ -7,11 +7,11 @@ export function PlatformNote() {
   return (
     <div className="max-w-xl space-y-1.5 text-sm leading-relaxed text-muted-foreground">
       <p>
-        Free alpha for macOS 14 or later, on Apple silicon and Intel. Apple doesn&apos;t notarize it, so{" "}
+        Free alpha for macOS 14 or later, on Apple silicon and Intel. Apple doesn&apos;t notarize it, so macOS
+        blocks the download the first time.{" "}
         <a href={siteConfig.links.install} data-track="install_guide_click" data-track-location="hero" target="_blank" rel="noreferrer" className={link}>
-          here&apos;s how to open it
-        </a>{" "}
-        the first time.
+          Here&apos;s how to open it
+        </a>.
       </p>
       <p>
         Windows is next.{" "}

@@ -44,7 +44,7 @@ Usable builds for early testers on macOS, out now on [GitHub Releases](https://g
 - ✅ Skip copies from password managers and content marked as concealed, plus excluded apps
 - ✅ Settings, onboarding, menu bar icon and launch at login
 - ✅ Signed releases and automatic updates, without paying for notarization ([ADR 0006](docs/decisions/0006-macos-distribution-without-notarization.md))
-- ⏳ An easier first install ([#39](https://github.com/code-devanshu/kopi/issues/39))
+- ✅ An easier first install: a one-line install from Terminal, and a `.dmg` that shows the steps ([#39](https://github.com/code-devanshu/kopi/issues/39))
 - ⏳ Retest pasteboard privacy on macOS 27.2 ([#21](https://github.com/code-devanshu/kopi/issues/21))
 - ⏳ Fixes from testers' reports
 

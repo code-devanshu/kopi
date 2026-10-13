@@ -6,6 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- A one-line install from Terminal: `curl -fsSL https://kopi.devanshuverma.in/install.sh | bash`. macOS doesn't block Kopi installed this way, so there's no **Open Anyway** step. The script installs the newest release, and only if it's signed with Kopi's certificate. Run it again to update by hand.
+- The `.dmg` window shows the drag to Applications and how to open Kopi the first time. Builds from GitHub Actions had no layout before.
+- The website shows the install command, with a copy button, under the download button.
+
 ## [0.1.0-alpha.2] - 2026-10-13
 
 Kopi goes public. Testers on alpha.1 get this release as an update.
