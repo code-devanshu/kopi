@@ -1,5 +1,7 @@
 //! Tauri commands. They stay thin and call into `kopi-core`.
 
+pub mod search;
+
 use serde::Serialize;
 use specta::Type;
 use tauri::AppHandle;
