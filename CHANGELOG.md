@@ -2,9 +2,13 @@
 
 All notable changes to Kopi are recorded here.
 
-The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions will follow [Semantic Versioning](https://semver.org) once the first release ships.
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow [Semantic Versioning](https://semver.org).
 
 ## [Unreleased]
+
+## [0.1.0-alpha.1] - 2026-10-13
+
+The first macOS alpha.
 
 ### Added
 
@@ -23,7 +27,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Search in `kopi-core` and the `search_clips` command: words of 3+ characters match anywhere through the trigram index (case and accents aside), shorter ones through `LIKE`, with filters for kind, source app and pinboard. Results are ranked by length and recency, paged, and come with the matches marked. At 100k clips, searches take 3 ms at the median and stay under 50 ms with filters.
 - The panel: ⇧⌘V opens a non-activating panel over the app you're in, on the screen with the pointer, and Esc or clicking elsewhere hides it. It shows the history in a virtualised list with thumbnails, kind icons, source app and age, searches as you type with the matches marked, filters by kind and app, and has a preview pane (Space or ⌘Y). Arrows, Page Up/Down, ⌘↑/⌘↓, ⌘⌫ (delete) and Esc work from the keyboard. Return, ⌥Return and ⌘1–9 are bound for the paste engine. Follows light and dark mode and reduced motion.
 - The app now captures copies on macOS while it runs, and the panel updates live from `clip:added`, `clip:updated`, `clip:removed` and `thumbnail:ready` events. Thumbnails and images reach the panel through a `kopi://` protocol. New commands: `get_clip`, `delete_clips`, `source_apps` and `hide_panel`.
+- Paste engine: Return pastes the selected clip into the app you were in, ⌥Return pastes it as plain text, ⌘1–9 paste the first nine clips, and ⌘C copies without pasting. Kopi writes the clip to the clipboard with every stored format and posts ⌘V. Without the Accessibility permission, the clip stays on the clipboard and the panel says to press ⌘V ([ADR 0004](docs/decisions/0004-paste-simulation-approach.md)).
+- Pins and pinboards: ⌘P pins a clip, a switcher under the search box shows History, Pinned and each pinboard (⌘[ and ⌘] step through them), and a clip menu (right-click or ⌘K) pins, copies, deletes and adds a clip to boards. Boards can be renamed, recolored, reordered and deleted, and clips can be dragged onto them.
+- History limits: by count, age and total size (2 GiB by default), applied in the background, oldest first. Pinned clips and clips on a pinboard are never removed. A sweep at startup removes files no clip uses. **Clear History** in the menu bar clears the last hour or day.
+- Settings window (⌘,): the shortcut, launch at login, appearance, permission status, the kinds to capture, excluded apps, history limits, and clearing all history.
+- First-run setup: a window that explains Kopi, asks for the missing permissions, sets the shortcut and launch at login, and opens again from **Set Up Kopi…** in the menu bar.
 - Release workflow: a version tag builds a universal macOS `.dmg` and attaches it to a draft GitHub Release. Releases are signed with a self-signed certificate, so testers keep their permissions across updates, and aren't notarized ([ADR 0006](docs/decisions/0006-macos-distribution-without-notarization.md)). Install steps for testers are in `docs/INSTALL_ALPHA.md`.
 - Automatic updates on macOS with the Tauri updater: Kopi checks GitHub a little after launch and every 6 hours, installs updates in the background and offers Restart to Update in the menu bar, with Check for Updates… there too and an **Update automatically** switch in Settings. Updates aren't quarantined, so Gatekeeper only blocks the first install. Publishing a release offers it to the app.
 
-[Unreleased]: https://github.com/code-devanshu/kopi/commits/main
+[Unreleased]: https://github.com/code-devanshu/kopi/compare/v0.1.0-alpha.1...HEAD
+[0.1.0-alpha.1]: https://github.com/code-devanshu/kopi/releases/tag/v0.1.0-alpha.1
