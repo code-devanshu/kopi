@@ -1,17 +1,22 @@
 //! The menu bar icon and its menu.
 
-use tauri::menu::{MenuBuilder, MenuItemBuilder, SubmenuBuilder};
+use tauri::menu::{Menu, MenuBuilder, MenuItemBuilder, PredefinedMenuItem, SubmenuBuilder};
 use tauri::tray::TrayIconBuilder;
-use tauri::{AppHandle, include_image};
+use tauri::{AppHandle, Manager, Wry, include_image};
 
 use crate::commands::history::{self, ClearRange};
 
 const OPEN: &str = "open";
 const SETTINGS: &str = "settings";
 const ONBOARDING: &str = "onboarding";
+const CHECK_UPDATES: &str = "check-updates";
+const RESTART: &str = "restart";
 const CLEAR_HOUR: &str = "clear-hour";
 const CLEAR_DAY: &str = "clear-day";
 const QUIT: &str = "quit";
+
+/// The menu, kept so an installed update can add Restart to Update.
+struct TrayMenu(Menu<Wry>);
 
 pub fn create(app: &AppHandle) -> tauri::Result<()> {
     let open = MenuItemBuilder::with_id(OPEN, "Open Kopi").build(app)?;
@@ -19,6 +24,7 @@ pub fn create(app: &AppHandle) -> tauri::Result<()> {
         .accelerator("CmdOrCtrl+,")
         .build(app)?;
     let onboarding = MenuItemBuilder::with_id(ONBOARDING, "Set Up Kopi…").build(app)?;
+    let check_updates = MenuItemBuilder::with_id(CHECK_UPDATES, "Check for Updates…").build(app)?;
     let quit = MenuItemBuilder::with_id(QUIT, "Quit Kopi")
         .accelerator("CmdOrCtrl+Q")
         .build(app)?;
@@ -39,6 +45,7 @@ pub fn create(app: &AppHandle) -> tauri::Result<()> {
         .separator()
         .item(&settings)
         .item(&onboarding)
+        .item(&check_updates)
         .separator()
         .item(&quit)
         .build()?;
@@ -61,13 +68,36 @@ pub fn create(app: &AppHandle) -> tauri::Result<()> {
                     eprintln!("kopi: couldn't open onboarding: {error}");
                 }
             }
+            CHECK_UPDATES => {
+                let app = app.clone();
+                tauri::async_runtime::spawn(async move { crate::updates::check(&app, true).await });
+            }
+            RESTART => crate::updates::restart(app),
             CLEAR_HOUR => clear_recent(app, ClearRange::LastHour),
             CLEAR_DAY => clear_recent(app, ClearRange::LastDay),
             QUIT => app.exit(0),
             _ => {}
         })
         .build(app)?;
+    app.manage(TrayMenu(menu));
     Ok(())
+}
+
+/// Adds Restart to Update to the top of the menu, once an update is installed.
+pub fn show_restart(app: &AppHandle) {
+    let menu = &app.state::<TrayMenu>().0;
+    if menu.get(RESTART).is_some() {
+        return;
+    }
+    let added = MenuItemBuilder::with_id(RESTART, "Restart to Update")
+        .build(app)
+        .and_then(|restart| {
+            let separator = PredefinedMenuItem::separator(app)?;
+            menu.insert_items(&[&restart, &separator], 0)
+        });
+    if let Err(error) = added {
+        eprintln!("kopi: couldn't add Restart to Update: {error}");
+    }
 }
 
 /// Clears recent history off the main thread, keeping pinned clips and pinboards.

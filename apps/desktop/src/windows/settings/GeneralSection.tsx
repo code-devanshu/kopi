@@ -16,6 +16,7 @@ export function GeneralSection() {
   const [shortcut, setShortcut] = useState<string | null>(null);
   const [theme, setTheme] = useState<Theme>("system");
   const [launch, setLaunch] = useState<boolean | null>(null);
+  const [autoUpdate, setAutoUpdate] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
   const permissions = usePermissions();
 
@@ -24,6 +25,7 @@ export function GeneralSection() {
       (s) => {
         setShortcut(s.shortcut);
         setTheme(s.theme);
+        setAutoUpdate(s.autoUpdate);
       },
       (e) => setError(`Couldn't load your settings. ${e}`),
     );
@@ -49,6 +51,14 @@ export function GeneralSection() {
     });
   }
 
+  function changeAutoUpdate(next: boolean) {
+    setAutoUpdate(next);
+    unwrap(commands.setAutoUpdate(next)).catch((e) => {
+      setAutoUpdate(!next);
+      setError(`Couldn't change automatic updates. ${e}`);
+    });
+  }
+
   return (
     <>
       <FormError message={error} />
@@ -61,6 +71,18 @@ export function GeneralSection() {
         </Row>
         <Row label="Appearance">
           <Segmented label="Appearance" value={theme} options={THEMES} onChange={changeTheme} />
+        </Row>
+        <Row
+          label="Update automatically"
+          description="Check for updates every few hours and install them. Kopi sends nothing about you or your clips."
+          htmlFor="auto-update"
+        >
+          <Switch
+            id="auto-update"
+            checked={autoUpdate ?? false}
+            disabled={autoUpdate === null}
+            onChange={changeAutoUpdate}
+          />
         </Row>
       </Group>
       <Group title="Permissions">

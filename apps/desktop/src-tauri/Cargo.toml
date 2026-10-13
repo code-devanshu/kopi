@@ -19,13 +19,17 @@ tauri-build = { version = "2.7", features = [] }
 [dependencies]
 kopi-core.workspace = true
 kopi-platform.workspace = true
+semver = "1"
 serde.workspace = true
 serde_json.workspace = true
 # macos-private-api: a transparent panel window, for its rounded corners.
 tauri = { version = "2.12", features = ["tray-icon", "image-png", "macos-private-api"] }
 tauri-plugin-autostart = "2.7"
+# Message boxes for updates. The UI can't open them: it gets no plugin permissions.
+tauri-plugin-dialog = "2.8"
 tauri-plugin-global-shortcut = "2.4"
 tauri-plugin-single-instance = "2.5"
+tauri-plugin-updater = "2.13"
 specta = "=2.0.0-rc.25"
 specta-typescript = "=0.0.12"
 tauri-specta = { version = "=2.0.0-rc.25", features = ["derive", "typescript"] }
