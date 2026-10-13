@@ -68,5 +68,5 @@ jobs:
 
       - run: pnpm --filter @kopi/desktop test
 
-      # Unsigned .app only. Signing and notarization come with the release pipeline (#18).
+      # An ad-hoc-signed .app only. Release builds are in release.yml.
       - run: pnpm build:desktop
