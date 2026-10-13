@@ -180,6 +180,12 @@ src/
 
 Google Analytics 4 loads only in production builds, and it sends nothing when the site runs on localhost. To track a click on any element, including in server components, add `data-track="event_name"`. Each `data-track-foo="bar"` attribute on the element becomes the event parameter `foo`. In client code, call `trackEvent(name, params)` from [`src/lib/analytics.ts`](src/lib/analytics.ts). If GA hasn't loaded, nothing is sent. Never put personal data such as emails, names or message text in event parameters.
 
+GA counts copies of the install command (`install_command_copy`, with `method` set to `button` or `manual`) and clicks on the download links (`download_click`). It can't see installs: the command runs in Terminal, and both it and the download links fetch the .dmg from GitHub Releases. GitHub counts each .dmg download:
+
+```bash
+gh api repos/code-devanshu/kopi/releases --jq '.[] | {tag: .tag_name, assets: [.assets[] | {name, download_count}]}'
+```
+
 ### Theming
 
 All colors are CSS variables in [`src/app/globals.css`](src/app/globals.css) and are exposed to Tailwind as tokens such as `bg-background`, `text-foreground`, `bg-accent` and `text-accent-text`. Light mode uses cream and espresso, dark mode uses roasted brown and cream, and both share a caramel accent. To change the palette, edit the variables. The components don't need to change.
