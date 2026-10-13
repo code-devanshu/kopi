@@ -25,7 +25,7 @@ use rusqlite::{Connection, OpenFlags, OptionalExtension, TransactionBehavior, pa
 
 pub use blobs::BlobStore;
 pub use migrate::SCHEMA_VERSION;
-pub use model::{Clip, ClipFormat, ClipKind, NewClip, NewFormat, Platform, Upserted};
+pub use model::{Clip, ClipFormat, ClipKind, ExcludedApp, NewClip, NewFormat, Platform, Upserted};
 pub use thumbs::{THUMBNAIL_SIZE, ThumbnailDone, ThumbnailListener};
 
 use thumbs::{Source, SourceFormat, Thumbnailer};
@@ -361,6 +361,60 @@ impl Store {
             ))
         });
         Ok(self.queue_thumbnail(&clip.content_hash, source))
+    }
+
+    /// The apps excluded on `platform`, by name.
+    pub fn excluded_apps(&self, platform: Platform) -> StorageResult<Vec<ExcludedApp>> {
+        self.with_reader(|conn| {
+            let rows = conn
+                .prepare_cached(
+                    "SELECT app_id, app_name, origin, created_at FROM excluded_apps
+                     WHERE platform = ?1 ORDER BY app_name COLLATE NOCASE, app_id",
+                )?
+                .query_map([platform.as_str()], |row| {
+                    Ok(ExcludedApp {
+                        platform,
+                        app_id: row.get(0)?,
+                        app_name: row.get(1)?,
+                        is_default: row.get::<_, String>(2)? == "default",
+                        created_at: row.get(3)?,
+                    })
+                })?
+                .collect::<Result<_, _>>()?;
+            Ok(rows)
+        })
+    }
+
+    /// Excludes an app the user picked. Returns `false` if it was already excluded. IDs are
+    /// compared without regard to case, as macOS bundle IDs and Windows paths are.
+    pub fn add_excluded_app(
+        &self,
+        platform: Platform,
+        app_id: &str,
+        app_name: &str,
+    ) -> StorageResult<bool> {
+        let added = self
+            .writer()
+            .prepare_cached(
+                "INSERT INTO excluded_apps (platform, app_id, app_name, origin, created_at)
+                 SELECT ?1, ?2, ?3, 'user', ?4
+                 WHERE NOT EXISTS (SELECT 1 FROM excluded_apps
+                                   WHERE platform = ?1 AND app_id = ?2 COLLATE NOCASE)",
+            )?
+            .execute(params![platform.as_str(), app_id, app_name, now_ms()])?;
+        Ok(added > 0)
+    }
+
+    /// Stops excluding an app, a default or one the user added. A removed default isn't seeded
+    /// again. Returns `false` if it wasn't excluded.
+    pub fn remove_excluded_app(&self, platform: Platform, app_id: &str) -> StorageResult<bool> {
+        let removed = self
+            .writer()
+            .prepare_cached(
+                "DELETE FROM excluded_apps WHERE platform = ?1 AND app_id = ?2 COLLATE NOCASE",
+            )?
+            .execute(params![platform.as_str(), app_id])?;
+        Ok(removed > 0)
     }
 
     /// Runs `f` with a read-only connection from the pool.

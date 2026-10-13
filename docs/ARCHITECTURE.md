@@ -131,7 +131,7 @@ On Windows, change notifications are pushed (`WM_CLIPBOARDUPDATE`). On macOS the
 | Module | Responsibility |
 | --- | --- |
 | `watcher` | Runs on its own thread. Detects clipboard changes, ignores changes Kopi made itself, records the source app, and passes the change to the privacy filter. Polling interval and backoff live here (macOS: 250 ms while active, 500 ms after 60 s of no input, so capture always stays within the alpha's 0.5 s target; to be tuned in the spike). |
-| `privacy` | Decides whether a change may be read at all, using only the format list and source app: concealed, transient and auto-generated markers, the Windows exclusion formats, excluded apps, paused state and size limits. See [PRIVACY_DESIGN.md](PRIVACY_DESIGN.md). |
+| `privacy` | Two stages. Before any read, it decides from the format list and source app alone: concealed, transient and auto-generated markers, the Windows exclusion formats, excluded apps, paused state, and kinds turned off that the format list already rules out. After the read, in memory, it drops content over the size limit or of a kind turned off that only the content reveals (link, code, color). See [PRIVACY_DESIGN.md](PRIVACY_DESIGN.md). |
 | `classifier` | Turns raw formats into a clip: picks the kind (`text`, `rich_text`, `link`, `image`, `file`, `color`, `code`), extracts the plain text, computes the content hash and metadata. |
 | `storage` | Owns the SQLite connection pool (WAL mode, one writer thread), migrations, the content-addressed blob store and thumbnail generation. Upserts by content hash so repeated copies move to the top. |
 | `search` | Builds FTS5 queries from the search box, applies filters (kind, source app, pinboard, date), ranks, pages results and returns snippets. |
@@ -165,10 +165,12 @@ sequenceDiagram
     W->>W: Kopi wrote it? (own marker / owner window) → treat as "used", stop
     W->>W: record source app (frontmost app / clipboard owner process)
     W->>P: format list + source app (no content read yet)
-    P-->>W: reject (concealed, transient, excluded app, paused) → stop, nothing read
-    W->>OS: read allowed formats, up to size limits
+    P-->>W: reject (concealed, transient, excluded app, paused, kind off) → stop, nothing read
+    W->>OS: read allowed formats, up to the size limit
     W->>C: raw formats
     C->>C: pick kind, extract plain text, hash, metadata
+    C->>P: kind + size
+    P-->>C: reject (too large, kind off) → drop from memory, nothing stored
     C->>S: upsert by content hash
     alt hash already exists
         S->>S: bump last_used_at and use_count, keep the newest formats
@@ -182,7 +184,7 @@ sequenceDiagram
 
 Key points:
 
-- **The content is read only after the privacy filter passes.** The filter looks at format names and the source app, not the data.
+- **The content is read only after the privacy filter passes.** The first stage looks at format names and the source app, not the data. The second stage sees the kind and size the classifier worked out, and drops failing content before anything is stored.
 - **Own writes are ignored.** When Kopi pastes, it marks the clipboard (`org.nspasteboard.source` set to Kopi's bundle ID on macOS; on Windows the clipboard owner is Kopi's own window). The watcher counts that as a use of the existing clip, not a new copy.
 - **Files are written before the database transaction.** A crash in between leaves an orphaned file, which retention sweeps. It never leaves a row pointing at a missing file.
 

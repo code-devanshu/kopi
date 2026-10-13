@@ -437,3 +437,77 @@ fn hashes_must_be_blake3_hex() {
         Err(StorageError::InvalidHash(_))
     ));
 }
+
+#[test]
+fn password_managers_are_excluded_by_default() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = Store::open(dir.path()).unwrap();
+    let apps = store.excluded_apps(Platform::MacOs).unwrap();
+    for id in [
+        "com.apple.keychainaccess",
+        "com.apple.Passwords",
+        "com.1password.1password",
+        "com.bitwarden.desktop",
+        "org.keepassxc.keepassxc",
+        "com.dashlane.Dashlane",
+        "in.sinew.Enpass-Desktop",
+    ] {
+        let app = apps.iter().find(|a| a.app_id == id);
+        assert!(app.is_some_and(|a| a.is_default), "{id} not seeded");
+    }
+    assert!(apps.iter().all(|a| a.created_at > 0));
+    assert!(store.excluded_apps(Platform::Windows).unwrap().is_empty());
+}
+
+#[test]
+fn a_removed_default_stays_removed() {
+    let dir = tempfile::tempdir().unwrap();
+    {
+        let store = Store::open(dir.path()).unwrap();
+        assert!(
+            store
+                .remove_excluded_app(Platform::MacOs, "COM.BITWARDEN.DESKTOP")
+                .unwrap()
+        );
+        assert!(
+            !store
+                .remove_excluded_app(Platform::MacOs, "com.bitwarden.desktop")
+                .unwrap()
+        );
+    }
+    let store = Store::open(dir.path()).unwrap();
+    let apps = store.excluded_apps(Platform::MacOs).unwrap();
+    assert!(!apps.iter().any(|a| a.app_id == "com.bitwarden.desktop"));
+}
+
+#[test]
+fn user_excluded_apps_are_added_once() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = Store::open(dir.path()).unwrap();
+    assert!(
+        store
+            .add_excluded_app(Platform::MacOs, "com.example.Vault", "Vault")
+            .unwrap()
+    );
+    assert!(
+        !store
+            .add_excluded_app(Platform::MacOs, "com.example.vault", "Vault")
+            .unwrap()
+    );
+    assert!(
+        !store
+            .add_excluded_app(Platform::MacOs, "com.apple.passwords", "Passwords")
+            .unwrap()
+    );
+    let apps = store.excluded_apps(Platform::MacOs).unwrap();
+    let vault: Vec<_> = apps.iter().filter(|a| a.app_name == "Vault").collect();
+    assert_eq!(vault.len(), 1);
+    assert!(!vault[0].is_default);
+
+    // The same ID on the other platform is a different app.
+    assert!(
+        store
+            .add_excluded_app(Platform::Windows, "com.example.Vault", "Vault")
+            .unwrap()
+    );
+}
