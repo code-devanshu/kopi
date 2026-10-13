@@ -12,42 +12,45 @@ Want to help with a phase? Look for matching [issues](https://github.com/code-de
 
 A public home for the project and a way for people to follow along.
 
-- ✅ "Coming soon" website at [kopi.devanshuverma.in](https://kopi.devanshuverma.in)
+- ✅ Website at [kopi.devanshuverma.in](https://kopi.devanshuverma.in), now with the macOS download
 - ✅ Waitlist form with spam protection
 - ✅ pnpm monorepo, ready for the desktop app
 - ✅ Open-source setup: license, contributing guide and issue templates
 
-## 2. Design and architecture 🔨
+## 2. Design and architecture ✅
 
 Decide what Kopi looks like and how it's built before writing the app.
 
 - ✅ Research macOS, Windows and Tauri ([docs/PLATFORM_NOTES.md](docs/PLATFORM_NOTES.md))
-- 🔨 Architecture ([docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)) and decision records ([docs/decisions/](docs/decisions/))
-- 🔨 Data model and search ([docs/DATA_MODEL.md](docs/DATA_MODEL.md))
-- 🔨 Privacy design ([docs/PRIVACY_DESIGN.md](docs/PRIVACY_DESIGN.md))
-- 🔨 macOS alpha scope ([docs/MVP_SCOPE.md](docs/MVP_SCOPE.md))
-- ⏳ Settle the open questions in those docs with contributors
-- ⏳ Design the main window: history list, search, filters and preview
-- ⏳ Design pinboards, settings and onboarding
-- ⏳ Define the keyboard shortcuts
-- ⏳ Spike the risky parts on macOS: pasteboard privacy on macOS 27.2+, the panel window and pasting into the active app
+- ✅ Architecture ([docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)) and decision records ([docs/decisions/](docs/decisions/))
+- ✅ Data model and search ([docs/DATA_MODEL.md](docs/DATA_MODEL.md))
+- ✅ Privacy design ([docs/PRIVACY_DESIGN.md](docs/PRIVACY_DESIGN.md))
+- ✅ macOS alpha scope ([docs/MVP_SCOPE.md](docs/MVP_SCOPE.md))
+- ✅ Design the panel: history list, search, filters and preview
+- ✅ Design pinboards, settings and onboarding
+- ✅ Define the keyboard shortcuts
+- ✅ Spike the risky parts on macOS: pasteboard privacy, the panel window and pasting into the active app ([docs/spikes/](docs/spikes/))
 
-## 3. macOS alpha ⏳
+## 3. macOS alpha 🔨
 
-First usable builds for early testers on macOS. The full scope is in [docs/MVP_SCOPE.md](docs/MVP_SCOPE.md).
+Usable builds for early testers on macOS, out now on [GitHub Releases](https://github.com/code-devanshu/kopi/releases). The scope is in [docs/MVP_SCOPE.md](docs/MVP_SCOPE.md), and each release is in [CHANGELOG.md](CHANGELOG.md).
 
-- ✅ Tauri app scaffold in `apps/desktop`
-- ⏳ Clipboard watcher for text, rich text, links, images, files and colors
-- ⏳ Local history stored in SQLite
-- ⏳ Full-text search with type and source-app filters
-- ⏳ Global hotkey, keyboard navigation and paste into the active app
-- ⏳ Pins and pinboards
-- ⏳ Skip copies from password managers and content marked as concealed, plus excluded apps
-- ⏳ Settings, onboarding, menu bar icon and launch at login
+- ✅ Tauri app in `apps/desktop`
+- ✅ Clipboard watcher for text, rich text, links, images, files, colors and code
+- ✅ Local history stored in SQLite, with limits by count, age and size
+- ✅ Full-text search with kind and source-app filters
+- ✅ Global hotkey, keyboard navigation and paste into the active app
+- ✅ Pins and pinboards
+- ✅ Skip copies from password managers and content marked as concealed, plus excluded apps
+- ✅ Settings, onboarding, menu bar icon and launch at login
+- ✅ Signed releases and automatic updates, without paying for notarization ([ADR 0006](docs/decisions/0006-macos-distribution-without-notarization.md))
+- ⏳ An easier first install ([#39](https://github.com/code-devanshu/kopi/issues/39))
+- ⏳ Retest pasteboard privacy on macOS 27.2 ([#21](https://github.com/code-devanshu/kopi/issues/21))
+- ⏳ Fixes from testers' reports
 
 ## 4. Windows alpha ⏳
 
-The same app, built for Windows.
+The same app, built for Windows. This is next.
 
 - ⏳ Windows clipboard watcher, hotkey and paste
 - ⏳ Source-app detection on Windows
@@ -59,6 +62,7 @@ The same app, built for Windows.
 A wider group of testers on both platforms, with the features rounded out.
 
 - ⏳ Feedback from the alphas on pinboards, settings and search
+- ⏳ Settle the open questions in the design docs with contributors
 - ⏳ Decide on encrypting the local database
 - ⏳ Windows code signing and automatic updates
 - ⏳ Performance work on large histories
@@ -68,10 +72,10 @@ A wider group of testers on both platforms, with the features rounded out.
 
 A stable release on macOS and Windows that anyone can download for free.
 
-- ⏳ Public downloads on the website and GitHub Releases
+- ✅ Downloads on the website and GitHub Releases
+- ✅ Release process and changelog ([docs/RELEASING.md](docs/RELEASING.md))
 - ⏳ User docs and FAQ
 - ⏳ Security review of local storage
-- ⏳ Release process and changelog
 
 ## 7. Encrypted sync ⏳
 

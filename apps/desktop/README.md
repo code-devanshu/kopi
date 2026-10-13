@@ -2,11 +2,13 @@
 
 Kopi's desktop app: a Tauri 2 shell in `src-tauri/` and a React and TypeScript UI in `src/`, built with Vite. The Rust core lives in [`crates/`](../../crates) and doesn't depend on Tauri. See [docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md).
 
-So far it has:
+It has:
 
-- a menu bar icon with **Open Kopi** and **Quit Kopi**, and no Dock icon
+- a menu bar icon and menu, and no Dock icon
 - clipboard capture on macOS, through the privacy filter and the classifier into the store
-- the panel: ⇧⌘V opens it over the app you're in, with the history, search, kind and app filters, and a preview. Pasting from it comes with [#14](https://github.com/code-devanshu/kopi/issues/14).
+- the panel: ⇧⌘V opens it over the app you're in, with the history, search, filters, preview, pinboards and pasting
+- the Settings and first-run setup windows
+- updates through the Tauri updater ([docs/RELEASING.md](../../docs/RELEASING.md#updates))
 - the `single-instance` plugin (a second launch opens the panel) and the `autostart` plugin
 - TypeScript bindings generated from the Rust commands and events
 
@@ -28,7 +30,11 @@ pnpm dev:desktop      # Vite on port 1420, plus a debug build of the app
 pnpm build:desktop    # target/release/bundle/macos/Kopi.app, signed ad hoc
 ```
 
+Quit an installed Kopi first. It has the same identifier, so a development build finds it, hands over to it and quits.
+
 Kopi starts in the menu bar, with no window. Press ⇧⌘V, or click the menu bar icon and choose **Open Kopi**. Copies made while it runs are captured into `~/Library/Application Support/in.devanshuverma.kopi`.
+
+A development build checks for updates only from **Check for Updates…**, and says what it found without installing it.
 
 ## Working on the panel in a browser
 
