@@ -123,6 +123,7 @@ mark {
 /* Panel */
 
 .panel {
+  position: relative;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -547,6 +548,56 @@ mark {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+/* Notice: "Copied", or why a paste failed */
+
+.notice-region {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 42px;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.notice {
+  max-width: 420px;
+  padding: 9px 14px;
+  border-radius: 10px;
+  background: var(--foreground);
+  color: var(--background);
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--foreground) 22%, transparent);
+  animation: notice-in 140ms ease-out;
+}
+
+.notice-message {
+  font-weight: 600;
+}
+
+.notice.error .notice-message::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin: 0 7px 1px 0;
+  border-radius: 50%;
+  background: var(--danger);
+}
+
+.notice-detail {
+  margin-top: 2px;
+  font-size: 11.5px;
+  opacity: 0.75;
+  overflow-wrap: anywhere;
+}
+
+@keyframes notice-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
 }
 
 /* Keyboard hints */

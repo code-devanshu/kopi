@@ -27,6 +27,8 @@ pub fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::clips::get_clip,
             commands::clips::delete_clips,
             commands::clips::source_apps,
+            commands::paste::paste_clip,
+            commands::paste::copy_clip,
         ])
         .events(tauri_specta::collect_events![
             events::ClipAdded,
@@ -88,6 +90,7 @@ pub fn run() {
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
 
             panel::create(app.handle())?;
+            commands::paste::manage_engine(app.handle());
             hotkeys::register(app.handle());
             capture::start(app.handle(), store)?;
             tray::create(app.handle())?;

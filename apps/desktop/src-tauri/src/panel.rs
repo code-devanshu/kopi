@@ -5,6 +5,7 @@
 //! `docs/spikes/0002-macos-nspanel.md`.
 
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::mpsc;
 use std::time::Duration;
 
 use tauri::{AppHandle, Manager};
@@ -21,6 +22,9 @@ const HEIGHT: f64 = 480.0;
 /// How long after the panel loses focus to decide whether to hide it. The emoji picker takes
 /// focus when it opens, so the panel shouldn't hide before seeing where focus went.
 const BLUR_GRACE: Duration = Duration::from_millis(100);
+
+/// How long [`hide_now`] waits for the main thread.
+const HIDE_TIMEOUT: Duration = Duration::from_secs(1);
 
 /// Counts shows, so a hide planned on blur can tell the panel was shown again since.
 #[derive(Default)]
@@ -48,6 +52,24 @@ pub fn hide(app: &AppHandle) {
             let _ = PanelHidden.emit(app);
         }
     });
+}
+
+/// Hides the panel and returns once it's hidden, so keys posted next go to the app in front.
+/// Gives up after [`HIDE_TIMEOUT`] if the main thread is stuck.
+pub fn hide_now(app: &AppHandle) {
+    if platform::is_main_thread() {
+        hide(app);
+        return;
+    }
+    let (tx, rx) = mpsc::sync_channel(1);
+    let handle = app.clone();
+    let queued = app.run_on_main_thread(move || {
+        hide(&handle);
+        let _ = tx.send(());
+    });
+    if queued.is_ok() {
+        let _ = rx.recv_timeout(HIDE_TIMEOUT);
+    }
 }
 
 /// What the hotkey does: shows the panel, or hides it if it's showing.

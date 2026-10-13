@@ -29,8 +29,8 @@ pub fn start(app: &AppHandle, store: Arc<Store>) -> Result<(), Box<dyn std::erro
     let handle = app.clone();
 
     let listener = move |event: WatchEvent| {
-        // Kopi's own writes are the paste engine's (#14), and the access state is for
-        // onboarding (#16). Skipped and missed copies were never read.
+        // Kopi's own writes are pastes, which already moved their clip to the top. The access
+        // state is for onboarding (#16). Skipped and missed copies were never read.
         let WatchEvent::Copied(capture) = event else {
             return;
         };

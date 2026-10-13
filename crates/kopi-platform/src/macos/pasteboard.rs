@@ -1,14 +1,16 @@
 //! `NSPasteboard` behind the [`Pasteboard`] trait.
 
 use objc2::rc::Retained;
-use objc2::runtime::NSObjectProtocol;
+use objc2::runtime::{NSObjectProtocol, ProtocolObject};
 use objc2::sel;
-use objc2_app_kit::{NSPasteboard, NSPasteboardAccessBehavior, NSPasteboardItem};
-use objc2_foundation::{NSArray, NSString};
+use objc2_app_kit::{
+    NSPasteboard, NSPasteboardAccessBehavior, NSPasteboardItem, NSPasteboardWriting,
+};
+use objc2_foundation::{NSArray, NSData, NSString};
 
 use super::on_main;
 use crate::pasteboard::{
-    Pasteboard, PasteboardAccess, PasteboardError, PasteboardTypes, RawFormat,
+    Pasteboard, PasteboardAccess, PasteboardError, PasteboardTypes, RawFormat, uti,
 };
 
 /// A macOS pasteboard. Every call runs on the main thread (see [`on_main`]).
@@ -107,6 +109,40 @@ impl Pasteboard for MacPasteboard {
 
     fn access(&self) -> Result<PasteboardAccess, PasteboardError> {
         self.run(|pb| Ok(access(pb)))
+    }
+
+    fn write(&self, formats: &[RawFormat], source: Option<&str>) -> Result<u64, PasteboardError> {
+        let mut formats = formats.to_vec();
+        if let Some(source) = source {
+            let first = formats.iter().map(|f| f.item_index).min().unwrap_or(0);
+            formats.push(RawFormat {
+                item_index: first,
+                format: uti::SOURCE.to_owned(),
+                data: source.as_bytes().to_vec(),
+            });
+        }
+        // Stable, so each item keeps its formats in the order given.
+        formats.sort_by_key(|f| f.item_index);
+        self.run(move |pb| {
+            let mut items: Vec<Retained<ProtocolObject<dyn NSPasteboardWriting>>> = Vec::new();
+            for group in formats.chunk_by(|a, b| a.item_index == b.item_index) {
+                let item = NSPasteboardItem::new();
+                for f in group {
+                    if !item.setData_forType(
+                        &NSData::with_bytes(&f.data),
+                        &NSString::from_str(&f.format),
+                    ) {
+                        return Err(PasteboardError::WriteFailed);
+                    }
+                }
+                items.push(ProtocolObject::from_retained(item));
+            }
+            pb.clearContents();
+            if !items.is_empty() && !pb.writeObjects(&NSArray::from_retained_slice(&items)) {
+                return Err(PasteboardError::WriteFailed);
+            }
+            Ok(change_count(pb))
+        })
     }
 }
 

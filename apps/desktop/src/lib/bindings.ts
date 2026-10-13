@@ -39,6 +39,13 @@ export const commands = {
 	deleteClips: (ids: ClipId[]) => typedError<null, string>(__TAURI_INVOKE("delete_clips", { ids })),
 	/**  The apps in the history, most recent first, for the app filter. */
 	sourceApps: () => typedError<SourceApp[], string>(__TAURI_INVOKE("source_apps")),
+	/**
+	 *  Pastes a clip into the app in front, or only copies it while Accessibility isn't granted.
+	 *  `plain` pastes only its plain text.
+	 */
+	pasteClip: (id: ClipId, plain: boolean) => typedError<PasteOutcome, string>(__TAURI_INVOKE("paste_clip", { id, plain })),
+	/**  Puts a clip on the clipboard without pasting it. `plain` copies only its plain text. */
+	copyClip: (id: ClipId, plain: boolean) => typedError<null, string>(__TAURI_INVOKE("copy_clip", { id, plain })),
 };
 
 /** Events */
@@ -122,6 +129,16 @@ export type PanelHidden = null;
 
 /**  The panel was shown. The search box takes focus. */
 export type PanelShown = null;
+
+/**  How a paste ended. */
+export type PasteOutcome = 
+/**  Pasted into the app in front. The panel is hidden. */
+"pasted" | 
+/**
+ *  Kopi may not post keys yet, so the clip is on the clipboard for the user to paste. The
+ *  panel is still showing.
+ */
+"copied";
 
 /**  One clip in the results. */
 export type SearchHit = {

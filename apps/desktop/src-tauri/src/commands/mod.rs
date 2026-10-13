@@ -1,6 +1,7 @@
 //! Tauri commands. They stay thin and call into `kopi-core`.
 
 pub mod clips;
+pub mod paste;
 pub mod search;
 
 use serde::Serialize;

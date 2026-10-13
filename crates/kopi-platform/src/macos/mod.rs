@@ -1,6 +1,7 @@
 //! macOS: NSPasteboard, NSWorkspace, CGEvent and the Accessibility API.
 
 mod apps;
+mod keys;
 mod pasteboard;
 
 use std::sync::mpsc;
@@ -10,6 +11,7 @@ use dispatch2::DispatchQueue;
 use objc2::MainThreadMarker;
 
 pub use apps::{MacForegroundApp, MacUserIdle};
+pub use keys::{MacKeySender, MacPermissions};
 pub use pasteboard::MacPasteboard;
 
 /// How long a background thread waits for the main thread to run a call. Pasteboard calls

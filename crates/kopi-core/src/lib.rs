@@ -1,9 +1,10 @@
 //! Kopi's core. It doesn't depend on Tauri, so it can be built and tested on its own.
 //!
-//! More modules (paste, settings, retention) arrive with the features
-//! that need them. See `docs/ARCHITECTURE.md`.
+//! More modules (settings, retention) arrive with the features that need them. See
+//! `docs/ARCHITECTURE.md`.
 
 pub mod classifier;
+pub mod paste;
 pub mod privacy;
 pub mod search;
 pub mod storage;

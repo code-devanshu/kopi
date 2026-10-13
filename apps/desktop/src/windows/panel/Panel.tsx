@@ -4,10 +4,12 @@ import { History } from "../../features/history/history";
 import { actionFor } from "../../features/history/keys";
 import { Empty, LoadError, LoadingRows } from "../../features/history/States";
 import { useHistory } from "../../features/history/useHistory";
+import { Paster, type Notice } from "../../features/paste/paster";
 import { Preview } from "../../features/preview/Preview";
 import { SearchBar } from "../../features/search/SearchBar";
 import { commands, events, unwrap, type SourceApp } from "../../lib/ipc";
 import { Hints } from "./Hints";
+import { NoticeBar } from "./NoticeBar";
 
 const LIST_ID = "clip-list";
 /** Whether the preview is open, remembered between launches. */
@@ -27,6 +29,16 @@ export function Panel() {
   const [version, setVersion] = useState(0);
   // Per content hash, how many times its thumbnail was written. Rows load it again on a bump.
   const [thumbnails, setThumbnails] = useState<ReadonlyMap<string, number>>(new Map());
+  const [notice, setNotice] = useState<Notice | null>(null);
+  const [paster] = useState(
+    () =>
+      new Paster({
+        paste: (id, plain) => unwrap(commands.pasteClip(id, plain)),
+        copy: (id, plain) => unwrap(commands.copyClip(id, plain)),
+        hide: () => void commands.hidePanel(),
+        notify: setNotice,
+      }),
+  );
 
   useEffect(() => {
     const loadApps = () => unwrap(commands.sourceApps()).then(setApps, () => {});
@@ -34,6 +46,7 @@ export function Panel() {
     loadApps();
 
     const shown = () => {
+      paster.reset();
       setNow(Date.now());
       void history.reset();
       loadApps();
@@ -46,6 +59,7 @@ export function Panel() {
     };
     const listeners = [
       events.panelShown.listen(shown),
+      events.panelHidden.listen(() => paster.reset()),
       events.clipAdded.listen(() => history.refreshSoon()),
       events.clipUpdated.listen(changed),
       events.clipRemoved.listen(changed),
@@ -57,24 +71,40 @@ export function Panel() {
     return () => {
       clearInterval(clock);
       listeners.forEach((unlisten) => void unlisten.then((stop) => stop()));
+      paster.reset();
     };
-  }, [history]);
+  }, [history, paster]);
 
   useEffect(() => save(PREVIEW_KEY, previewOpen ? "open" : "closed"), [previewOpen]);
 
   const select = useCallback((index: number) => history.select(index), [history]);
-  // Pasting arrives with the paste engine (#14). Until then, picking a clip selects it.
-  const pick = useCallback((index: number) => history.select(index), [history]);
+  const pick = useCallback(
+    (index: number, plain = false) => {
+      const hit = history.getSnapshot().hits[index];
+      if (!hit) return;
+      history.select(index);
+      void paster.paste(hit.id, plain);
+    },
+    [history, paster],
+  );
   const loadMore = useCallback(() => void history.loadMore(), [history]);
   const setPageSize = useCallback((rows: number) => {
     pageSize.current = rows;
   }, []);
 
   function onKeyDown(e: KeyboardEvent) {
+    // After "Copied. Press ⌘V", ⌘V would paste into the search box, so it closes the panel
+    // and the next ⌘V reaches the app.
+    if (paster.closing && e.metaKey && e.code === "KeyV") {
+      e.preventDefault();
+      return paster.closeNow();
+    }
     const action = actionFor(e.nativeEvent, state.text !== "");
     if (!action) return;
     // A focused filter keeps its own arrow keys.
     if (e.target instanceof HTMLSelectElement && action.type !== "hide") return;
+    // ⌘C with text selected in the search box copies that text.
+    if (action.type === "copy" && hasSelection(e.target)) return;
     e.preventDefault();
     switch (action.type) {
       case "move":
@@ -86,10 +116,14 @@ export function Panel() {
       case "last":
         return history.select(state.hits.length - 1);
       case "paste":
-        return pick(state.selected);
+        return pick(state.selected, action.plain);
       case "quickPaste":
-        if (action.index < state.hits.length) pick(action.index);
+        return pick(action.index, action.plain);
+      case "copy": {
+        const hit = history.selectedHit;
+        if (hit) void paster.copy(hit.id, action.plain);
         return;
+      }
       case "delete": {
         const hit = history.selectedHit;
         // The list updates from the clip:removed event.
@@ -162,9 +196,14 @@ export function Panel() {
         <div className="results">{results}</div>
         {showPreview && <Preview id={selectedHit.id} version={version} query={state.text} />}
       </div>
+      <NoticeBar notice={notice} />
       <Hints typing={state.text !== ""} previewOpen={previewOpen} />
     </div>
   );
+}
+
+function hasSelection(target: EventTarget) {
+  return target instanceof HTMLInputElement && target.selectionStart !== target.selectionEnd;
 }
 
 // The preview setting is a convenience: without storage, the preview starts open.

@@ -114,15 +114,16 @@ trait Pasteboard {
     // Formats per item. Refuses without the grant, and fails if the change count moved.
     fn read(&self, change_count: u64, formats: &[Vec<String>], max_bytes: u64) -> Result<Vec<RawFormat>>;
     fn access(&self) -> Result<PasteboardAccess>;        // macOS 15.4+: default/ask/allow/deny
-    fn write(&self, items: &[RawFormat], mark_as_kopi: bool) -> Result<()>;  // with the paste engine
+    // Replaces the contents. `source` marks the write as Kopi's, so the watcher skips it.
+    fn write(&self, formats: &[RawFormat], source: Option<&str>) -> Result<u64>;
 }
 trait ForegroundApp { fn current(&self) -> Option<AppRef>; fn running(&self, bundle_id: &str) -> Option<AppRef>; }
 trait UserIdle      { fn idle_time(&self) -> Option<Duration>; }  // slows polling when idle
 trait KeySender     { fn send_paste(&self) -> Result<()>; }        // Cmd+V or Ctrl+V
-trait Permissions   { fn status(&self) -> PermissionStatus; fn request(&self, p: Permission); fn open_settings(&self, p: Permission); }
+trait Permissions   { fn is_granted(&self, p: Permission) -> bool; fn request(&self, p: Permission); }  // onboarding adds open_settings
 ```
 
-`Pasteboard`, `ForegroundApp` and `UserIdle` exist today. The rest arrive with the paste engine and onboarding. On macOS every AppKit call runs on the main thread: from another thread it's queued on the main queue and waited for, with a 5 s limit so a thread being joined from the main thread can't deadlock with it.
+All of them exist on macOS. The Windows versions arrive with the Windows alpha. On macOS every AppKit call runs on the main thread: from another thread it's queued on the main queue and waited for, with a 5 s limit so a thread being joined from the main thread can't deadlock with it.
 
 On Windows, change notifications are pushed (`WM_CLIPBOARDUPDATE`). On macOS the watcher polls `change_count()`. Both feed the same channel in the core.
 

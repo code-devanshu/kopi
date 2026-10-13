@@ -75,10 +75,13 @@ pub enum PasteboardError {
     /// The main thread didn't run the call in time. macOS pasteboard calls must run there.
     #[error("the main thread is busy")]
     MainThreadBusy,
+    /// The OS turned the write down.
+    #[error("couldn't write to the clipboard")]
+    WriteFailed,
 }
 
 /// The system clipboard. Call `change_count` to spot a change, `types` to see what it holds,
-/// and `read` only for the formats the privacy filter allowed.
+/// and `read` only for the formats the privacy filter allowed. `write` is for pasting.
 pub trait Pasteboard: Send {
     /// Goes up on every change of ownership. Reads no content.
     fn change_count(&self) -> Result<u64, PasteboardError>;
@@ -104,6 +107,13 @@ pub trait Pasteboard: Send {
 
     /// Whether background reads are allowed right now.
     fn access(&self) -> Result<PasteboardAccess, PasteboardError>;
+
+    /// Replaces the clipboard's contents with `formats`, one item per `item_index`, and
+    /// returns the new change count. Writing needs no permission.
+    ///
+    /// `source` names the writer. On macOS it goes in [`uti::SOURCE`] on the first item, which
+    /// is how Kopi's watcher knows the write was Kopi's own.
+    fn write(&self, formats: &[RawFormat], source: Option<&str>) -> Result<u64, PasteboardError>;
 }
 
 /// macOS pasteboard type names (UTIs) that Kopi captures or checks.

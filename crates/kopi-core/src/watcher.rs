@@ -485,6 +485,9 @@ mod tests {
                 .access
                 .unwrap_or(PasteboardAccess::AlwaysAllow))
         }
+        fn write(&self, _: &[RawFormat], _: Option<&str>) -> Result<u64, PasteboardError> {
+            unreachable!("the watcher never writes")
+        }
     }
 
     struct FakeApps;
