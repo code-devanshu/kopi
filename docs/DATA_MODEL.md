@@ -73,6 +73,17 @@ CREATE TABLE clips (
 | `file` | File names, one per line (full paths go in `clip_formats`) |
 | `image` | `NULL` for now (OCR is out of scope) |
 
+The classifier (`kopi-core`'s `classifier` module) picks the first kind that fits:
+
+1. `file`, when an item has a file URL.
+2. `color`, when a color archive (`com.apple.cocoa.pasteboard.color`) decodes.
+3. With plain text: `link` when the URL format, or the whole trimmed text, is an `http`, `https`, `ftp` or `ftps` address or a bare `www.` one. Then `color` when the whole trimmed text is a CSS hex, `rgb()` or `hsl()` color. Then `code` when the text reads as code, or `rich_text` when RTF, RTFD or HTML came with it. `text` otherwise.
+4. Without plain text: `image` (PNG, else TIFF), then `link` from the URL format, then `rich_text`.
+
+So a spreadsheet selection, which brings text and an image of the cells, is text. Code copied from an editor that adds HTML is still code. Code detection is a heuristic tuned to keep prose out. `{lang}` is set only when one language clearly stands out.
+
+`metadata` holds `{"w", "h"}` for an image whose size can be read, `{"rgba": [r, g, b, a]}` (0–255) for a color, `{"host"}` for a link (lowercase, without credentials or port), `{"count", "names"}` for files, and `{"lang"}` for code.
+
 Text longer than 64 KiB is truncated in `plain_text`, and the full text is kept in `clip_formats`. This keeps the list and the search index fast, while paste still uses the full content.
 
 ### `clip_formats`
@@ -248,6 +259,9 @@ Copying something that's already in the history moves it to the top instead of a
    | `color` | Normalised RGBA hex |
    | `image` | Bytes of the PNG representation, or TIFF/DIB if there's no PNG |
    | `file` | The file paths, sorted and joined with `\n` |
+   | `rich_text` with no plain text | The RTF, RTFD or HTML bytes, in that order of preference |
+
+   A link's plain text is its trimmed URL, so a copy with a trailing newline is the same clip. Colors are normalised first, so `#1e90ff` and `rgb(30 144 255)` are one clip.
 
 2. `INSERT … ON CONFLICT(content_hash) DO UPDATE SET last_used_at = :now, use_count = use_count + 1, source_app_* = excluded.source_app_*`.
 3. For `rich_text`, the stored formats are replaced with the latest copy's. The text is the same, but the formatting may have changed.

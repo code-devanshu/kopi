@@ -517,7 +517,7 @@ fn create_private_dir(dir: &Path) -> io::Result<()> {
 }
 
 /// Cuts `text` to [`MAX_TEXT_INDEX_BYTES`] at a character boundary.
-fn truncate_text(mut text: String) -> (String, bool) {
+pub(crate) fn truncate_text(mut text: String) -> (String, bool) {
     if text.len() <= MAX_TEXT_INDEX_BYTES {
         return (text, false);
     }
