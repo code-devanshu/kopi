@@ -1,7 +1,7 @@
 # Architecture
 
 > [!NOTE]
-> Kopi is in the design phase. The desktop app is only a scaffold so far ([#7](https://github.com/code-devanshu/kopi/issues/7)). This document describes the planned design for the macOS alpha. It will change as the spikes in [ISSUES_TO_CREATE.md](ISSUES_TO_CREATE.md) report back. To comment, open a [discussion](https://github.com/code-devanshu/kopi/discussions) or a pull request against this file.
+> Kopi is being built. On macOS the desktop app captures copies and has the panel with history, search and preview. Paste, pins and settings come next. This document describes the design for the macOS alpha. It will change as the spikes in [ISSUES_TO_CREATE.md](ISSUES_TO_CREATE.md) report back. To comment, open a [discussion](https://github.com/code-devanshu/kopi/discussions) or a pull request against this file.
 
 Related docs:
 
@@ -147,8 +147,8 @@ On Windows, change notifications are pushed (`WM_CLIPBOARDUPDATE`). On macOS the
 | Panel window | Borderless, always on top, hidden from the Dock and app switcher, hides when it loses focus. On macOS it's converted to a non-activating `NSPanel` with `tauri-nspanel`, so it can appear over full-screen apps without activating Kopi. See [PLATFORM_NOTES.md](PLATFORM_NOTES.md#panel-window). |
 | Tray | Tauri's `tray-icon` feature. Menu: open Kopi, pause capture, settings, quit. On macOS the activation policy is `Accessory` and Info.plist sets `LSUIElement`, so there's no Dock icon, not even a flash at launch. |
 | Other plugins | `autostart` (launch at login), `single-instance`, `window-state` (settings window only), `log`. Later: `updater`. |
-| Commands | `search_clips`, `get_clip`, `paste_clip`, `copy_clip`, `delete_clips`, `set_pinned`, `pinboard_*`, `get_settings`, `update_settings`, `excluded_apps_*`, `clear_history`, `set_paused`, `permission_status`, `open_permission_settings` |
-| Events | `clip:added`, `clip:updated`, `clip:removed`, `history:cleared`, `capture:paused`, `permissions:changed`, `panel:shown` |
+| Commands | `search_clips`, `get_clip`, `source_apps`, `paste_clip`, `copy_clip`, `delete_clips`, `hide_panel`, `set_pinned`, `pinboard_*`, `get_settings`, `update_settings`, `excluded_apps_*`, `clear_history`, `set_paused`, `permission_status`, `open_permission_settings` |
+| Events | `clip:added`, `clip:updated`, `clip:removed`, `thumbnail:ready`, `history:cleared`, `capture:paused`, `permissions:changed`, `panel:shown`, `panel:hidden` |
 
 ## Data flow: something is copied
 

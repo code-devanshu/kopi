@@ -2,12 +2,13 @@
 
 Kopi's desktop app: a Tauri 2 shell in `src-tauri/` and a React and TypeScript UI in `src/`, built with Vite. The Rust core lives in [`crates/`](../../crates) and doesn't depend on Tauri. See [docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md).
 
-So far it's a scaffold:
+So far it has:
 
 - a menu bar icon with **Open Kopi** and **Quit Kopi**, and no Dock icon
-- a placeholder window that shows the version and a **Launch at login** toggle
-- the `single-instance` plugin (a second launch opens the running Kopi) and the `autostart` plugin
-- TypeScript bindings generated from the Rust commands
+- clipboard capture on macOS, through the privacy filter and the classifier into the store
+- the panel: ⇧⌘V opens it over the app you're in, with the history, search, kind and app filters, and a preview. Pasting from it comes with [#14](https://github.com/code-devanshu/kopi/issues/14).
+- the `single-instance` plugin (a second launch opens the panel) and the `autostart` plugin
+- TypeScript bindings generated from the Rust commands and events
 
 ## Setup
 
@@ -27,7 +28,11 @@ pnpm dev:desktop      # Vite on port 1420, plus a debug build of the app
 pnpm build:desktop    # target/release/bundle/macos/Kopi.app, signed ad hoc
 ```
 
-Kopi starts in the menu bar, with no window. Click the menu bar icon and choose **Open Kopi**.
+Kopi starts in the menu bar, with no window. Press ⇧⌘V, or click the menu bar icon and choose **Open Kopi**. Copies made while it runs are captured into `~/Library/Application Support/in.devanshuverma.kopi`.
+
+## Working on the panel in a browser
+
+`pnpm --filter @kopi/desktop dev:ui` runs only the UI, at http://localhost:1420. Outside Tauri it gets a fake backend with sample clips ([`src/dev/mockBackend.ts`](src/dev/mockBackend.ts)), so the panel can be worked on in any browser. Production builds leave it out. URL parameters set up a state to look at: `?q=invoice`, `?empty`, `?select=3`, `?theme=dark` and `?preview=closed`. Images don't load there, since the `kopi://` protocol is the app's.
 
 Ad-hoc signed builds get a new signature on every build. Permissions that macOS ties to the signature, such as Accessibility, have to be granted again after each rebuild.
 
@@ -48,4 +53,5 @@ cargo fmt --all --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace
 pnpm --filter @kopi/desktop lint
+pnpm --filter @kopi/desktop test
 ```

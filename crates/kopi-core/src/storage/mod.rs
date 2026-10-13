@@ -253,6 +253,52 @@ impl Store {
         Ok(changed > 0)
     }
 
+    /// Deletes clips, pinned or not, with their formats, blob files and thumbnails. Returns the
+    /// ids that were found and deleted, in the order given.
+    pub fn delete_clips(&self, ids: &[i64]) -> StorageResult<Vec<i64>> {
+        let mut conn = self.writer();
+        let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let mut deleted = Vec::with_capacity(ids.len());
+        let mut hashes = Vec::new();
+        let mut blob_hashes = Vec::new();
+        {
+            let mut blobs = tx.prepare_cached(
+                "SELECT blob_hash FROM clip_formats WHERE clip_id = ?1 AND blob_hash IS NOT NULL",
+            )?;
+            let mut delete =
+                tx.prepare_cached("DELETE FROM clips WHERE id = ?1 RETURNING content_hash")?;
+            for &id in ids {
+                let clip_blobs = blobs
+                    .query_map([id], |row| row.get::<_, String>(0))?
+                    .collect::<Result<Vec<_>, _>>()?;
+                let Some(hash) = delete
+                    .query_row([id], |row| row.get::<_, String>(0))
+                    .optional()?
+                else {
+                    continue;
+                };
+                deleted.push(id);
+                hashes.push(hash);
+                blob_hashes.extend(clip_blobs);
+            }
+        }
+        tx.commit()?;
+        remove_unreferenced_blobs(&conn, &self.blobs, blob_hashes)?;
+        drop(conn);
+
+        // Content hashes are unique, so no other clip uses these thumbnails.
+        for hash in hashes {
+            if blobs::check_hash(&hash).is_err() {
+                continue;
+            }
+            match fs::remove_file(thumbs::thumbnail_path(&self.thumbs_dir, &hash)) {
+                Err(e) if e.kind() != io::ErrorKind::NotFound => return Err(e.into()),
+                _ => {}
+            }
+        }
+        Ok(deleted)
+    }
+
     pub fn get_clip(&self, id: i64) -> StorageResult<Option<Clip>> {
         self.with_reader(|conn| {
             let row = conn
@@ -292,6 +338,16 @@ impl Store {
                 .transpose()
                 .map_err(|e| StorageError::Corrupt(format!("metadata of clip {id}: {e}")))?;
             Ok(Some(clip))
+        })
+    }
+
+    /// The clip with this content hash, if there is one.
+    pub fn clip_id_by_hash(&self, content_hash: &str) -> StorageResult<Option<i64>> {
+        self.with_reader(|conn| {
+            Ok(conn
+                .prepare_cached("SELECT id FROM clips WHERE content_hash = ?1")?
+                .query_row([content_hash], |row| row.get(0))
+                .optional()?)
         })
     }
 

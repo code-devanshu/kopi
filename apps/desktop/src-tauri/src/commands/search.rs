@@ -96,6 +96,13 @@ pub struct ClipMetadata {
     pub lang: Option<String>,
 }
 
+impl ClipMetadata {
+    /// Metadata Kopi wrote itself. Anything it can't read is left out.
+    pub fn parse(value: Option<serde_json::Value>) -> Option<Self> {
+        value.and_then(|m| serde_json::from_value(m).ok())
+    }
+}
+
 /// A run of snippet text. `matched` runs are what the search found.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Type)]
 pub struct Span {
@@ -132,8 +139,7 @@ impl From<search::SearchHit> for SearchHit {
             source_app_id: hit.source_app_id,
             last_used_at: hit.last_used_at,
             pinned: hit.pinned,
-            // Metadata Kopi wrote itself; anything it can't read is left out.
-            metadata: hit.metadata.and_then(|m| serde_json::from_value(m).ok()),
+            metadata: ClipMetadata::parse(hit.metadata),
             snippet: hit
                 .snippet
                 .into_iter()

@@ -1,5 +1,6 @@
 //! Tauri commands. They stay thin and call into `kopi-core`.
 
+pub mod clips;
 pub mod search;
 
 use serde::Serialize;
@@ -60,4 +61,11 @@ pub fn set_launch_at_login(app: AppHandle, enabled: bool) -> Result<(), String> 
         autostart.disable()
     };
     result.map_err(|e| e.to_string())
+}
+
+/// Hides the panel: Esc, or after a paste.
+#[tauri::command]
+#[specta::specta]
+pub fn hide_panel(app: AppHandle) {
+    crate::panel::hide(&app);
 }
