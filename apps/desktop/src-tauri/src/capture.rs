@@ -12,6 +12,7 @@ use tauri::AppHandle;
 pub fn start(app: &AppHandle, store: Arc<Store>) -> Result<(), Box<dyn std::error::Error>> {
     use kopi_core::classifier::{self, Saved};
     use kopi_core::privacy::{PrivacyFilter, PrivacySettings};
+    use kopi_core::retention::Retention;
     use kopi_core::storage::Platform;
     use kopi_core::watcher::{WatchEvent, Watcher, WatcherConfig, WatcherDeps};
     use kopi_platform::macos::{MacForegroundApp, MacPasteboard, MacUserIdle};
@@ -37,6 +38,7 @@ pub fn start(app: &AppHandle, store: Arc<Store>) -> Result<(), Box<dyn std::erro
         match classifier::save(&store, &saver, capture) {
             Ok(Saved::Stored { clip, .. }) if clip.inserted => {
                 let _ = ClipAdded { id: clip.id }.emit(&handle);
+                handle.state::<Retention>().clips_added();
             }
             Ok(Saved::Stored { clip, .. }) => {
                 let _ = ClipUpdated { id: clip.id }.emit(&handle);

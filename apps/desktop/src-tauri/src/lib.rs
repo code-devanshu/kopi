@@ -10,6 +10,7 @@ mod tray;
 
 use std::sync::Arc;
 
+use kopi_core::retention::{self, Retention};
 use kopi_core::storage::Store;
 use tauri::{Manager, WindowEvent};
 use tauri_plugin_autostart::MacosLauncher;
@@ -27,6 +28,9 @@ pub fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::clips::get_clip,
             commands::clips::delete_clips,
             commands::clips::source_apps,
+            commands::history::history_limits,
+            commands::history::set_history_limits,
+            commands::history::clear_history,
             commands::paste::paste_clip,
             commands::paste::copy_clip,
             commands::pinboards::set_pinned,
@@ -94,6 +98,23 @@ pub fn run() {
             )?;
             let store = Arc::new(store);
             app.manage(Arc::clone(&store));
+
+            // Sweeps orphan files and applies the history limits now, then again as clips
+            // arrive. Before capture starts, which tells it about new clips.
+            let handle = app.handle().clone();
+            let retention = Retention::spawn(
+                Arc::clone(&store),
+                retention::INTERVAL,
+                Box::new(move |result| match result {
+                    Ok(ids) if ids.is_empty() => {}
+                    Ok(ids) => {
+                        let _ = events::ClipsRemoved { ids }.emit(&handle);
+                    }
+                    // Storage errors name the database or a file, never clip content.
+                    Err(error) => eprintln!("kopi: retention failed: {error}"),
+                }),
+            )?;
+            app.manage(retention);
 
             // No Dock icon or app switcher entry. Info.plist sets LSUIElement for bundled
             // builds; this covers `tauri dev`.

@@ -1,6 +1,7 @@
 //! Tauri commands. They stay thin and call into `kopi-core`.
 
 pub mod clips;
+pub mod history;
 pub mod paste;
 pub mod pinboards;
 pub mod search;

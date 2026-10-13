@@ -20,6 +20,10 @@ impl BlobStore {
         Self { root }
     }
 
+    pub(crate) fn root(&self) -> &Path {
+        &self.root
+    }
+
     /// The file for `hash`. Fails if `hash` isn't 64 lowercase hex characters, so a hash from
     /// a URL can't point outside the folder.
     pub fn path(&self, hash: &str) -> StorageResult<PathBuf> {

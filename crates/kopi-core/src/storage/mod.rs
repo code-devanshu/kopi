@@ -14,6 +14,8 @@ mod blobs;
 mod migrate;
 mod model;
 mod pinboards;
+mod retention;
+mod settings;
 mod thumbs;
 
 use std::fs;
@@ -30,6 +32,7 @@ pub use model::{
     Clip, ClipFormat, ClipKind, ExcludedApp, NewClip, NewFormat, Pinboard, Platform, Upserted,
 };
 pub use pinboards::{KEPT, MAX_PINBOARD_NAME_CHARS};
+pub use retention::{DEFAULT_MAX_TOTAL_BYTES, Limits};
 pub use thumbs::{THUMBNAIL_SIZE, ThumbnailDone, ThumbnailListener};
 
 use thumbs::{Source, SourceFormat, Thumbnailer};
@@ -266,45 +269,9 @@ impl Store {
     pub fn delete_clips(&self, ids: &[i64]) -> StorageResult<Vec<i64>> {
         let mut conn = self.writer();
         let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
-        let mut deleted = Vec::with_capacity(ids.len());
-        let mut hashes = Vec::new();
-        let mut blob_hashes = Vec::new();
-        {
-            let mut blobs = tx.prepare_cached(
-                "SELECT blob_hash FROM clip_formats WHERE clip_id = ?1 AND blob_hash IS NOT NULL",
-            )?;
-            let mut delete =
-                tx.prepare_cached("DELETE FROM clips WHERE id = ?1 RETURNING content_hash")?;
-            for &id in ids {
-                let clip_blobs = blobs
-                    .query_map([id], |row| row.get::<_, String>(0))?
-                    .collect::<Result<Vec<_>, _>>()?;
-                let Some(hash) = delete
-                    .query_row([id], |row| row.get::<_, String>(0))
-                    .optional()?
-                else {
-                    continue;
-                };
-                deleted.push(id);
-                hashes.push(hash);
-                blob_hashes.extend(clip_blobs);
-            }
-        }
+        let removed = delete_in(&tx, ids.iter().copied())?;
         tx.commit()?;
-        remove_unreferenced_blobs(&conn, &self.blobs, blob_hashes)?;
-        drop(conn);
-
-        // Content hashes are unique, so no other clip uses these thumbnails.
-        for hash in hashes {
-            if blobs::check_hash(&hash).is_err() {
-                continue;
-            }
-            match fs::remove_file(thumbs::thumbnail_path(&self.thumbs_dir, &hash)) {
-                Err(e) if e.kind() != io::ErrorKind::NotFound => return Err(e.into()),
-                _ => {}
-            }
-        }
-        Ok(deleted)
+        self.remove_files(conn, removed)
     }
 
     pub fn get_clip(&self, id: i64) -> StorageResult<Option<Clip>> {
@@ -507,6 +474,29 @@ impl Store {
         self.writer.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
+    /// Removes the files of clips deleted by a committed transaction, and returns their ids.
+    /// Blob files go first, with the writer still held, then the thumbnails without it.
+    fn remove_files(
+        &self,
+        conn: MutexGuard<'_, Connection>,
+        removed: Removed,
+    ) -> StorageResult<Vec<i64>> {
+        remove_unreferenced_blobs(&conn, &self.blobs, removed.blob_hashes)?;
+        drop(conn);
+
+        // Content hashes are unique, so no other clip uses these thumbnails.
+        for hash in removed.content_hashes {
+            if blobs::check_hash(&hash).is_err() {
+                continue;
+            }
+            match fs::remove_file(thumbs::thumbnail_path(&self.thumbs_dir, &hash)) {
+                Err(e) if e.kind() != io::ErrorKind::NotFound => return Err(e.into()),
+                _ => {}
+            }
+        }
+        Ok(removed.ids)
+    }
+
     /// Queues the best source (PNG, then TIFF, then DIB). Returns `false` if there's none.
     fn queue_thumbnail(
         &self,
@@ -547,6 +537,47 @@ fn open_reader(path: &Path) -> StorageResult<Connection> {
     let conn = Connection::open_with_flags(path, flags)?;
     conn.busy_timeout(Duration::from_secs(5))?;
     Ok(conn)
+}
+
+/// Clips deleted in a transaction, and the files to remove once it commits.
+#[derive(Default)]
+struct Removed {
+    ids: Vec<i64>,
+    content_hashes: Vec<String>,
+    blob_hashes: Vec<String>,
+}
+
+impl Removed {
+    fn extend(&mut self, other: Removed) {
+        self.ids.extend(other.ids);
+        self.content_hashes.extend(other.content_hashes);
+        self.blob_hashes.extend(other.blob_hashes);
+    }
+}
+
+/// Deletes clips in `tx`, skipping ids that don't exist. Their formats, pinboard places and
+/// search entries go with them. The files are left for [`Store::remove_files`].
+fn delete_in(tx: &Connection, ids: impl IntoIterator<Item = i64>) -> StorageResult<Removed> {
+    let mut removed = Removed::default();
+    let mut blobs = tx.prepare_cached(
+        "SELECT blob_hash FROM clip_formats WHERE clip_id = ?1 AND blob_hash IS NOT NULL",
+    )?;
+    let mut delete = tx.prepare_cached("DELETE FROM clips WHERE id = ?1 RETURNING content_hash")?;
+    for id in ids {
+        let clip_blobs = blobs
+            .query_map([id], |row| row.get::<_, String>(0))?
+            .collect::<Result<Vec<_>, _>>()?;
+        let Some(hash) = delete
+            .query_row([id], |row| row.get::<_, String>(0))
+            .optional()?
+        else {
+            continue;
+        };
+        removed.ids.push(id);
+        removed.content_hashes.push(hash);
+        removed.blob_hashes.extend(clip_blobs);
+    }
+    Ok(removed)
 }
 
 /// Deletes the blob files in `hashes` that no row references any more. Call it after the
