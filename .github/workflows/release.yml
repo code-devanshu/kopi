@@ -2,6 +2,7 @@ name: Release
 
 # Builds a universal macOS .dmg. A version tag (v0.1.0, or v0.1.0-alpha.1 for a prerelease)
 # attaches it to a draft GitHub Release. A manual run only keeps it as a workflow artifact.
+# Releases are signed with a self-signed certificate and aren't notarized.
 # See docs/RELEASING.md.
 
 on:
@@ -68,38 +69,54 @@ jobs:
           echo "name=$name" >> "$GITHUB_OUTPUT"
           echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
 
-      - name: Build
-        id: build
+      # Kopi isn't in the Apple Developer Program, so it's signed with a self-signed certificate
+      # and isn't notarized. The certificate gives every build the same designated requirement,
+      # which macOS ties permissions to, so testers keep them across updates.
+      - name: Import the signing certificate
+        id: signing
         env:
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          SIGNING_CERTIFICATE: ${{ secrets.SIGNING_CERTIFICATE }}
+          SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.SIGNING_CERTIFICATE_PASSWORD }}
         run: |
-          # A secret that isn't set comes through empty. Unset it, so Tauri doesn't try to use it.
-          for name in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY \
-            APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; do
-            [ -n "${!name}" ] || unset "$name"
-          done
-
-          # Without a certificate, Tauri signs ad hoc ("-" in tauri.conf.json).
-          if [ -n "${APPLE_CERTIFICATE:-}" ] && [ -n "${APPLE_SIGNING_IDENTITY:-}" ]; then
-            if [ -n "${APPLE_ID:-}" ] && [ -n "${APPLE_PASSWORD:-}" ] && [ -n "${APPLE_TEAM_ID:-}" ]; then
-              signing=notarized
-            else
-              signing=developer-id
-              echo "::warning::Signing with Developer ID without notarization. Set APPLE_ID, APPLE_PASSWORD and APPLE_TEAM_ID to notarize."
+          if [ -z "$SIGNING_CERTIFICATE" ]; then
+            if [ "$GITHUB_REF_TYPE" = tag ]; then
+              echo "::error::A release needs the SIGNING_CERTIFICATE secret, or testers lose their permissions on every update."
+              exit 1
             fi
-          elif [ -n "${APPLE_CERTIFICATE:-}${APPLE_SIGNING_IDENTITY:-}" ]; then
-            echo "::error::Developer ID signing needs both APPLE_CERTIFICATE and APPLE_SIGNING_IDENTITY."
-            exit 1
-          else
-            signing=ad-hoc
-            echo "::warning::No signing certificate, so this build is signed ad hoc. Testers have to approve it in System Settings."
+            echo "::warning::No signing certificate, so this build is signed ad hoc. Testers lose their permissions when they update to it."
+            echo "signing=ad-hoc" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
-          echo "signing=$signing" >> "$GITHUB_OUTPUT"
+
+          # Tauri's own APPLE_CERTIFICATE import only finds Apple-issued certificates, so import it
+          # here. codesign finds the identity through the keychain search list.
+          keychain=$RUNNER_TEMP/signing.keychain-db
+          password=$(openssl rand -hex 16)
+          security create-keychain -p "$password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$password" "$keychain"
+          base64 --decode <<< "$SIGNING_CERTIFICATE" > "$RUNNER_TEMP/signing.p12"
+          security import "$RUNNER_TEMP/signing.p12" -k "$keychain" \
+            -P "$SIGNING_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          rm "$RUNNER_TEMP/signing.p12"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$password" "$keychain" > /dev/null
+          security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
+
+          # The certificate isn't trusted, so it isn't a "valid" identity, but codesign still uses it.
+          identity=$(security find-identity -p codesigning "$keychain" | grep -m1 -oE '[0-9A-F]{40}' || true)
+          if [ -z "$identity" ]; then
+            echo "::error::SIGNING_CERTIFICATE has no code-signing identity."
+            exit 1
+          fi
+          echo "identity=$identity" >> "$GITHUB_OUTPUT"
+          echo "signing=self-signed" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ steps.signing.outputs.identity }}
+        run: |
+          # Without an identity, Tauri signs ad hoc ("-" in tauri.conf.json).
+          [ -n "$APPLE_SIGNING_IDENTITY" ] || unset APPLE_SIGNING_IDENTITY
 
           # CFBundleVersion goes up with every run, so each build is newer than the last to macOS.
           pnpm --filter @kopi/desktop tauri build --target universal-apple-darwin --bundles dmg \
@@ -108,7 +125,8 @@ jobs:
       - name: Check the build
         id: check
         env:
-          SIGNING: ${{ steps.build.outputs.signing }}
+          SIGNING: ${{ steps.signing.outputs.signing }}
+          IDENTITY: ${{ steps.signing.outputs.identity }}
           NAME: ${{ steps.version.outputs.name }}
         run: |
           mkdir dist
@@ -128,9 +146,13 @@ jobs:
             exit 1
           fi
           codesign --verify --deep --strict --verbose=2 "$app"
-          if [ "$SIGNING" = notarized ]; then
-            xcrun stapler validate "$app"
-            spctl --assess --type execute --verbose=2 "$app"
+          requirement=$(codesign -d -r- "$app" 2>&1 | sed -n 's/^designated => //p')
+          echo "Designated requirement: $requirement"
+          # Permissions follow the designated requirement, so it has to name the certificate.
+          if [ "$SIGNING" = self-signed ] \
+            && [[ "$requirement" != *"certificate leaf = H\"$(tr A-F a-f <<< "$IDENTITY")\""* ]]; then
+            echo "::error::The designated requirement doesn't name the signing certificate."
+            exit 1
           fi
 
           (cd dist && shasum -a 256 "$(basename "$dmg")" > "$(basename "$dmg").sha256")
@@ -140,6 +162,7 @@ jobs:
             echo "### Kopi $NAME"
             echo
             echo "- Signing: **$SIGNING**"
+            echo "- Designated requirement: \`$requirement\`"
             echo "- SHA-256: \`$(cut -d' ' -f1 "$dmg.sha256")\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -156,7 +179,6 @@ jobs:
           TAG: ${{ github.ref_name }}
           NAME: ${{ steps.version.outputs.name }}
           PRERELEASE: ${{ steps.version.outputs.prerelease }}
-          SIGNING: ${{ steps.build.outputs.signing }}
           DMG: ${{ steps.check.outputs.dmg }}
         run: |
           # A rerun replaces the files on the release the first run made.
@@ -169,12 +191,8 @@ jobs:
           {
             echo "Download \`$(basename "$DMG")\`. It runs on Apple silicon and Intel Macs with macOS 14 or later."
             echo
-            if [ "$SIGNING" = notarized ]; then
-              echo "This build is signed and notarized. See [installing Kopi]($install) for the permissions it needs."
-            else
-              echo "> [!IMPORTANT]"
-              echo "> This build isn't notarized, so macOS blocks it the first time. [Installing Kopi]($install) shows how to open it and allow its permissions."
-            fi
+            echo "> [!IMPORTANT]"
+            echo "> Kopi isn't notarized by Apple, so macOS blocks it the first time you open it. [Installing Kopi]($install) shows how to open it and allow its permissions."
           } > notes.md
 
           flags=(--draft --verify-tag --title "Kopi $NAME" --notes-file notes.md --generate-notes)

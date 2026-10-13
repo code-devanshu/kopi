@@ -6,7 +6,7 @@ The alpha needs **macOS 14 Sonoma or later**, on Apple silicon or Intel. There's
 
 ## 1. Download
 
-Download `Kopi_<version>_universal.dmg` from the [releases page](https://github.com/code-devanshu/kopi/releases). The release notes say whether the build is **notarized** (checked by Apple) or not. That changes step 3.
+Download `Kopi_<version>_universal.dmg` from the [releases page](https://github.com/code-devanshu/kopi/releases).
 
 To check the download isn't damaged, also download the `.sha256` file next to it and run this in Terminal, in the folder that has both:
 
@@ -26,9 +26,7 @@ Keep Kopi in Applications. Launch at login points to where the app is, so it sto
 
 ## 3. Open it the first time
 
-**A notarized build:** open Kopi from Applications. macOS asks if you're sure you want to open an app downloaded from the internet. Click **Open**.
-
-**A build that isn't notarized:** macOS blocks it the first time, because Apple hasn't checked it.
+Kopi isn't notarized by Apple, so macOS blocks it the first time. Kopi is open source and free, and notarization needs a paid Apple developer account.
 
 - **macOS 15 Sequoia and later:**
   1. Open Kopi from Applications. macOS says "Kopi" wasn't opened. Click **Done**.
@@ -37,7 +35,7 @@ Keep Kopi in Applications. Launch at login points to where the app is, so it sto
   4. Click **Open Anyway** again in the dialog that follows.
 - **macOS 14 Sonoma:** Control-click Kopi in Applications, choose **Open**, then click **Open**.
 
-You only do this once per build.
+You do this once for each build you download.
 
 ## 4. Set it up
 
@@ -70,7 +68,7 @@ Press **⇧⌘V** in any app to open Kopi. You can choose another shortcut in th
 1. Quit Kopi from its menu bar menu.
 2. Install the new build as in steps 1 to 3, and replace the old one in Applications.
 
-**Builds that aren't notarized lose their permissions on every update.** macOS ties permissions to the app's signature, and each of these builds has a new one. System Settings may still show Kopi as allowed, but it won't work. To fix it:
+Kopi should keep its permissions across updates. If Kopi stops pasting or stops saving what you copy after an update, even though System Settings shows it as allowed:
 
 1. In **System Settings → Privacy & Security → Accessibility**, select **Kopi** and click **−** to remove it.
 2. Open **Set Up Kopi…** from the menu bar and allow it again.
@@ -81,7 +79,7 @@ Or reset all of Kopi's permissions at once in Terminal, then allow them again:
 tccutil reset All in.devanshuverma.kopi
 ```
 
-Notarized builds should keep their permissions across updates. The first notarized build after builds that weren't notarized still needs them allowed once more.
+You'll need to do this once if you used a build from before the first alpha release.
 
 ## Removing Kopi
 
