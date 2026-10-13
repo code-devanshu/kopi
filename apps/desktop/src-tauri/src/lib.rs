@@ -4,6 +4,7 @@ mod capture;
 mod commands;
 mod events;
 mod hotkeys;
+mod onboarding;
 mod panel;
 mod protocol;
 mod settings_window;
@@ -45,6 +46,8 @@ pub fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::settings::request_permission,
             commands::settings::open_permission_settings,
             commands::settings::open_settings,
+            commands::onboarding::finish_onboarding,
+            commands::onboarding::open_privacy_design,
             commands::paste::paste_clip,
             commands::paste::copy_clip,
             commands::pinboards::set_pinned,
@@ -140,21 +143,30 @@ pub fn run() {
             panel::create(app.handle())?;
             commands::paste::manage_engine(app.handle());
             hotkeys::register(app.handle(), &store);
-            capture::start(app.handle(), store)?;
+            capture::start(app.handle(), Arc::clone(&store))?;
             tray::create(app.handle())?;
+            onboarding::open_on_first_run(app.handle(), &store);
             Ok(())
         })
         .on_window_event(|window, event| {
-            if window.label() == settings_window::SETTINGS {
-                // Closed while recording a shortcut. Off the main thread: the shortcut plugin
-                // waits for it.
-                if let WindowEvent::Destroyed = event {
-                    let app = window.app_handle().clone();
-                    tauri::async_runtime::spawn_blocking(move || hotkeys::suspend(&app, false));
+            let label = window.label();
+            if label == settings_window::SETTINGS || label == onboarding::ONBOARDING {
+                match event {
+                    // Closing onboarding counts as finishing it.
+                    WindowEvent::CloseRequested { .. } if label == onboarding::ONBOARDING => {
+                        onboarding::mark_done(window.app_handle());
+                    }
+                    // Closed while recording a shortcut. Off the main thread: the shortcut
+                    // plugin waits for it.
+                    WindowEvent::Destroyed => {
+                        let app = window.app_handle().clone();
+                        tauri::async_runtime::spawn_blocking(move || hotkeys::suspend(&app, false));
+                    }
+                    _ => {}
                 }
                 return;
             }
-            if window.label() != panel::PANEL {
+            if label != panel::PANEL {
                 return;
             }
             match event {

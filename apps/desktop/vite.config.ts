@@ -22,11 +22,12 @@ export default defineConfig({
     target: "safari17",
     minify: !process.env.TAURI_ENV_DEBUG,
     sourcemap: !!process.env.TAURI_ENV_DEBUG,
-    // A page per window: the panel, and Settings.
+    // A page per window: the panel, Settings and onboarding.
     rolldownOptions: {
       input: {
         panel: resolve(import.meta.dirname, "index.html"),
         settings: resolve(import.meta.dirname, "settings.html"),
+        onboarding: resolve(import.meta.dirname, "onboarding.html"),
       },
     },
   },

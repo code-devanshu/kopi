@@ -78,6 +78,10 @@ export const commands = {
 	openPermissionSettings: (permission: Permission) => __TAURI_INVOKE<void>("open_permission_settings", { permission }),
 	/**  Opens the Settings window. */
 	openSettings: () => typedError<null, string>(__TAURI_INVOKE("open_settings")),
+	/**  Saves that onboarding is done and closes it. With `open_panel`, shows the panel after. */
+	finishOnboarding: (openPanel: boolean) => typedError<null, string>(__TAURI_INVOKE("finish_onboarding", { openPanel })),
+	/**  Opens Kopi's privacy design in the browser. */
+	openPrivacyDesign: () => typedError<null, string>(__TAURI_INVOKE("open_privacy_design")),
 	/**
 	 *  Pastes a clip into the app in front, or only copies it while Accessibility isn't granted.
 	 *  `plain` pastes only its plain text.

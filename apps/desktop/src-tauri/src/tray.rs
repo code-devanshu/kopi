@@ -8,6 +8,7 @@ use crate::commands::history::{self, ClearRange};
 
 const OPEN: &str = "open";
 const SETTINGS: &str = "settings";
+const ONBOARDING: &str = "onboarding";
 const CLEAR_HOUR: &str = "clear-hour";
 const CLEAR_DAY: &str = "clear-day";
 const QUIT: &str = "quit";
@@ -17,6 +18,7 @@ pub fn create(app: &AppHandle) -> tauri::Result<()> {
     let settings = MenuItemBuilder::with_id(SETTINGS, "Settings…")
         .accelerator("CmdOrCtrl+,")
         .build(app)?;
+    let onboarding = MenuItemBuilder::with_id(ONBOARDING, "Set Up Kopi…").build(app)?;
     let quit = MenuItemBuilder::with_id(QUIT, "Quit Kopi")
         .accelerator("CmdOrCtrl+Q")
         .build(app)?;
@@ -36,6 +38,7 @@ pub fn create(app: &AppHandle) -> tauri::Result<()> {
         .item(&clear)
         .separator()
         .item(&settings)
+        .item(&onboarding)
         .separator()
         .item(&quit)
         .build()?;
@@ -51,6 +54,11 @@ pub fn create(app: &AppHandle) -> tauri::Result<()> {
             SETTINGS => {
                 if let Err(error) = crate::settings_window::open(app) {
                     eprintln!("kopi: couldn't open Settings: {error}");
+                }
+            }
+            ONBOARDING => {
+                if let Err(error) = crate::onboarding::open(app) {
+                    eprintln!("kopi: couldn't open onboarding: {error}");
                 }
             }
             CLEAR_HOUR => clear_recent(app, ClearRange::LastHour),

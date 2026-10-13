@@ -14,6 +14,7 @@ use crate::storage::{ClipKind, StorageResult, Store};
 const SHORTCUT: &str = "shortcut";
 const CAPTURE_KINDS: &str = "capture.kinds";
 const THEME: &str = "appearance.theme";
+const ONBOARDED: &str = "onboarding.done";
 
 /// The app's color scheme.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -84,6 +85,18 @@ impl Store {
     pub fn set_theme(&self, theme: Theme) -> StorageResult<()> {
         self.set_settings(&[(THEME, Value::from(theme.as_str()))])
     }
+
+    /// Whether the user has finished or closed onboarding. Until then it opens at launch.
+    pub fn onboarded(&self) -> StorageResult<bool> {
+        Ok(self
+            .setting(ONBOARDED)?
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false))
+    }
+
+    pub fn set_onboarded(&self, done: bool) -> StorageResult<()> {
+        self.set_settings(&[(ONBOARDED, Value::from(done))])
+    }
 }
 
 #[cfg(test)]
@@ -102,6 +115,7 @@ mod tests {
         assert_eq!(store.shortcut().unwrap(), None);
         assert_eq!(store.capture_kinds().unwrap(), KindSet::ALL);
         assert_eq!(store.theme().unwrap(), Theme::System);
+        assert!(!store.onboarded().unwrap());
     }
 
     #[test]
@@ -122,6 +136,9 @@ mod tests {
             store.set_theme(theme).unwrap();
             assert_eq!(store.theme().unwrap(), theme);
         }
+
+        store.set_onboarded(true).unwrap();
+        assert!(store.onboarded().unwrap());
     }
 
     #[test]
@@ -132,11 +149,13 @@ mod tests {
                 (SHORTCUT, Value::from(3)),
                 (CAPTURE_KINDS, Value::from("text")),
                 (THEME, Value::from("sepia")),
+                (ONBOARDED, Value::from("yes")),
             ])
             .unwrap();
         assert_eq!(store.shortcut().unwrap(), None);
         assert_eq!(store.capture_kinds().unwrap(), KindSet::ALL);
         assert_eq!(store.theme().unwrap(), Theme::System);
+        assert!(!store.onboarded().unwrap());
 
         store
             .set_settings(&[(CAPTURE_KINDS, serde_json::json!(["link", "hologram", 7]))])

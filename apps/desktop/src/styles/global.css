@@ -14,6 +14,7 @@
   --accent: #d08a3a;
   --accent-text: #93561a;
   --accent-soft: #f6e4cc;
+  --accent-foreground: #22160e;
   --mark: rgb(208 138 58 / 0.28);
   --mark-selected: rgb(208 138 58 / 0.45);
   --danger: #b4412f;
@@ -35,6 +36,7 @@
     --accent: #d8954a;
     --accent-text: #e8ae6b;
     --accent-soft: #3a2918;
+    --accent-foreground: #1a110b;
     --mark: rgb(216 149 74 / 0.32);
     --mark-selected: rgb(216 149 74 / 0.5);
     --danger: #f08a77;
@@ -53,6 +55,7 @@
   --accent: #d8954a;
   --accent-text: #e8ae6b;
   --accent-soft: #3a2918;
+  --accent-foreground: #1a110b;
   --mark: rgb(216 149 74 / 0.32);
   --mark-selected: rgb(216 149 74 / 0.5);
   --danger: #f08a77;
@@ -127,6 +130,16 @@ input[type="checkbox"] {
 .button:disabled {
   opacity: 0.5;
   cursor: default;
+}
+
+.button.primary {
+  border-color: transparent;
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.button.primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 88%, var(--foreground));
 }
 
 .button.danger {
@@ -1247,7 +1260,15 @@ mark {
   box-shadow: 0 0 0 2px var(--accent-soft);
 }
 
-.shortcut-field kbd {
+.keys {
+  display: inline-flex;
+  gap: 3px;
+  margin: 0 2px;
+  vertical-align: 1px;
+  font-size: 12px;
+}
+
+:is(.shortcut-field, .keys) kbd {
   min-width: 20px;
   height: 20px;
   padding: 0 5px;
@@ -1366,6 +1387,123 @@ mark {
 
 .confirm .button-row {
   justify-content: flex-end;
+}
+
+/* Onboarding window */
+
+.onboarding {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  height: 100%;
+  background: var(--background);
+}
+
+.onboarding-step {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 0;
+  padding: 36px 40px 24px;
+  overflow-y: auto;
+}
+
+.onboarding-icon {
+  width: 64px;
+  height: 64px;
+  margin: -6px 0 -2px -4px;
+}
+
+.onboarding-title {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  outline: 0;
+}
+
+.onboarding-lead {
+  max-width: 54ch;
+  margin-top: -8px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--muted-foreground);
+}
+
+.onboarding-text,
+.onboarding-note {
+  max-width: 58ch;
+  line-height: 1.5;
+}
+
+.onboarding-note {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: 12.5px;
+}
+
+.onboarding-points {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.onboarding-point {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.onboarding-point-icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+.onboarding-point p {
+  padding-top: 5px;
+  line-height: 1.45;
+}
+
+.onboarding-link {
+  align-self: flex-start;
+  padding: 0;
+}
+
+.onboarding-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface-muted) 55%, var(--background));
+}
+
+.onboarding-progress {
+  display: flex;
+  gap: 6px;
+}
+
+.onboarding-progress span {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--foreground) 18%, transparent);
+  transition: width 160ms ease-out;
+}
+
+.onboarding-progress span.current {
+  width: 18px;
+  background: var(--accent);
 }
 
 @media (prefers-reduced-motion: reduce) {
