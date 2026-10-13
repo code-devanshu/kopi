@@ -117,6 +117,9 @@ fn on_main(app: &AppHandle, f: impl FnOnce(&AppHandle) + Send + 'static) {
 }
 
 #[cfg(target_os = "macos")]
+pub(crate) use platform::place;
+
+#[cfg(target_os = "macos")]
 mod platform {
     use objc2::MainThreadMarker;
     use objc2_app_kit::{NSApplication, NSEvent, NSScreen, NSWindow};
@@ -177,7 +180,7 @@ mod platform {
         };
         let window: &NSWindow = panel.as_panel();
         if !panel.is_visible() {
-            place(mtm, window);
+            place(mtm, window, 0.6);
         }
         // Not Tauri's set_focus(): that activates Kopi and takes the menu bar from the app the
         // user was in. This makes the panel key without activating, and focuses the webview.
@@ -210,8 +213,9 @@ mod platform {
         MainThreadMarker::new().is_some()
     }
 
-    /// Centers the panel across the screen with the pointer, a little above the middle.
-    fn place(mtm: MainThreadMarker, window: &NSWindow) {
+    /// Centers a window across the screen with the pointer. `rise` is how much of the spare
+    /// height goes below it: 0.5 is the middle, 0.6 a little above.
+    pub fn place(mtm: MainThreadMarker, window: &NSWindow, rise: f64) {
         let pointer = NSEvent::mouseLocation();
         let screens = NSScreen::screens(mtm);
         let screen = screens
@@ -229,10 +233,10 @@ mod platform {
         };
         let area = screen.visibleFrame();
         let size = window.frame().size;
-        // Cocoa's y axis points up, so 0.6 of the spare height puts it above the middle.
+        // Cocoa's y axis points up, so more than half the spare height puts it above the middle.
         window.setFrameOrigin(NSPoint::new(
             (area.origin.x + (area.size.width - size.width) / 2.0).round(),
-            (area.origin.y + (area.size.height - size.height) * 0.6).round(),
+            (area.origin.y + (area.size.height - size.height) * rise).round(),
         ));
     }
 }

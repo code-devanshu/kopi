@@ -25,8 +25,6 @@ serde_json.workspace = true
 # macos-private-api: a transparent panel window, for its rounded corners.
 tauri = { version = "2.12", features = ["tray-icon", "image-png", "macos-private-api"] }
 tauri-plugin-autostart = "2.7"
-# Message boxes for updates. The UI can't open them: it gets no plugin permissions.
-tauri-plugin-dialog = "2.8"
 tauri-plugin-global-shortcut = "2.4"
 tauri-plugin-single-instance = "2.5"
 tauri-plugin-updater = "2.13"
@@ -39,22 +37,36 @@ image = { version = "0.25", default-features = false, features = ["png"] }
 tempfile = "3"
 
 [target.'cfg(target_os = "macos")'.dependencies]
+block2 = "0.6"
 objc2 = "0.6"
 objc2-app-kit = { version = "0.3", default-features = false, features = [
     "std",
+    "objc2-core-foundation",
+    "NSAlert",
     "NSApplication",
+    "NSButton",
+    "NSControl",
     "NSEvent",
     "NSPanel",
     "NSResponder",
     "NSScreen",
+    "NSView",
     "NSWindow",
 ] }
 objc2-foundation = { version = "0.3", default-features = false, features = [
     "std",
+    "block2",
     "NSArray",
     "NSGeometry",
+    "NSObjCRuntime",
+    "NSRunLoop",
+    "NSString",
 ] }
 tauri-nspanel = "2.1"
+
+[target.'cfg(not(target_os = "macos"))'.dependencies]
+# Message boxes for updates. The UI can't open them: it gets no plugin permissions.
+tauri-plugin-dialog = "2.8"
 
 [lints]
 workspace = true
