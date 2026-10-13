@@ -4,34 +4,58 @@
 
 use std::sync::Arc;
 
-use kopi_core::storage::Store;
-use tauri::AppHandle;
+use kopi_core::privacy::{PrivacyFilter, PrivacySettings};
+use kopi_core::storage::{Platform, StorageResult, Store};
+use tauri::{AppHandle, Manager};
 
-/// Starts watching the clipboard. Only copies made from now on are captured.
-#[cfg(target_os = "macos")]
+/// The platform whose excluded apps apply.
+#[cfg(not(target_os = "windows"))]
+pub const PLATFORM: Platform = Platform::MacOs;
+#[cfg(target_os = "windows")]
+pub const PLATFORM: Platform = Platform::Windows;
+
+/// Sets up the privacy filter from the settings, which Settings then changes through the
+/// app's [`PrivacyFilter`], and starts watching the clipboard. Only copies made from now on
+/// are captured.
 pub fn start(app: &AppHandle, store: Arc<Store>) -> Result<(), Box<dyn std::error::Error>> {
+    let filter = PrivacyFilter::new(PrivacySettings::default());
+    reload(&filter, &store)?;
+    app.manage(filter.clone());
+    watch(app, store, filter)
+}
+
+/// Reads the kinds to capture and the excluded apps into `filter`.
+pub fn reload(filter: &PrivacyFilter, store: &Store) -> StorageResult<()> {
+    let kinds = store.capture_kinds()?;
+    let excluded = store.excluded_apps(PLATFORM)?;
+    filter.update(|settings| {
+        settings.kinds = kinds;
+        settings.set_excluded_apps(excluded.iter().map(|app| &app.app_id));
+    });
+    Ok(())
+}
+
+#[cfg(target_os = "macos")]
+fn watch(
+    app: &AppHandle,
+    store: Arc<Store>,
+    filter: PrivacyFilter,
+) -> Result<(), Box<dyn std::error::Error>> {
     use kopi_core::classifier::{self, Saved};
-    use kopi_core::privacy::{PrivacyFilter, PrivacySettings};
     use kopi_core::retention::Retention;
-    use kopi_core::storage::Platform;
     use kopi_core::watcher::{WatchEvent, Watcher, WatcherConfig, WatcherDeps};
     use kopi_platform::macos::{MacForegroundApp, MacPasteboard, MacUserIdle};
-    use tauri::Manager;
     use tauri_specta::Event;
 
     use crate::events::{ClipAdded, ClipUpdated};
 
-    let mut settings = PrivacySettings::default();
-    let excluded = store.excluded_apps(Platform::MacOs)?;
-    settings.set_excluded_apps(excluded.iter().map(|app| &app.app_id));
-    let filter = PrivacyFilter::new(settings);
     // The listener runs the filter's second stage. Clones share the settings.
     let saver = filter.clone();
     let handle = app.clone();
 
     let listener = move |event: WatchEvent| {
-        // Kopi's own writes are pastes, which already moved their clip to the top. The access
-        // state is for onboarding (#16). Skipped and missed copies were never read.
+        // Kopi's own writes are pastes, which already moved their clip to the top. Settings
+        // asks for the access state itself. Skipped and missed copies were never read.
         let WatchEvent::Copied(capture) = event else {
             return;
         };
@@ -55,25 +79,24 @@ pub fn start(app: &AppHandle, store: Arc<Store>) -> Result<(), Box<dyn std::erro
             idle: Box::new(MacUserIdle),
         },
         WatcherConfig::new(app.config().identifier.clone()),
-        Box::new(filter.clone()),
+        Box::new(filter),
         Box::new(listener),
     )?;
-    app.manage(Capture {
-        _watcher: watcher,
-        _filter: filter,
-    });
+    app.manage(Capture { _watcher: watcher });
     Ok(())
 }
 
 #[cfg(not(target_os = "macos"))]
-pub fn start(_app: &AppHandle, _store: Arc<Store>) -> Result<(), Box<dyn std::error::Error>> {
+fn watch(
+    _app: &AppHandle,
+    _store: Arc<Store>,
+    _filter: PrivacyFilter,
+) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-/// Keeps the watcher running for as long as the app does. The filter is here for pausing and
-/// the excluded apps settings (#16).
+/// Keeps the watcher running for as long as the app does.
 #[cfg(target_os = "macos")]
 struct Capture {
     _watcher: kopi_core::watcher::Watcher,
-    _filter: kopi_core::privacy::PrivacyFilter,
 }

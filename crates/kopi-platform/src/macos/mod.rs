@@ -10,7 +10,7 @@ use std::time::Duration;
 use dispatch2::DispatchQueue;
 use objc2::MainThreadMarker;
 
-pub use apps::{MacForegroundApp, MacUserIdle};
+pub use apps::{MacForegroundApp, MacUserIdle, running_apps};
 pub use keys::{MacKeySender, MacPermissions};
 pub use pasteboard::MacPasteboard;
 

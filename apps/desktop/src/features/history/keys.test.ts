@@ -20,6 +20,7 @@ function key(combo: string): Key {
     K: ["k", "KeyK"],
     "[": ["[", "BracketLeft"],
     "]": ["]", "BracketRight"],
+    ",": [",", "Comma"],
   };
   const [k, code] = codes[name] ?? [name, name];
   return {
@@ -58,6 +59,8 @@ const cases: [string, boolean, Action | null][] = [
   ["Backspace", true, null],
   ["alt+Backspace", true, null],
   ["Escape", true, { type: "hide" }],
+  ["cmd+,", false, { type: "settings" }],
+  ["cmd+alt+,", false, null],
   ["Space", false, { type: "togglePreview" }],
   ["Space", true, null],
   ["shift+Space", false, null],

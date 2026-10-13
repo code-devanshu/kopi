@@ -11,19 +11,28 @@
 //                   when Accessibility isn't granted, which is the case that shows a message.
 //   ?paste=error    makes pasting and copying fail
 //   ?noboards       starts with no pinboards
+//   ?granted        Settings shows every permission granted. Without it, neither is.
+//   ?shortcut=taken makes recording a shortcut fail, as when another app holds it
+//   ?page=history   opens Settings on that page
+// Open /settings.html for the Settings window.
 // In the console, kopiDev.copy("text") adds a clip as a copy would.
 import { emit } from "@tauri-apps/api/event";
 import { mockIPC } from "@tauri-apps/api/mocks";
 import { highlight } from "../features/preview/highlight";
 import type {
+  ClearRange,
   ClipDetail,
   ClipKind,
   ClipMetadata,
+  ExcludedApp,
+  HistoryLimits,
   Pinboard,
   SearchHit,
   SearchPage,
   SearchQuery,
+  Settings,
   SourceApp,
+  Theme,
 } from "../lib/ipc";
 
 type Clip = ClipDetail;
@@ -175,6 +184,33 @@ function markUsed(id: number): void {
   void emit("clip:updated", { id });
 }
 
+// Settings.
+const settings: Settings = {
+  shortcut: "shift+super+KeyV",
+  captureKinds: ["text", "rich_text", "link", "image", "file", "color", "code"],
+  theme: (params.get("theme") as Theme | null) ?? "system",
+};
+let limits: HistoryLimits = { maxItems: null, maxAgeDays: null, maxTotalBytes: 2 * 1024 ** 3 };
+let launchAtLogin = false;
+let excluded: ExcludedApp[] = [
+  { id: "com.1password.1password", name: "1Password", isDefault: true },
+  { id: "com.apple.keychainaccess", name: "Keychain Access", isDefault: true },
+  { id: "com.apple.Passwords", name: "Passwords", isDefault: true },
+];
+const granted = params.has("granted");
+
+function clearHistory(range: ClearRange, keepPinned: boolean): number {
+  const hour = 3_600_000;
+  const since = range === "all" ? -Infinity : Date.now() - (range === "lastHour" ? hour : 24 * hour);
+  const kept = new Set([...items.values()].flat());
+  const ids = clips
+    .filter((c) => c.lastUsedAt >= since && !(keepPinned && (c.pinned || kept.has(c.id))))
+    .map((c) => c.id);
+  clips = clips.filter((c) => !ids.includes(c.id));
+  if (ids.length) void emit("clip:removed", { ids });
+  return ids.length;
+}
+
 function sourceApps(): SourceApp[] {
   const seen = new Map<string, SourceApp>();
   for (const c of [...clips].sort((a, b) => b.lastUsedAt - a.lastUsedAt)) {
@@ -276,11 +312,63 @@ mockIPC(
         return null;
       case "app_info":
         return { version: "dev", os: "macos" };
+      case "get_settings":
+        return settings;
+      case "set_shortcut":
+        if (params.get("shortcut") === "taken") throw `${a.shortcut} is taken by macOS or another app`;
+        settings.shortcut = a.shortcut as string;
+        return settings.shortcut;
+      case "suspend_shortcut":
+        console.info(`kopi: shortcut ${a.suspended ? "suspended" : "resumed"}`);
+        return null;
+      case "set_capture_kinds":
+        settings.captureKinds = a.kinds as ClipKind[];
+        return null;
+      case "set_theme":
+        settings.theme = a.theme as Theme;
+        void emit("theme:changed", { theme: settings.theme });
+        return null;
+      case "launch_at_login":
+        return launchAtLogin;
+      case "set_launch_at_login":
+        launchAtLogin = a.enabled as boolean;
+        return null;
+      case "history_limits":
+        return limits;
+      case "set_history_limits":
+        limits = a.limits as HistoryLimits;
+        return null;
+      case "clear_history":
+        return clearHistory(a.range as ClearRange, a.keepPinned as boolean);
+      case "excluded_apps":
+        return [...excluded].sort((x, y) => x.name.localeCompare(y.name));
+      case "add_excluded_app":
+        if (!excluded.some((e) => e.id.toLowerCase() === (a.id as string).toLowerCase())) {
+          excluded.push({ id: a.id as string, name: a.name as string, isDefault: false });
+        }
+        return null;
+      case "remove_excluded_app":
+        excluded = excluded.filter((e) => e.id.toLowerCase() !== (a.id as string).toLowerCase());
+        return null;
+      case "running_apps":
+        return APPS.slice(0, 5).map(([id, name]) => ({ id, name }));
+      case "permission_status":
+        return { accessibility: granted, pasteFromOtherApps: granted ? "allowed" : "notAsked" };
+      case "request_permission":
+      case "open_permission_settings":
+        console.info(`kopi: ${cmd} ${a.permission}`);
+        return null;
+      case "open_settings":
+        window.open("/settings.html", "_blank");
+        return null;
     }
     throw `mock backend: no command ${cmd}`;
   },
   { shouldMockEvents: true },
 );
+
+const page = params.get("page");
+if (page) sessionStorage.setItem("kopi.settings.page", page);
 
 const preview = params.get("preview");
 if (preview) localStorage.setItem("kopi.preview", preview);
@@ -289,8 +377,10 @@ const theme = params.get("theme");
 if (theme) document.documentElement.dataset.theme = theme;
 
 // A dark page behind the transparent panel, as on a desktop.
-document.documentElement.style.background = "#7a6a5c";
-document.body.style.padding = "0";
+if (!location.pathname.endsWith("/settings.html")) {
+  document.documentElement.style.background = "#7a6a5c";
+  document.body.style.padding = "0";
+}
 
 Object.assign(window, {
   kopiDev: {

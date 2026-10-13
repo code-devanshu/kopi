@@ -84,7 +84,7 @@ pub fn toggle(app: &AppHandle) {
 }
 
 /// Hides the panel shortly after it loses focus, unless another window of Kopi's process has
-/// focus by then (an input method's, say) or the panel was shown again.
+/// focus by then (an input method's, say) or the panel was shown again. Settings doesn't count.
 pub fn focus_changed(app: &AppHandle, focused: bool) {
     if focused {
         return;
@@ -95,7 +95,9 @@ pub fn focus_changed(app: &AppHandle, focused: bool) {
         std::thread::sleep(BLUR_GRACE);
         on_main(&app, move |app| {
             let shown_again = app.state::<Shows>().0.load(Ordering::SeqCst) != shows;
-            if !shown_again && !platform::has_key_window(app) {
+            let kopi_focused =
+                platform::has_key_window(app) && !crate::settings_window::is_focused(app);
+            if !shown_again && !kopi_focused {
                 hide(app);
             }
         });

@@ -5,6 +5,8 @@ use specta::Type;
 use specta_typescript::Number;
 use tauri_specta::Event;
 
+use crate::commands::settings::Theme;
+
 /// A copy added a new clip.
 #[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
 #[tauri_specta(event_name = "clip:added")]
@@ -52,3 +54,10 @@ pub struct PanelShown;
 #[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
 #[tauri_specta(event_name = "panel:hidden")]
 pub struct PanelHidden;
+
+/// The theme setting changed. Every window applies it.
+#[derive(Debug, Clone, Serialize, Type, Event)]
+#[tauri_specta(event_name = "theme:changed")]
+pub struct ThemeChanged {
+    pub theme: Theme,
+}
