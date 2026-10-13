@@ -5,7 +5,7 @@ import { Section, SectionHeader } from "@/components/ui/section";
 import { WaitlistForm } from "@/components/waitlist/waitlist-form";
 
 const perks = [
-  { icon: FlaskConical, text: "Early access to alpha builds on your platform" },
+  { icon: FlaskConical, text: "Early access to the Windows alpha" },
   { icon: Bell, text: "A short note when there's real progress, nothing more" },
   { icon: MessageSquare, text: "A say in what gets built first" },
 ];
@@ -17,8 +17,8 @@ export function WaitlistSection() {
         <div>
           <SectionHeader
             id="waitlist-title"
-            title="Be the first to try Kopi"
-            description="Kopi isn't out yet. Leave your email and tell us whether you'd like to use it, test it or help build it."
+            title="Be the first to try what's next"
+            description="The macOS alpha is out. Leave your email to hear when Windows builds are ready, and tell us whether you'd like to use Kopi, test it or help build it."
           />
           <Reveal delay={0.1}>
             <ul className="mt-8 space-y-4">

@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 
-export const alt = "Kopi: everything you copy, on every computer. Coming soon for macOS and Windows.";
+export const alt = "Kopi: everything you copy, on every computer. Open-source clipboard manager, in alpha on macOS.";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -40,7 +40,7 @@ export default function OpengraphImage() {
               fontSize: 24,
             }}
           >
-            Coming soon
+            macOS alpha
           </div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>

@@ -3,10 +3,13 @@ export const siteConfig = {
   name: "Kopi",
   tagline: "Everything you copy, on every computer.",
   description:
-    "Kopi is an upcoming open-source clipboard manager for macOS and Windows. Unlimited history, instant search, pinboards and end-to-end encrypted sync. Coming soon.",
+    "Kopi is an open-source clipboard manager for macOS, with Windows next. Unlimited history, instant search and pinboards, kept on your computer. The macOS alpha is free to download.",
   url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://kopi.devanshuverma.in",
   links: {
     github: "https://github.com/code-devanshu/kopi",
+    // The releases page, not a file, so it doesn't change with every alpha.
+    releases: "https://github.com/code-devanshu/kopi/releases",
+    install: "https://github.com/code-devanshu/kopi/blob/main/docs/INSTALL_ALPHA.md",
     license: "https://github.com/code-devanshu/kopi/blob/main/LICENSE",
     twitter: "https://x.com/your-handle", // TODO: real X/Twitter profile
     contact: "mailto:code.devanshu@gmail.com", // TODO: real contact address

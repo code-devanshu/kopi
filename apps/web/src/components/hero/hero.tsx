@@ -1,7 +1,7 @@
-import { ArrowRight, Star } from "lucide-react";
+import { Download, Star } from "lucide-react";
 
-import { DownloadButtons } from "@/components/hero/download-buttons";
 import { HeroCardStack } from "@/components/hero/hero-card-stack";
+import { PlatformNote } from "@/components/hero/platform-note";
 import { buttonStyles } from "@/components/ui/button-styles";
 import { Reveal } from "@/components/ui/reveal";
 import { Container } from "@/components/ui/section";
@@ -21,7 +21,7 @@ export function Hero() {
         <div>
           <Reveal>
             <p className="inline-flex rounded-full border border-border bg-surface/70 px-3 py-1 text-xs font-medium text-muted-foreground">
-              Open source · Free · Coming soon
+              Open source · Free · macOS alpha
             </p>
           </Reveal>
 
@@ -39,9 +39,15 @@ export function Hero() {
           </Reveal>
 
           <Reveal delay={0.15} className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <a href="#waitlist" data-track="waitlist_cta_click" data-track-location="hero" className={buttonStyles({ size: "lg" })}>
-              Join the waitlist
-              <ArrowRight className="size-4" aria-hidden="true" />
+            <a
+              href={siteConfig.links.releases}
+              data-track="download_click" data-track-platform="macos" data-track-location="hero"
+              target="_blank"
+              rel="noreferrer"
+              className={buttonStyles({ size: "lg" })}
+            >
+              <Download className="size-4" aria-hidden="true" />
+              Download for macOS
             </a>
             <a
               href={siteConfig.links.github}
@@ -56,7 +62,7 @@ export function Hero() {
           </Reveal>
 
           <Reveal delay={0.2} className="mt-6">
-            <DownloadButtons />
+            <PlatformNote />
           </Reveal>
         </div>
 

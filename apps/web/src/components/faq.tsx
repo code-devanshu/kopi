@@ -13,17 +13,28 @@ const faqs: Array<{ question: string; answer: ReactNode }> = [
   {
     question: "Is Kopi free?",
     answer:
-      "Yes. Kopi is free and open source. You'll be able to download it, read the code, and build it yourself if you prefer.",
+      "Yes. Kopi is free and open source. Download it, read the code, or build it yourself if you prefer.",
   },
   {
-    question: "When does it launch?",
-    answer:
-      "There's no date yet, and we'd rather ship something solid than rush it. The roadmap above shows where things stand. Join the waitlist and we'll let you know when alpha builds are ready.",
+    question: "Can I use it now?",
+    answer: (
+      <>
+        On a Mac, yes. The macOS alpha is on{" "}
+        <a href={siteConfig.links.releases} data-track="download_click" data-track-platform="macos" data-track-location="faq" target="_blank" rel="noreferrer" className="font-medium text-accent-text underline underline-offset-4">
+          GitHub Releases
+        </a>
+        , and Kopi updates itself from there. It&apos;s early, so expect rough edges and tell us what you find. Windows is next:{" "}
+        <a href="#waitlist" data-track="waitlist_cta_click" data-track-location="faq_windows" className="font-medium text-accent-text underline underline-offset-4">
+          join the waitlist
+        </a>{" "}
+        to hear when it&apos;s ready.
+      </>
+    ),
   },
   {
     question: "Which platforms will it support?",
     answer:
-      "macOS and Windows are the focus for 1.0. Encrypted sync between them follows after 1.0. If you'd like to see another platform, start a discussion on GitHub.",
+      "macOS now, with Windows next. Both are the focus for 1.0, and encrypted sync between them follows after 1.0. If you'd like to see another platform, start a discussion on GitHub.",
   },
   {
     question: "Is my data private?",
