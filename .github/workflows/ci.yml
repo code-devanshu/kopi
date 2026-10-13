@@ -66,5 +66,7 @@ jobs:
 
       - run: pnpm --filter @kopi/desktop lint
 
+      - run: pnpm --filter @kopi/desktop test
+
       # Unsigned .app only. Signing and notarization come with the release pipeline (#18).
       - run: pnpm build:desktop

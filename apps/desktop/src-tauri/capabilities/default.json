@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "The main window can call Kopi's own commands and listen for events. It gets no plugin permissions: the UI goes through Kopi's commands only.",
-  "windows": ["main"],
+  "description": "The panel can call Kopi's own commands and listen for events. It gets no plugin permissions: the UI goes through Kopi's commands only.",
+  "windows": ["panel"],
   "permissions": ["core:default"]
 }

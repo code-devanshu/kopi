@@ -1,6 +1,8 @@
 //! `search::search` against a real store.
 
-use kopi_core::search::{MAX_CANDIDATES, SearchHit, SearchPage, SearchQuery, search};
+use kopi_core::search::{
+    MAX_CANDIDATES, SearchHit, SearchPage, SearchQuery, SourceApp, search, source_apps,
+};
 use kopi_core::storage::{ClipKind, NewClip, NewFormat, Platform, Store};
 use rusqlite::{Connection, params};
 
@@ -439,4 +441,38 @@ fn only_the_newest_matches_are_ranked() {
         })),
         [clips[total - 1]]
     );
+}
+
+#[test]
+fn source_apps_most_recent_first() {
+    let f = Fixture::new();
+    assert_eq!(source_apps(&f.store, 10).unwrap(), []);
+
+    f.add(ClipKind::Text, "a", "Mail", 3 * HOUR);
+    f.add(ClipKind::Text, "b", "Notes", 2 * HOUR);
+    f.add(ClipKind::Text, "c", "Mail", HOUR);
+    let unknown = f.add(ClipKind::Text, "d", "Ghost", 0);
+    let conn = Connection::open(f.dir.path().join("kopi.db")).unwrap();
+    conn.execute(
+        "UPDATE clips SET source_app_id = NULL WHERE id = ?1",
+        [unknown],
+    )
+    .unwrap();
+    // The newest clip's name wins when an app's name changed.
+    let renamed = f.add(ClipKind::Text, "e", "Notes", 30 * 60 * 1000);
+    conn.execute(
+        "UPDATE clips SET source_app_name = 'Notes 2' WHERE id = ?1",
+        [renamed],
+    )
+    .unwrap();
+
+    let app = |id: &str, name: &str| SourceApp {
+        id: format!("com.example.{id}"),
+        name: Some(name.to_owned()),
+    };
+    assert_eq!(
+        source_apps(&f.store, 10).unwrap(),
+        [app("Notes", "Notes 2"), app("Mail", "Mail")]
+    );
+    assert_eq!(source_apps(&f.store, 1).unwrap(), [app("Notes", "Notes 2")]);
 }

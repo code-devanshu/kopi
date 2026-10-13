@@ -416,6 +416,91 @@ fn image_clips_get_a_thumbnail_off_the_calling_thread() {
 }
 
 #[test]
+fn deleting_clips_removes_their_rows_files_and_thumbnails() {
+    let dir = tempfile::tempdir().unwrap();
+    let (tx, rx) = mpsc::channel();
+    let store = Store::open_with_listener(
+        dir.path(),
+        Box::new(move |done| {
+            let _ = tx.send(done);
+        }),
+    )
+    .unwrap();
+
+    // Two clips share one blob file.
+    let big = vec![9u8; MAX_INLINE_BYTES + 1];
+    let mut shared = Vec::new();
+    for text in ["first", "second"] {
+        let mut clip = text_clip(text, "Pages");
+        clip.kind = ClipKind::RichText;
+        clip.content_hash = hash(ClipKind::RichText, text.as_bytes());
+        clip.formats = vec![format(0, "public.html", big.clone())];
+        shared.push(store.upsert_clip(clip).unwrap().id);
+    }
+    let blob = store.blobs().path(&blake3::hash(&big).to_hex()).unwrap();
+
+    let bytes = png(40, 20);
+    let image_hash = hash(ClipKind::Image, &bytes);
+    let image = store
+        .upsert_clip(NewClip {
+            kind: ClipKind::Image,
+            plain_text: None,
+            content_hash: image_hash.clone(),
+            source_app_name: None,
+            source_app_id: None,
+            metadata: None,
+            platform: Platform::MacOs,
+            formats: vec![format(0, "public.png", bytes)],
+        })
+        .unwrap()
+        .id;
+    let thumb = rx
+        .recv_timeout(Duration::from_secs(10))
+        .unwrap()
+        .result
+        .unwrap();
+
+    let kept = store.upsert_clip(text_clip("kept", "Notes")).unwrap().id;
+    let conn = raw(&dir);
+    conn.execute_batch(&format!(
+        "UPDATE clips SET pinned = 1 WHERE id = {image};
+         INSERT INTO pinboards (uuid, name, position, created_at, updated_at)
+         VALUES ('p', 'Board', 0, 0, 0);
+         INSERT INTO pinboard_items (pinboard_id, clip_id, position, added_at)
+         VALUES (1, {image}, 0, 0), (1, {kept}, 1, 0);"
+    ))
+    .unwrap();
+
+    assert_eq!(store.clip_id_by_hash(&image_hash).unwrap(), Some(image));
+
+    // Unknown ids are skipped. The blob is still used by the second clip.
+    assert_eq!(
+        store.delete_clips(&[shared[0], 999_999]).unwrap(),
+        [shared[0]]
+    );
+    assert!(blob.is_file());
+    assert_eq!(search(&store, "first"), Vec::<i64>::new());
+    assert_eq!(search(&store, "second"), [shared[1]]);
+
+    // Pinned clips and clips on a pinboard go too, when asked for by id.
+    assert_eq!(
+        store.delete_clips(&[image, shared[1], image]).unwrap(),
+        [image, shared[1]]
+    );
+    assert!(!blob.exists());
+    assert!(!thumb.exists());
+    assert_eq!(store.thumbnail_path(&image_hash).unwrap(), None);
+    assert_eq!(store.get_clip(image).unwrap(), None);
+    assert_eq!(store.clip_id_by_hash(&image_hash).unwrap(), None);
+
+    let count = |sql: &str| conn.query_row(sql, [], |r| r.get::<_, i64>(0)).unwrap();
+    assert_eq!(count("SELECT count(*) FROM clips"), 1);
+    assert_eq!(count("SELECT count(*) FROM clip_formats"), 0);
+    assert_eq!(count("SELECT clip_id FROM pinboard_items"), kept);
+    assert_eq!(store.delete_clips(&[]).unwrap(), Vec::<i64>::new());
+}
+
+#[test]
 fn hashes_must_be_blake3_hex() {
     let dir = tempfile::tempdir().unwrap();
     let store = Store::open(dir.path()).unwrap();

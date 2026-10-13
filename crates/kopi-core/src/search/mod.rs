@@ -95,6 +95,36 @@ pub fn search(store: &Store, query: &SearchQuery) -> StorageResult<SearchPage> {
     })
 }
 
+/// An app that clips came from, for the app filter.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SourceApp {
+    /// A macOS bundle ID or Windows app ID.
+    pub id: String,
+    /// The name it had on its most recent clip.
+    pub name: Option<String>,
+}
+
+/// The apps in the history, the one copied from most recently first. At most `limit`.
+pub fn source_apps(store: &Store, limit: u32) -> StorageResult<Vec<SourceApp>> {
+    store.with_reader(|conn| {
+        // SQLite takes a bare column next to max() from the row with the maximum.
+        let apps = conn
+            .prepare_cached(
+                "SELECT source_app_id, source_app_name, max(last_used_at) AS last FROM clips
+                 WHERE source_app_id IS NOT NULL
+                 GROUP BY source_app_id ORDER BY last DESC LIMIT ?1",
+            )?
+            .query_map([limit], |row| {
+                Ok(SourceApp {
+                    id: row.get(0)?,
+                    name: row.get(1)?,
+                })
+            })?
+            .collect::<Result<_, _>>()?;
+        Ok(apps)
+    })
+}
+
 #[derive(Debug, Clone, Copy)]
 struct Page {
     offset: usize,

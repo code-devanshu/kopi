@@ -25,7 +25,7 @@ pub fn create(app: &AppHandle) -> tauri::Result<()> {
         .tooltip("Kopi")
         .menu(&menu)
         .on_menu_event(|app, event| match event.id().as_ref() {
-            OPEN => crate::show_main_window(app),
+            OPEN => crate::panel::show(app),
             QUIT => app.exit(0),
             _ => {}
         })
