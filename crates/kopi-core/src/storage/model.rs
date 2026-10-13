@@ -18,6 +18,17 @@ pub enum ClipKind {
 }
 
 impl ClipKind {
+    /// Every kind, in the order of the enum.
+    pub const ALL: [Self; 7] = [
+        Self::Text,
+        Self::RichText,
+        Self::Link,
+        Self::Image,
+        Self::File,
+        Self::Color,
+        Self::Code,
+    ];
+
     pub const fn as_str(self) -> &'static str {
         match self {
             Self::Text => "text",
@@ -155,4 +166,16 @@ pub struct ClipFormat {
     pub platform: Platform,
     pub format: String,
     pub data: Vec<u8>,
+}
+
+/// A row of `excluded_apps`: an app Kopi never captures from.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ExcludedApp {
+    pub platform: Platform,
+    /// A macOS bundle ID, or a Windows exe path.
+    pub app_id: String,
+    pub app_name: String,
+    /// `true` for the defaults Kopi seeded, `false` for apps the user added.
+    pub is_default: bool,
+    pub created_at: i64,
 }

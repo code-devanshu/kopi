@@ -6,7 +6,10 @@ use super::{StorageError, StorageResult};
 
 /// Every migration, oldest first. Migration `i` takes the schema from version `i` to `i + 1`.
 /// Never edit one that has shipped. Add a new file instead.
-const MIGRATIONS: &[&str] = &[include_str!("../../migrations/0001_init.sql")];
+const MIGRATIONS: &[&str] = &[
+    include_str!("../../migrations/0001_init.sql"),
+    include_str!("../../migrations/0002_default_excluded_apps.sql"),
+];
 
 /// The schema version this build writes.
 pub const SCHEMA_VERSION: u32 = MIGRATIONS.len() as u32;

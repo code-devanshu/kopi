@@ -24,6 +24,8 @@ use kopi_platform::{
     RawFormat, UserIdle, uti,
 };
 
+use crate::privacy::DEFAULT_MAX_CLIP_BYTES;
+
 /// How often the change count is polled while the user is active.
 pub const ACTIVE_POLL: Duration = Duration::from_millis(250);
 /// How often it's polled once the user has been idle for [`IDLE_AFTER`].
@@ -53,9 +55,15 @@ pub enum Verdict {
 }
 
 /// Decides, before anything is read, whether a copy may be read at all. The privacy filter
-/// implements this.
+/// ([`PrivacyFilter`](crate::privacy::PrivacyFilter)) implements this.
 pub trait ReadFilter: Send {
     fn check(&self, observed: &Observed) -> Verdict;
+
+    /// The size limit for a read, in place of [`WatcherConfig::max_clip_bytes`]. Asked on each
+    /// read, so a changed setting applies to the next copy.
+    fn max_clip_bytes(&self) -> Option<u64> {
+        None
+    }
 }
 
 impl<F> ReadFilter for F
@@ -110,7 +118,8 @@ pub struct WatcherDeps {
 pub struct WatcherConfig {
     /// Kopi's bundle ID. A change with this in its source marker is Kopi's own write.
     pub own_bundle_id: String,
-    /// Copies larger than this are missed with [`PasteboardError::TooLarge`].
+    /// Copies larger than this are missed with [`PasteboardError::TooLarge`], unless the
+    /// filter sets its own limit.
     pub max_clip_bytes: u64,
     /// The pause between seeing a new change count and reading the format names, so a
     /// writer that's mid-write can finish.
@@ -122,7 +131,7 @@ impl WatcherConfig {
     pub fn new(own_bundle_id: impl Into<String>) -> Self {
         Self {
             own_bundle_id: own_bundle_id.into(),
-            max_clip_bytes: 50 * 1024 * 1024,
+            max_clip_bytes: DEFAULT_MAX_CLIP_BYTES,
             settle: Duration::from_millis(30),
         }
     }
@@ -321,11 +330,11 @@ impl Poller {
                 reason: "no supported format",
             });
         }
-        match self
-            .deps
-            .pasteboard
-            .read(count, &plan, self.config.max_clip_bytes)
-        {
+        let limit = self
+            .filter
+            .max_clip_bytes()
+            .unwrap_or(self.config.max_clip_bytes);
+        match self.deps.pasteboard.read(count, &plan, limit) {
             Ok(formats) if formats.is_empty() => {}
             Ok(formats) => emit(WatchEvent::Copied(Capture {
                 change_count: count,
@@ -775,6 +784,28 @@ mod tests {
     fn too_large_is_missed() {
         let mut h = Harness::new();
         h.poller.config.max_clip_bytes = 4;
+        h.pasteboard.copy(&[&[(uti::PLAIN_TEXT, b"hello")]]);
+        assert_eq!(
+            h.poll(),
+            [WatchEvent::Missed {
+                change_count: 1,
+                error: PasteboardError::TooLarge,
+            }]
+        );
+    }
+
+    #[test]
+    fn the_filter_limit_replaces_the_configured_one() {
+        struct Limit(u64);
+        impl ReadFilter for Limit {
+            fn check(&self, _: &Observed) -> Verdict {
+                Verdict::Read
+            }
+            fn max_clip_bytes(&self) -> Option<u64> {
+                Some(self.0)
+            }
+        }
+        let mut h = Harness::with_filter(Box::new(Limit(4)));
         h.pasteboard.copy(&[&[(uti::PLAIN_TEXT, b"hello")]]);
         assert_eq!(
             h.poll(),
