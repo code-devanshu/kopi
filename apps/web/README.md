@@ -4,11 +4,11 @@
 
 # Kopi website
 
-The "coming soon" page for Kopi, with a waitlist.<br />
+The home page for Kopi: the macOS download and a waitlist for Windows.<br />
 <a href="https://kopi.devanshuverma.in"><strong>kopi.devanshuverma.in</strong></a> · <a href="../../README.md">About Kopi</a>
 
 <p>
-  <img alt="Status: coming soon" src="https://img.shields.io/badge/status-coming%20soon-d08a3a?style=flat-square" />
+  <img alt="Status: macOS alpha" src="https://img.shields.io/badge/status-macOS%20alpha-d08a3a?style=flat-square" />
   <img alt="Platforms: macOS and Windows" src="https://img.shields.io/badge/platforms-macOS%20%C2%B7%20Windows-2b1d14?style=flat-square" />
   <img alt="Next.js 16" src="https://img.shields.io/badge/Next.js-16-2b1d14?style=flat-square&logo=nextdotjs&logoColor=white" />
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5-93561a?style=flat-square&logo=typescript&logoColor=white" />
@@ -33,14 +33,14 @@ The "coming soon" page for Kopi, with a waitlist.<br />
 <br />
 
 > [!NOTE]
-> The Kopi desktop app is still in design, so the download buttons on the site are disabled on purpose. The waitlist form is how people sign up to hear about the first alphas or to help build it. For what Kopi will do, see the [root README](../../README.md).
+> The download buttons link to [GitHub Releases](https://github.com/code-devanshu/kopi/releases), not to a file, so the site doesn't change with every alpha. The waitlist form is how people sign up to hear about the Windows alpha or to help build Kopi. For what Kopi does, see the [root README](../../README.md).
 
 ## About this website
 
 It's a single page built with the Next.js App Router. It includes:
 
 - **Sticky navigation** with a light/dark toggle. The theme follows your system until you choose one.
-- **Hero** with a stack of clipboard cards that fans out on load, plus disabled download buttons.
+- **Hero** with a stack of clipboard cards that fans out on load, the macOS download and a note on Windows.
 - **Feature grid** of six cards, each with its own small animation.
 - **Sync demo**: a clip copied in a Mac window travels to a Windows window.
 - **Privacy, use-case tabs** (Developers, Designers, Writers, Students) and a **roadmap**.

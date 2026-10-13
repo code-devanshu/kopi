@@ -93,7 +93,7 @@ To sign a local build the same way, import `kopi-signing.p12` into your login ke
 
 ## Updates
 
-Kopi updates itself with the [Tauri updater](https://v2.tauri.app/plugin/updater/). It checks 30 seconds after launch and then every 6 hours, unless the user turns off **Update automatically** in Settings, and whenever they choose **Check for Updates…** in the menu bar. It downloads the update, checks its signature, replaces Kopi.app and offers **Restart to Update**. If the user waits, the update runs the next time Kopi starts. Development builds only check from the menu.
+Kopi updates itself with the [Tauri updater](https://v2.tauri.app/plugin/updater/). It checks 30 seconds after launch and then every 6 hours, unless the user turns off **Update automatically** in Settings, and whenever they choose **Check for Updates…** in the menu bar. It downloads the update, checks its signature, replaces Kopi.app and offers **Restart to Update**. If the user waits, the update runs the next time Kopi starts. Development builds only check from the menu, and don't install what they find.
 
 - **Where the app looks:** `latest.json` on the [`updater` release](https://github.com/code-devanshu/kopi/releases/tag/updater), set in `tauri.conf.json`. It's a fixed address because GitHub's `releases/latest` skips prereleases, and every alpha is one. The release is a prerelease that's never marked latest, so it doesn't show as the newest Kopi.
 - **What moves it:** publishing a release. The Updater workflow copies that release's `latest.json` to the `updater` release. To offer a release again, run **Actions → Updater → Run workflow** with its tag.

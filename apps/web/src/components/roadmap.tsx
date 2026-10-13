@@ -10,8 +10,8 @@ type Stage = { title: string; description: string; status: "done" | "current" | 
 // Keep these in step with ROADMAP.md at the repository root.
 const stages: Stage[] = [
   { title: "Website & waitlist", description: "A home for the project and a way to follow along.", status: "done" },
-  { title: "Design", description: "Shaping the app and its architecture in the open.", status: "current" },
-  { title: "Mac alpha", description: "First builds for macOS, shared with early testers.", status: "next" },
+  { title: "Design", description: "Shaping the app and its architecture in the open.", status: "done" },
+  { title: "Mac alpha", description: "First builds for macOS, out now for early testers.", status: "current" },
   { title: "Windows alpha", description: "The same app, native on Windows.", status: "next" },
   { title: "Private beta", description: "More testers on both platforms, features rounded out.", status: "next" },
   { title: "1.0", description: "A stable release on both platforms, free for everyone.", status: "next" },
@@ -24,7 +24,7 @@ export function Roadmap() {
       <SectionHeader
         id="roadmap-title"
         title="Where Kopi is today"
-        description="No launch date yet. Here's the plan, and the step we're on right now."
+        description="No dates, just the plan and the step we're on right now."
       />
       <div className="relative mt-14">
         <span

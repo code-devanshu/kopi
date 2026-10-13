@@ -2212,6 +2212,7 @@ dependencies = [
 name = "kopi-desktop"
 version = "0.1.0"
 dependencies = [
+ "block2",
  "image",
  "kopi-core",
  "kopi-platform",

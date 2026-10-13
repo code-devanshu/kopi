@@ -28,15 +28,16 @@ Please give us a reasonable chance to fix the problem before you disclose it pub
 
 ## Scope
 
-Kopi is pre-alpha. Today the only thing running is the website at [kopi.devanshuverma.in](https://kopi.devanshuverma.in) and its code in `apps/web`. Reports about it are welcome.
+Kopi is in alpha on macOS. Reports about the desktop app in `apps/desktop` and `crates/`, its releases and updates, and the website at [kopi.devanshuverma.in](https://kopi.devanshuverma.in) are all welcome.
 
-Once the desktop app exists, we're most interested in issues that could:
+We're most interested in issues that could:
 
 - Expose clipboard history to other apps, other users or the network
 - Capture copies that should be skipped, such as from password managers
-- Weaken the encryption or key handling used by sync
 - Let an attacker run code through content that gets copied or pasted
+- Get Kopi to install an update that this project didn't sign
+- Weaken the encryption or key handling used by sync, once it exists
 
 ## Supported versions
 
-There are no releases yet. Until v1.0, only the latest code on `main` gets security fixes.
+Until v1.0, only the newest release and the latest code on `main` get security fixes. Kopi updates itself, so a fix reaches testers in the next release.

@@ -10,8 +10,9 @@ use std::time::{Duration, SystemTime};
 use kopi_core::storage::Store;
 use semver::Version;
 use tauri::{AppHandle, Manager};
-use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
 use tauri_plugin_updater::UpdaterExt;
+
+use crate::alert::{self, Kind};
 
 /// How long after launch the first check waits, to stay out of the way of startup.
 const FIRST_CHECK: Duration = Duration::from_secs(30);
@@ -34,6 +35,15 @@ enum State {
 }
 
 struct Updates(Mutex<State>);
+
+/// What a check found.
+enum Found {
+    Nothing,
+    /// A newer release, installed. Holds its name.
+    Installed(String),
+    /// A newer release that a development build doesn't install.
+    Skipped(String),
+}
 
 /// Starts the automatic checks. Development builds don't check by themselves.
 pub fn start(app: &AppHandle) {
@@ -95,34 +105,40 @@ pub async fn check(app: &AppHandle, manual: bool) {
         let mut state = lock(app);
         let manual = matches!(*state, State::Busy { manual: true });
         *state = match &result {
-            Ok(Some(name)) => State::Installed(name.clone()),
+            Ok(Found::Installed(name)) => State::Installed(name.clone()),
             _ => State::Idle,
         };
         manual
     };
     match result {
-        Ok(Some(name)) => {
+        Ok(Found::Installed(name)) => {
             crate::tray::show_restart(app);
             if manual {
                 offer_restart(app, &name);
             }
         }
-        Ok(None) if manual => message(
+        Ok(Found::Skipped(name)) if manual => alert::message(
             app,
-            MessageDialogKind::Info,
-            "Kopi is up to date",
-            format!("You have the latest version, Kopi {}.", current_name(app)),
+            Kind::Info,
+            &format!("Kopi {name} is available"),
+            "This is a development build, which doesn't install updates.",
         ),
-        Ok(None) => {}
+        Ok(Found::Nothing) if manual => alert::message(
+            app,
+            Kind::Info,
+            "Kopi is up to date",
+            &format!("You have the latest version, Kopi {}.", current_name(app)),
+        ),
+        Ok(_) => {}
         // Updater errors name a URL or a file, never clip content.
         Err(error) => {
             eprintln!("kopi: update failed: {error}");
             if manual {
-                message(
+                alert::message(
                     app,
-                    MessageDialogKind::Error,
+                    Kind::Error,
                     "Couldn't update Kopi",
-                    format!("{error}\n\nCheck your connection and try again."),
+                    &format!("{error}\n\nCheck your connection and try again."),
                 );
             }
         }
@@ -136,8 +152,8 @@ pub fn restart(app: &AppHandle) {
     app.request_restart();
 }
 
-/// Finds a newer release and installs it, returning its name.
-async fn install_newer(app: &AppHandle) -> Result<Option<String>, tauri_plugin_updater::Error> {
+/// Finds a newer release and installs it.
+async fn install_newer(app: &AppHandle) -> Result<Found, tauri_plugin_updater::Error> {
     // Every alpha build of a version has that version, so the updater can't compare them
     // itself. Kopi compares versions, then build numbers.
     let updater = app
@@ -145,25 +161,31 @@ async fn install_newer(app: &AppHandle) -> Result<Option<String>, tauri_plugin_u
         .version_comparator(|_, _| true)
         .build()?;
     let Some(update) = updater.check().await? else {
-        return Ok(None);
+        return Ok(Found::Nothing);
     };
     let (Ok(current), Ok(offered)) = (
         Version::parse(&update.current_version),
         Version::parse(&update.version),
     ) else {
-        return Ok(None);
+        return Ok(Found::Nothing);
     };
     let offered_build = update.raw_json.get("build").and_then(|b| b.as_u64());
     if !is_newer(&current, build(app), &offered, offered_build) {
-        return Ok(None);
+        return Ok(Found::Nothing);
     }
-    update.download_and_install(|_, _| {}, || {}).await?;
     let name = update
         .raw_json
         .get("release")
         .and_then(|n| n.as_str())
-        .unwrap_or(&update.version);
-    Ok(Some(name.to_owned()))
+        .unwrap_or(&update.version)
+        .to_owned();
+    // The updater replaces the folder above Contents/MacOS. A development build isn't in an
+    // app bundle, so that would be its target folder.
+    if cfg!(debug_assertions) {
+        return Ok(Found::Skipped(name));
+    }
+    update.download_and_install(|_, _| {}, || {}).await?;
+    Ok(Found::Installed(name))
 }
 
 /// Whether the offered release is newer: a greater version, or the same version with a
@@ -206,46 +228,21 @@ fn current_name(app: &AppHandle) -> String {
 }
 
 fn offer_restart(app: &AppHandle, name: &str) {
-    let app = app.clone();
-    bring_forward(&app);
-    app.dialog()
-        .message(format!(
+    let restart_app = app.clone();
+    alert::ask(
+        app,
+        "Kopi is ready to update",
+        &format!(
             "Kopi {name} is installed. Restart Kopi now to use it, or it starts the next time you open Kopi."
-        ))
-        .title("Kopi is ready to update")
-        .buttons(MessageDialogButtons::OkCancelCustom(
-            "Restart Now".into(),
-            "Later".into(),
-        ))
-        .show(move |now| {
+        ),
+        "Restart Now",
+        "Later",
+        move |now| {
             if now {
-                restart(&app);
+                restart(&restart_app);
             }
-        });
-}
-
-fn message(app: &AppHandle, kind: MessageDialogKind, title: &str, text: String) {
-    bring_forward(app);
-    app.dialog()
-        .message(text)
-        .title(title)
-        .kind(kind)
-        .show(|_| {});
-}
-
-/// Kopi has no Dock icon, so a dialog would open behind the app in front without this.
-fn bring_forward(app: &AppHandle) {
-    #[cfg(target_os = "macos")]
-    let _ = app.run_on_main_thread(|| {
-        use objc2::MainThreadMarker;
-        use objc2_app_kit::NSApplication;
-
-        if let Some(mtm) = MainThreadMarker::new() {
-            NSApplication::sharedApplication(mtm).activate();
-        }
-    });
-    #[cfg(not(target_os = "macos"))]
-    let _ = app;
+        },
+    );
 }
 
 fn lock(app: &AppHandle) -> std::sync::MutexGuard<'_, State> {

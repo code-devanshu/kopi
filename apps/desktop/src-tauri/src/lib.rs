@@ -1,5 +1,6 @@
 //! Kopi's app shell: builder, plugins and setup.
 
+mod alert;
 mod capture;
 mod commands;
 mod events;
@@ -93,10 +94,12 @@ pub fn run() {
             None,
         ))
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
-        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build());
     #[cfg(target_os = "macos")]
     let builder = builder.plugin(tauri_nspanel::init());
+    // macOS shows Kopi's own alerts, see alert.rs.
+    #[cfg(not(target_os = "macos"))]
+    let builder = builder.plugin(tauri_plugin_dialog::init());
 
     builder
         .invoke_handler(specta.invoke_handler())

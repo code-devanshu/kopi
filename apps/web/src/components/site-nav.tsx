@@ -63,8 +63,14 @@ export function SiteNav() {
             <GitHubIcon className="size-4" />
             GitHub
           </a>
-          <a href="#waitlist" data-track="waitlist_cta_click" data-track-location="nav" className={buttonStyles({ size: "sm", className: "hidden sm:inline-flex" })}>
-            Join waitlist
+          <a
+            href={siteConfig.links.releases}
+            data-track="download_click" data-track-platform="macos" data-track-location="nav"
+            target="_blank"
+            rel="noreferrer"
+            className={buttonStyles({ size: "sm", className: "hidden sm:inline-flex" })}
+          >
+            Download
           </a>
           <button
             type="button"
@@ -115,8 +121,14 @@ export function SiteNav() {
                   <GitHubIcon className="size-4" />
                   GitHub
                 </a>
-                <a href="#waitlist" data-track="waitlist_cta_click" data-track-location="nav_mobile" onClick={() => setOpen(false)} className={buttonStyles()}>
-                  Join waitlist
+                <a
+                  href={siteConfig.links.releases}
+                  data-track="download_click" data-track-platform="macos" data-track-location="nav_mobile"
+                  target="_blank"
+                  rel="noreferrer"
+                  className={buttonStyles()}
+                >
+                  Download
                 </a>
               </div>
             </Container>
