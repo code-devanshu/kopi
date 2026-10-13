@@ -12,6 +12,12 @@ export type Action =
   /** ⌘C: puts the selected clip on the clipboard without pasting it. */
   | { type: "copy"; plain: boolean }
   | { type: "delete" }
+  /** ⌘P: pins or unpins the selected clip. */
+  | { type: "pin" }
+  /** ⌘K: the selected clip's menu. */
+  | { type: "menu" }
+  /** ⌘[ and ⌘]: the previous or next view, from History through Pinned to each pinboard. */
+  | { type: "view"; by: 1 | -1 }
   | { type: "togglePreview" }
   | { type: "hide" };
 
@@ -62,6 +68,11 @@ export function actionFor(e: Key, typing: boolean): Action | null {
     // ⌘Y opens a preview everywhere on macOS, and works while typing.
     if (e.code === "KeyY" && !alt) return { type: "togglePreview" };
     if (e.code === "KeyC") return { type: "copy", plain: alt };
+    if (alt) return null;
+    if (e.code === "KeyP") return { type: "pin" };
+    if (e.code === "KeyK") return { type: "menu" };
+    if (e.code === "BracketLeft") return { type: "view", by: -1 };
+    if (e.code === "BracketRight") return { type: "view", by: 1 };
   }
   return null;
 }

@@ -29,6 +29,12 @@ pub struct ClipsRemoved {
     pub ids: Vec<i64>,
 }
 
+/// Pinboards were added, changed, reordered or deleted, or clips were added to or taken off
+/// one. The panel reloads the switcher and the list.
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[tauri_specta(event_name = "pinboards:changed")]
+pub struct PinboardsChanged;
+
 /// An image clip's thumbnail was written, so `kopi://…/thumb/<hash>` now loads.
 #[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
 #[serde(rename_all = "camelCase")]

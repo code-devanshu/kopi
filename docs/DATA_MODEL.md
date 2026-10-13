@@ -145,7 +145,9 @@ CREATE TABLE pinboard_items (
 ) WITHOUT ROWID;
 ```
 
-`pinned` on `clips` is the quick "keep this" toggle, and pinned clips show in a Pinned section at the top. Pinboards are for organising. The two are independent.
+`pinned` on `clips` is the quick "keep this" toggle, and pinned clips have their own Pinned view in the panel. Pinboards are for organising. The two are independent.
+
+A pinboard lists its clips by `position`, ascending. A clip added to a board goes one above its top, so the newest addition shows first. Pinboard names are 1–64 characters, and colors are `#RRGGBB` or none.
 
 ### `settings`
 
@@ -289,7 +291,7 @@ The kind is part of the hash. So the same words copied as plain text and as rich
 
 Rules:
 
-- **Pinned clips and clips on any pinboard are never removed by limits.** They're still removed by an explicit delete or by "Clear history" if the user chooses to include them.
+- **Pinned clips and clips on any pinboard are never removed by limits.** They're still removed by an explicit delete or by "Clear history" if the user chooses to include them. `kopi_core::storage::KEPT` is this rule as an SQL condition, for retention's queries.
 - When a limit is exceeded, the oldest clips are deleted first, ordered by `last_used_at`.
 - Retention runs at startup, at most once a minute after new clips arrive, and immediately when a limit is lowered.
 - Deletes happen in one transaction. Blob and thumbnail files are removed after the commit, if no other row references them.

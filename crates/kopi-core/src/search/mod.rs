@@ -10,7 +10,7 @@
 //!   `LIKE`. On their own, they're matched with `LIKE` against the [`SHORT_SCAN`] most recently
 //!   used clips.
 //!
-//! The kind, source app and pinboard filters apply to every path. Snippets are built only for
+//! The kind, source app, pinned and pinboard filters apply to every path. Snippets are built only for
 //! the page that is returned.
 
 mod query;
@@ -49,6 +49,8 @@ pub struct SearchQuery {
     /// A macOS bundle ID or Windows app ID, as stored in `clips.source_app_id`.
     pub source_app_id: Option<String>,
     pub pinboard_id: Option<i64>,
+    /// Only pinned clips.
+    pub pinned: bool,
     pub offset: u32,
     /// At most [`MAX_PAGE`]. Zero means [`DEFAULT_PAGE`].
     pub limit: u32,
@@ -186,8 +188,8 @@ fn finish(
     Ok(hit)
 }
 
-/// Appends the kind and app filters on `c`, and the pinboard filter unless the caller joins
-/// the pinboard itself.
+/// Appends the kind, app and pinned filters on `c`, and the pinboard filter unless the caller
+/// joins the pinboard itself.
 fn filters(query: &SearchQuery, pinboard: bool, sql: &mut String, params: &mut Vec<Value>) {
     if let Some(kind) = query.kind {
         sql.push_str(" AND c.kind = ?");
@@ -196,6 +198,9 @@ fn filters(query: &SearchQuery, pinboard: bool, sql: &mut String, params: &mut V
     if let Some(app) = &query.source_app_id {
         sql.push_str(" AND c.source_app_id = ?");
         params.push(app.clone().into());
+    }
+    if query.pinned {
+        sql.push_str(" AND c.pinned = 1");
     }
     if let (true, Some(id)) = (pinboard, query.pinboard_id) {
         sql.push_str(

@@ -9,7 +9,11 @@ export const MAX_PAGE = 200;
 /** How long to wait after a clip event before searching again, so a burst runs once. */
 export const REFRESH_DELAY_MS = 50;
 
+/** Which clips the list shows: the whole history, the pinned clips, or a pinboard by id. */
+export type View = "history" | "pinned" | number;
+
 export type HistoryState = {
+  view: View;
   text: string;
   kind: ClipKind | null;
   appId: string | null;
@@ -26,6 +30,7 @@ export type HistoryState = {
 export type Search = (query: SearchQuery) => Promise<SearchPage>;
 
 const INITIAL: HistoryState = {
+  view: "history",
   text: "",
   kind: null,
   appId: null,
@@ -60,6 +65,12 @@ export class History {
     return this.#state.hits[this.#state.selected];
   }
 
+  setView(view: View) {
+    if (view === this.#state.view) return;
+    this.#set({ view });
+    void this.#load(false);
+  }
+
   setText(text: string) {
     if (text === this.#state.text) return;
     this.#set({ text });
@@ -78,7 +89,7 @@ export class History {
     void this.#load(false);
   }
 
-  /** Clears the search box and starts from the top. Filters stay. */
+  /** Clears the search box and starts from the top. The view and filters stay. */
   reset() {
     this.#set({ text: "" });
     return this.#load(false);
@@ -157,8 +168,14 @@ export class History {
   }
 
   #query(): SearchQuery {
-    const { text, kind, appId } = this.#state;
-    return { text, kind, sourceAppId: appId };
+    const { view, text, kind, appId } = this.#state;
+    return {
+      text,
+      kind,
+      sourceAppId: appId,
+      pinned: view === "pinned",
+      pinboardId: typeof view === "number" ? view : null,
+    };
   }
 
   #set(patch: Partial<HistoryState>) {

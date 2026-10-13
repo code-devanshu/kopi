@@ -122,7 +122,7 @@ pub async fn source_apps(store: State<'_, Arc<Store>>) -> Result<Vec<SourceApp>,
 }
 
 /// Runs a store call on a blocking thread, so it doesn't hold up IPC.
-async fn blocking<T: Send + 'static>(
+pub(super) async fn blocking<T: Send + 'static>(
     f: impl FnOnce() -> storage::StorageResult<T> + Send + 'static,
 ) -> Result<T, String> {
     tauri::async_runtime::spawn_blocking(f)

@@ -2,6 +2,7 @@
 
 pub mod clips;
 pub mod paste;
+pub mod pinboards;
 pub mod search;
 
 use serde::Serialize;

@@ -55,6 +55,9 @@ function setup(ids: number[]) {
   return { backend, history, state: () => history.getSnapshot() };
 }
 
+/** The query fields for the whole history, with no filters. */
+const ALL = { kind: null, sourceAppId: null, pinned: false, pinboardId: null };
+
 const range = (from: number, to: number) =>
   Array.from({ length: to - from + 1 }, (_, i) => to - i);
 
@@ -70,7 +73,7 @@ test("starts empty and loads the first page", async () => {
   await backend.answer();
   await done;
   expect(backend.calls).toEqual([
-    { text: "", kind: null, sourceAppId: null, offset: 0, limit: PAGE },
+    { ...ALL, text: "", offset: 0, limit: PAGE },
   ]);
   expect(state()).toMatchObject({ loaded: true, hasMore: true, selected: 0, error: null });
   expect(state().hits.map((h) => h.id).slice(0, 3)).toEqual([120, 119, 118]);
@@ -90,10 +93,10 @@ test("typing and filters search from the top, and only the latest answer counts"
   // The same value again doesn't search.
   history.setApp("com.apple.Safari");
   expect(backend.calls.slice(1)).toEqual([
-    { text: "a", kind: null, sourceAppId: null, offset: 0, limit: PAGE },
-    { text: "ab", kind: null, sourceAppId: null, offset: 0, limit: PAGE },
-    { text: "ab", kind: "link", sourceAppId: null, offset: 0, limit: PAGE },
-    { text: "ab", kind: "link", sourceAppId: "com.apple.Safari", offset: 0, limit: PAGE },
+    { ...ALL, text: "a", offset: 0, limit: PAGE },
+    { ...ALL, text: "ab", offset: 0, limit: PAGE },
+    { ...ALL, text: "ab", kind: "link", offset: 0, limit: PAGE },
+    { ...ALL, text: "ab", kind: "link", sourceAppId: "com.apple.Safari", offset: 0, limit: PAGE },
   ]);
 
   // The last search answers first. The older ones arrive later and are dropped.
@@ -108,6 +111,31 @@ test("typing and filters search from the top, and only the latest answer counts"
   // Reset clears the text but keeps the filters.
   history.reset();
   expect(backend.calls.at(-1)).toMatchObject({ text: "", kind: "link" });
+});
+
+test("the view picks the pinned clips or a pinboard, and keeps the search", async () => {
+  const { backend, history, state } = setup(range(1, 10));
+  history.reset();
+  await backend.answer();
+  history.select(3);
+  history.setText("deploy");
+
+  history.setView("pinned");
+  history.setView(7);
+  history.setView(7);
+  history.setView("history");
+  expect(backend.calls.slice(2)).toEqual([
+    { ...ALL, text: "deploy", pinned: true, offset: 0, limit: PAGE },
+    { ...ALL, text: "deploy", pinboardId: 7, offset: 0, limit: PAGE },
+    { ...ALL, text: "deploy", offset: 0, limit: PAGE },
+  ]);
+  await backend.answer();
+  expect(state()).toMatchObject({ view: "history", selected: 0 });
+
+  // Reset keeps the view.
+  history.setView(7);
+  history.reset();
+  expect(backend.calls.at(-1)).toMatchObject({ text: "", pinboardId: 7 });
 });
 
 test("pages load once at a time and skip clips already shown", async () => {
