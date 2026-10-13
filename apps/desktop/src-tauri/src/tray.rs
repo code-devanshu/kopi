@@ -1,10 +1,14 @@
 //! The menu bar icon and its menu.
 
-use tauri::menu::{MenuBuilder, MenuItemBuilder};
+use tauri::menu::{MenuBuilder, MenuItemBuilder, SubmenuBuilder};
 use tauri::tray::TrayIconBuilder;
 use tauri::{AppHandle, include_image};
 
+use crate::commands::history::{self, ClearRange};
+
 const OPEN: &str = "open";
+const CLEAR_HOUR: &str = "clear-hour";
+const CLEAR_DAY: &str = "clear-day";
 const QUIT: &str = "quit";
 
 pub fn create(app: &AppHandle) -> tauri::Result<()> {
@@ -12,8 +16,20 @@ pub fn create(app: &AppHandle) -> tauri::Result<()> {
     let quit = MenuItemBuilder::with_id(QUIT, "Quit Kopi")
         .accelerator("CmdOrCtrl+Q")
         .build(app)?;
+    // Clearing everything, with a confirmation, comes with the Settings window (#16).
+    let clear = SubmenuBuilder::new(app, "Clear History")
+        .text(CLEAR_HOUR, "Last Hour")
+        .text(CLEAR_DAY, "Last Day")
+        .separator()
+        .item(
+            &MenuItemBuilder::new("Pinned clips and pinboards stay")
+                .enabled(false)
+                .build(app)?,
+        )
+        .build()?;
     let menu = MenuBuilder::new(app)
         .item(&open)
+        .item(&clear)
         .separator()
         .item(&quit)
         .build()?;
@@ -26,9 +42,21 @@ pub fn create(app: &AppHandle) -> tauri::Result<()> {
         .menu(&menu)
         .on_menu_event(|app, event| match event.id().as_ref() {
             OPEN => crate::panel::show(app),
+            CLEAR_HOUR => clear_recent(app, ClearRange::LastHour),
+            CLEAR_DAY => clear_recent(app, ClearRange::LastDay),
             QUIT => app.exit(0),
             _ => {}
         })
         .build(app)?;
     Ok(())
+}
+
+/// Clears recent history off the main thread, keeping pinned clips and pinboards.
+fn clear_recent(app: &AppHandle, range: ClearRange) {
+    let app = app.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        if let Err(error) = history::clear(&app, range, true) {
+            eprintln!("kopi: couldn't clear history: {error}");
+        }
+    });
 }

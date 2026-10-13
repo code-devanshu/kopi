@@ -283,20 +283,23 @@ The kind is part of the hash. So the same words copied as plain text and as rich
 
 | Setting | Default | Notes |
 | --- | --- | --- |
-| `history.max_items` | unlimited | "Unlimited history" is a headline feature |
-| `history.max_age_days` | unlimited | Options: 1, 7, 30, 90, 365 days |
-| `history.max_total_bytes` | 2 GiB | Counts DB rows plus blob files |
+| `history.max_items` | unlimited | "Unlimited history" is a headline feature. Counts only the clips limits can remove |
+| `history.max_age_days` | unlimited | Options: 1, 7, 30, 90, 365 days. Measured from `last_used_at` |
+| `history.max_total_bytes` | 2 GiB | The sum of `clips.size_bytes`: text plus every format, inline or in a blob file. Kept clips count towards it |
 | `limits.max_clip_bytes` | 50 MiB | Larger copies are skipped, with a quiet notice in the panel |
 | `limits.max_text_index_bytes` | 64 KiB | Truncation point for `plain_text` |
 
 Rules:
 
 - **Pinned clips and clips on any pinboard are never removed by limits.** They're still removed by an explicit delete or by "Clear history" if the user chooses to include them. `kopi_core::storage::KEPT` is this rule as an SQL condition, for retention's queries.
-- When a limit is exceeded, the oldest clips are deleted first, ordered by `last_used_at`.
-- Retention runs at startup, at most once a minute after new clips arrive, and immediately when a limit is lowered.
+- Each limit is stored as a number, or `null` for unlimited. A missing or invalid value gets its default, and a limit of 0 is refused.
+- When a limit is exceeded, the oldest clips are deleted first, ordered by `last_used_at`. The age limit goes first, then the count, then the size.
+- Retention runs at startup, at most once a minute after new clips arrive, and immediately when a limit is lowered. `kopi_core::retention` runs it on its own thread.
 - Deletes happen in one transaction. Blob and thumbnail files are removed after the commit, if no other row references them.
-- **Orphan sweep** at startup: files in `blobs/` or `thumbs/` that no row references are deleted. This covers crashes between writing a file and committing.
-- After "Clear history", Kopi runs `VACUUM` and a WAL checkpoint (`TRUNCATE`), so deleted content doesn't linger in free pages or the WAL file.
+- **Orphan sweep** at startup: files in `blobs/` or `thumbs/` that no row references are deleted, along with thumbnails of an old size and temporary files an earlier run left behind. This covers crashes between writing a file and committing. Files with names Kopi doesn't make are left alone.
+- "Clear history" deletes everything, or only clips last used in the past hour or day. It keeps pinned clips and pinboards unless the user includes them.
+- After "Clear history", Kopi runs `VACUUM` and a WAL checkpoint (`TRUNCATE`), so deleted content doesn't linger in free pages or the WAL file. Limits don't, as `VACUUM` rewrites the whole file. `secure_delete` already zeroes what they delete.
+- The search index has FTS5's `secure-delete` on (set in the first migration), so deleted text is purged from the index, not just marked deleted.
 
 ## Images and thumbnails
 

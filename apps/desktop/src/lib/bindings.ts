@@ -39,6 +39,16 @@ export const commands = {
 	deleteClips: (ids: ClipId[]) => typedError<null, string>(__TAURI_INVOKE("delete_clips", { ids })),
 	/**  The apps in the history, most recent first, for the app filter. */
 	sourceApps: () => typedError<SourceApp[], string>(__TAURI_INVOKE("source_apps")),
+	/**  The history limits in the settings. */
+	historyLimits: () => typedError<HistoryLimits, string>(__TAURI_INVOKE("history_limits")),
+	/**  Saves the history limits. Lowering one applies it straight away. */
+	setHistoryLimits: (limits: HistoryLimits) => typedError<null, string>(__TAURI_INVOKE("set_history_limits", { limits })),
+	/**
+	 *  Deletes the clips in `range`, keeping pinned clips and those on a pinboard when
+	 *  `keep_pinned` is set, and compacts the database. Sends `clip:removed`. Returns how many
+	 *  clips were deleted.
+	 */
+	clearHistory: (range: ClearRange, keepPinned: boolean) => typedError<number, string>(__TAURI_INVOKE("clear_history", { range, keepPinned })),
 	/**
 	 *  Pastes a clip into the app in front, or only copies it while Accessibility isn't granted.
 	 *  `plain` pastes only its plain text.
@@ -84,6 +94,9 @@ export type AppInfo = {
 	version: string,
 	os: Os,
 };
+
+/**  Which clips "Clear history" removes, by when they were last used. */
+export type ClearRange = "lastHour" | "lastDay" | "all";
 
 /**  A copy added a new clip. */
 export type ClipAdded = {
@@ -141,6 +154,19 @@ export type ClipUpdated = {
 /**  Clips were deleted. */
 export type ClipsRemoved = {
 	ids: number[],
+};
+
+/**
+ *  The history limits, each unlimited when unset. Pinned clips and clips on a pinboard are never
+ *  removed by them.
+ */
+export type HistoryLimits = {
+	/**  The most clips to keep, not counting pinned ones and those on a pinboard. */
+	maxItems: number | null,
+	/**  Clips not used for this many days are removed. */
+	maxAgeDays: number | null,
+	/**  The most space all clips may take, pinned or not. */
+	maxTotalBytes: number | null,
 };
 
 export type Os = "macos" | "windows" | "other";

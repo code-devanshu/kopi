@@ -138,7 +138,7 @@ On Windows, change notifications are pushed (`WM_CLIPBOARDUPDATE`). On macOS the
 | `search` | Builds FTS5 queries from the search box (with a `LIKE` fallback for 1–2 character words), applies filters (kind, source app, pinboard), ranks the newest matches by length and recency, pages results and returns snippets. See [DATA_MODEL.md](DATA_MODEL.md#full-text-search-fts5). |
 | `paste` | Writes a clip back to the clipboard (all stored formats, or plain text only), returns focus to the target app and sends the paste keystroke through `KeySender`. Falls back to "copied, press ⌘V" when paste permission is missing. |
 | `settings` | Typed settings with defaults, stored in the `settings` table; publishes changes to the other modules. |
-| `retention` | Applies history limits (count, age, total size), never touches pinned or pinboard clips, and sweeps orphaned blob files. |
+| `retention` | Applies history limits (count, age, total size) on its own thread, never touches pinned or pinboard clips, and sweeps orphaned blob and thumbnail files at startup. The queries live in `storage`. |
 
 ### App shell (`src-tauri`)
 
