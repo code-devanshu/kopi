@@ -1,9 +1,10 @@
 name: Release
 
-# Builds a universal macOS .dmg. A version tag (v0.1.0, or v0.1.0-alpha.1 for a prerelease)
-# attaches it to a draft GitHub Release. A manual run only keeps it as a workflow artifact.
-# Releases are signed with a self-signed certificate and aren't notarized.
-# See docs/RELEASING.md.
+# Builds a universal macOS .dmg and the update the in-app updater installs. A version tag
+# (v0.1.0, or v0.1.0-alpha.1 for a prerelease) attaches them to a draft GitHub Release, with the
+# latest.json that the Updater workflow publishes once the release is. A manual run only keeps
+# them as a workflow artifact. Releases are signed with a self-signed certificate and aren't
+# notarized. See docs/RELEASING.md.
 
 on:
   push:
@@ -66,6 +67,7 @@ jobs:
           else
             name=$version-dev.$GITHUB_RUN_NUMBER
           fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "name=$name" >> "$GITHUB_OUTPUT"
           echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
 
@@ -112,26 +114,49 @@ jobs:
           echo "signing=self-signed" >> "$GITHUB_OUTPUT"
 
       - name: Build
+        id: build
         env:
           APPLE_SIGNING_IDENTITY: ${{ steps.signing.outputs.identity }}
+          # Signs the update, which the app checks against the public key in tauri.conf.json.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
           # Without an identity, Tauri signs ad hoc ("-" in tauri.conf.json).
           [ -n "$APPLE_SIGNING_IDENTITY" ] || unset APPLE_SIGNING_IDENTITY
 
-          # CFBundleVersion goes up with every run, so each build is newer than the last to macOS.
-          pnpm --filter @kopi/desktop tauri build --target universal-apple-darwin --bundles dmg \
-            --config "{\"bundle\":{\"macOS\":{\"bundleVersion\":\"$GITHUB_RUN_NUMBER\"}}}"
+          updater=true
+          if [ -z "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+            if [ "$GITHUB_REF_TYPE" = tag ]; then
+              echo "::error::A release needs the TAURI_SIGNING_PRIVATE_KEY secret, or testers can't update to it from the app."
+              exit 1
+            fi
+            echo "::warning::No updater key, so this build has no update for the app to install."
+            updater=false
+          fi
+          echo "updater=$updater" >> "$GITHUB_OUTPUT"
+
+          # CFBundleVersion goes up with every run, so each build is newer than the last, to macOS
+          # and to the updater, even when the version stays the same.
+          pnpm --filter @kopi/desktop tauri build --target universal-apple-darwin --bundles app,dmg \
+            --config "{\"bundle\":{\"createUpdaterArtifacts\":$updater,\"macOS\":{\"bundleVersion\":\"$GITHUB_RUN_NUMBER\"}}}"
 
       - name: Check the build
         id: check
         env:
           SIGNING: ${{ steps.signing.outputs.signing }}
           IDENTITY: ${{ steps.signing.outputs.identity }}
+          VERSION: ${{ steps.version.outputs.version }}
           NAME: ${{ steps.version.outputs.name }}
+          UPDATER: ${{ steps.build.outputs.updater }}
         run: |
           mkdir dist
+          bundle=target/universal-apple-darwin/release/bundle
           dmg=dist/Kopi_${NAME}_universal.dmg
-          mv target/universal-apple-darwin/release/bundle/dmg/*.dmg "$dmg"
+          mv "$bundle"/dmg/*.dmg "$dmg"
+          if [ "$UPDATER" = true ]; then
+            mv "$bundle/macos/Kopi.app.tar.gz" "dist/Kopi_${NAME}_universal.app.tar.gz"
+            mv "$bundle/macos/Kopi.app.tar.gz.sig" "dist/Kopi_${NAME}_universal.app.tar.gz.sig"
+          fi
 
           # Checks the app in the .dmg, as testers get it.
           volume=$(mktemp -d)
@@ -158,12 +183,33 @@ jobs:
           (cd dist && shasum -a 256 "$(basename "$dmg")" > "$(basename "$dmg").sha256")
           echo "dmg=$dmg" >> "$GITHUB_OUTPUT"
 
+          # What the app reads to find this update, once the release is published. The app
+          # compares the version, then the build number: every alpha of a version has the same
+          # version. "version" must match the one the update was signed for.
+          if [ "$UPDATER" = true ] && [ "$GITHUB_REF_TYPE" = tag ]; then
+            update=Kopi_${NAME}_universal.app.tar.gz
+            jq -n \
+              --arg version "$VERSION" \
+              --argjson build "$GITHUB_RUN_NUMBER" \
+              --arg release "$NAME" \
+              --arg date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+              --arg url "https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/$update" \
+              --arg signature "$(cat "dist/$update.sig")" \
+              '{version: $version, build: $build, release: $release, pub_date: $date,
+                platforms: {
+                  "darwin-aarch64": {url: $url, signature: $signature},
+                  "darwin-x86_64": {url: $url, signature: $signature}
+                }}' > dist/latest.json
+            cat dist/latest.json
+          fi
+
           {
             echo "### Kopi $NAME"
             echo
             echo "- Signing: **$SIGNING**"
             echo "- Designated requirement: \`$requirement\`"
             echo "- SHA-256: \`$(cut -d' ' -f1 "$dmg.sha256")\`"
+            echo "- Update for the app: **$([ "$UPDATER" = true ] && echo signed || echo none)**"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - uses: actions/upload-artifact@v4
@@ -181,9 +227,11 @@ jobs:
           PRERELEASE: ${{ steps.version.outputs.prerelease }}
           DMG: ${{ steps.check.outputs.dmg }}
         run: |
+          files=("$DMG" "$DMG.sha256" dist/*.app.tar.gz dist/*.app.tar.gz.sig dist/latest.json)
+
           # A rerun replaces the files on the release the first run made.
           if gh release view "$TAG" > /dev/null 2>&1; then
-            gh release upload "$TAG" "$DMG" "$DMG.sha256" --clobber
+            gh release upload "$TAG" "${files[@]}" --clobber
             exit 0
           fi
 
@@ -197,4 +245,4 @@ jobs:
 
           flags=(--draft --verify-tag --title "Kopi $NAME" --notes-file notes.md --generate-notes)
           [ "$PRERELEASE" = true ] && flags+=(--prerelease)
-          gh release create "$TAG" "$DMG" "$DMG.sha256" "${flags[@]}"
+          gh release create "$TAG" "${files[@]}" "${flags[@]}"

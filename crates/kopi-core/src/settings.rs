@@ -15,6 +15,7 @@ const SHORTCUT: &str = "shortcut";
 const CAPTURE_KINDS: &str = "capture.kinds";
 const THEME: &str = "appearance.theme";
 const ONBOARDED: &str = "onboarding.done";
+const AUTO_UPDATE: &str = "updates.automatic";
 
 /// The app's color scheme.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -97,6 +98,18 @@ impl Store {
     pub fn set_onboarded(&self, done: bool) -> StorageResult<()> {
         self.set_settings(&[(ONBOARDED, Value::from(done))])
     }
+
+    /// Whether Kopi checks for updates by itself and installs them. On by default.
+    pub fn auto_update(&self) -> StorageResult<bool> {
+        Ok(self
+            .setting(AUTO_UPDATE)?
+            .and_then(|v| v.as_bool())
+            .unwrap_or(true))
+    }
+
+    pub fn set_auto_update(&self, enabled: bool) -> StorageResult<()> {
+        self.set_settings(&[(AUTO_UPDATE, Value::from(enabled))])
+    }
 }
 
 #[cfg(test)]
@@ -116,6 +129,7 @@ mod tests {
         assert_eq!(store.capture_kinds().unwrap(), KindSet::ALL);
         assert_eq!(store.theme().unwrap(), Theme::System);
         assert!(!store.onboarded().unwrap());
+        assert!(store.auto_update().unwrap());
     }
 
     #[test]
@@ -139,6 +153,9 @@ mod tests {
 
         store.set_onboarded(true).unwrap();
         assert!(store.onboarded().unwrap());
+
+        store.set_auto_update(false).unwrap();
+        assert!(!store.auto_update().unwrap());
     }
 
     #[test]
@@ -150,12 +167,14 @@ mod tests {
                 (CAPTURE_KINDS, Value::from("text")),
                 (THEME, Value::from("sepia")),
                 (ONBOARDED, Value::from("yes")),
+                (AUTO_UPDATE, Value::from("no")),
             ])
             .unwrap();
         assert_eq!(store.shortcut().unwrap(), None);
         assert_eq!(store.capture_kinds().unwrap(), KindSet::ALL);
         assert_eq!(store.theme().unwrap(), Theme::System);
         assert!(!store.onboarded().unwrap());
+        assert!(store.auto_update().unwrap());
 
         store
             .set_settings(&[(CAPTURE_KINDS, serde_json::json!(["link", "hologram", 7]))])

@@ -167,6 +167,7 @@ Keys are defined and read in Rust (`kopi_core::settings`, and `storage::retentio
 | `capture.kinds` | The kinds to capture: `["text", "link", …]`. Unknown names are ignored | Every kind |
 | `appearance.theme` | `"system"`, `"light"` or `"dark"` | `"system"` |
 | `onboarding.done` | `true` once the user has finished or closed onboarding | `false`: onboarding opens at launch |
+| `updates.automatic` | Whether Kopi checks for updates by itself and installs them | `true` |
 | `history.max_items`, `history.max_age_days`, `history.max_total_bytes` | A positive number, or `null` for unlimited. See [Retention and cleanup](#retention-and-cleanup) | |
 
 Launch at login isn't a key: the login item itself is the setting. Later keys include `capture.paused`, `limits.max_clip_bytes` and `paste.default_plain_text`.

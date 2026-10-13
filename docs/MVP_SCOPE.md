@@ -28,7 +28,7 @@ The macOS alpha is the first build we hand to testers. Its job is to prove that 
 ### Quality bar
 
 - Idle CPU under 0.5% and memory under 150 MB with 10k clips (webview included). No visible delay opening the panel.
-- No clip content in logs. No network calls.
+- No clip content in logs. No network calls apart from the updater.
 - The Rust core has unit tests for the privacy filter, classifier, dedupe, retention and search. Storage is tested against a temporary database.
 - The CI workflow builds the macOS app and runs `cargo test`, `cargo clippy` and the UI lint.
 
@@ -43,7 +43,7 @@ The macOS alpha is the first build we hand to testers. Its job is to prove that 
 | **Mobile** (iOS, Android) | Not planned |
 | Linux | Not planned for 1.0 |
 | Encrypted local database | Open question for the beta |
-| Auto-updates | Beta (`tauri-plugin-updater`). The alpha uses manual downloads. |
+| Auto-updates | In the macOS alpha (`tauri-plugin-updater`, [#38](https://github.com/code-devanshu/kopi/issues/38)), so testers don't download and approve every build. Windows comes with Windows signing. |
 | Restoring the previous clipboard after paste | Later setting |
 | Editing clips, merging clips, paste stack / sequential paste | Later |
 | Secret detection by pattern (API keys, cards) | Later, opt-in |

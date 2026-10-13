@@ -9,6 +9,7 @@ mod panel;
 mod protocol;
 mod settings_window;
 mod tray;
+mod updates;
 
 use std::sync::Arc;
 
@@ -38,6 +39,7 @@ pub fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::settings::suspend_shortcut,
             commands::settings::set_capture_kinds,
             commands::settings::set_theme,
+            commands::settings::set_auto_update,
             commands::settings::excluded_apps,
             commands::settings::add_excluded_app,
             commands::settings::remove_excluded_app,
@@ -90,7 +92,9 @@ pub fn run() {
             MacosLauncher::LaunchAgent,
             None,
         ))
-        .plugin(tauri_plugin_global_shortcut::Builder::new().build());
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_updater::Builder::new().build());
     #[cfg(target_os = "macos")]
     let builder = builder.plugin(tauri_nspanel::init());
 
@@ -145,6 +149,7 @@ pub fn run() {
             hotkeys::register(app.handle(), &store);
             capture::start(app.handle(), Arc::clone(&store))?;
             tray::create(app.handle())?;
+            updates::start(app.handle());
             onboarding::open_on_first_run(app.handle(), &store);
             Ok(())
         })

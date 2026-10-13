@@ -49,7 +49,7 @@ export const commands = {
 	 *  clips were deleted.
 	 */
 	clearHistory: (range: ClearRange, keepPinned: boolean) => typedError<number, string>(__TAURI_INVOKE("clear_history", { range, keepPinned })),
-	/**  The shortcut, the kinds to capture and the theme. */
+	/**  The shortcut, the kinds to capture, the theme and automatic updates. */
 	getSettings: () => typedError<Settings, string>(__TAURI_INVOKE("get_settings")),
 	/**
 	 *  Switches the shortcut that opens the panel and saves it. Fails, keeping the old one, if the
@@ -62,6 +62,8 @@ export const commands = {
 	setCaptureKinds: (kinds: ClipKind[]) => typedError<null, string>(__TAURI_INVOKE("set_capture_kinds", { kinds })),
 	/**  Saves the theme and applies it to every window. Sends `theme:changed`. */
 	setTheme: (theme: Theme) => typedError<null, string>(__TAURI_INVOKE("set_theme", { theme })),
+	/**  Turns automatic update checks on or off. The next scheduled check follows it. */
+	setAutoUpdate: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("set_auto_update", { enabled })),
 	/**  The apps excluded on this OS, by name. */
 	excludedApps: () => typedError<ExcludedApp[], string>(__TAURI_INVOKE("excluded_apps")),
 	/**  Stops capturing from an app. The next copy from it is skipped. */
@@ -312,6 +314,8 @@ export type Settings = {
 	/**  The kinds of clip to capture. */
 	captureKinds: ClipKind[],
 	theme: Theme,
+	/**  Whether Kopi checks for updates by itself and installs them. */
+	autoUpdate: boolean,
 };
 
 /**  An app that clips came from. */

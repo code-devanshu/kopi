@@ -191,6 +191,7 @@ const settings: Settings = {
   shortcut: "shift+super+KeyV",
   captureKinds: ["text", "rich_text", "link", "image", "file", "color", "code"],
   theme: (params.get("theme") as Theme | null) ?? "system",
+  autoUpdate: true,
 };
 let limits: HistoryLimits = { maxItems: null, maxAgeDays: null, maxTotalBytes: 2 * 1024 ** 3 };
 let launchAtLogin = false;
@@ -329,6 +330,9 @@ mockIPC(
       case "set_theme":
         settings.theme = a.theme as Theme;
         void emit("theme:changed", { theme: settings.theme });
+        return null;
+      case "set_auto_update":
+        settings.autoUpdate = a.enabled as boolean;
         return null;
       case "launch_at_login":
         return launchAtLogin;

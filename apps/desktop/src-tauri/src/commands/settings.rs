@@ -1,4 +1,5 @@
-//! The Settings window's commands: the shortcut, what to capture, the theme and permissions.
+//! The Settings window's commands: the shortcut, what to capture, the theme, updates and
+//! permissions.
 //! The history limits are in `history`, and launch at login is in `commands`.
 
 use std::sync::Arc;
@@ -25,6 +26,8 @@ pub struct Settings {
     /// The kinds of clip to capture.
     pub capture_kinds: Vec<ClipKind>,
     pub theme: Theme,
+    /// Whether Kopi checks for updates by itself and installs them.
+    pub auto_update: bool,
 }
 
 /// The app's color scheme.
@@ -117,7 +120,7 @@ pub struct PermissionStatus {
     pub paste_from_other_apps: PasteAccess,
 }
 
-/// The shortcut, the kinds to capture and the theme.
+/// The shortcut, the kinds to capture, the theme and automatic updates.
 #[tauri::command]
 #[specta::specta]
 pub async fn get_settings(
@@ -125,11 +128,14 @@ pub async fn get_settings(
     store: State<'_, Arc<Store>>,
 ) -> Result<Settings, String> {
     let store = Arc::clone(&store);
-    let (kinds, theme) = blocking(move || Ok((store.capture_kinds()?, store.theme()?))).await?;
+    let (kinds, theme, auto_update) =
+        blocking(move || Ok((store.capture_kinds()?, store.theme()?, store.auto_update()?)))
+            .await?;
     Ok(Settings {
         shortcut: hotkeys::current(&app),
         capture_kinds: kinds.iter().map(Into::into).collect(),
         theme: theme.into(),
+        auto_update,
     })
 }
 
@@ -185,6 +191,14 @@ pub async fn set_theme(
     app.set_theme(theme.into());
     let _ = ThemeChanged { theme }.emit(&app);
     Ok(())
+}
+
+/// Turns automatic update checks on or off. The next scheduled check follows it.
+#[tauri::command]
+#[specta::specta]
+pub async fn set_auto_update(store: State<'_, Arc<Store>>, enabled: bool) -> Result<(), String> {
+    let store = Arc::clone(&store);
+    blocking(move || store.set_auto_update(enabled)).await
 }
 
 /// The apps excluded on this OS, by name.

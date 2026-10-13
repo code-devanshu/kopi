@@ -1,0 +1,60 @@
+name: Updater
+
+# Points the in-app updater at a release once it's published. The app reads latest.json from
+# the "updater" release, a fixed address: GitHub's releases/latest skips prereleases, and every
+# alpha is one. See docs/RELEASING.md.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: The published release to point the updater at, such as v0.1.0-alpha.2
+        required: true
+
+concurrency:
+  group: updater
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Publish latest.json
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'v')
+    runs-on: ubuntu-latest
+    permissions:
+      # Uploads to the updater release.
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      TAG: ${{ inputs.tag || github.event.release.tag_name }}
+    steps:
+      - name: Check the release
+        run: |
+          state=$(gh release view "$TAG" --json isDraft --jq .isDraft)
+          if [ "$state" != false ]; then
+            echo "::error::$TAG isn't published, so testers couldn't download its update."
+            exit 1
+          fi
+          if ! gh release download "$TAG" --pattern latest.json --dir manifest; then
+            echo "::error::$TAG has no latest.json. Releases built before the updater have none."
+            exit 1
+          fi
+          jq . manifest/latest.json
+          url=$(jq -r '.platforms["darwin-aarch64"].url' manifest/latest.json)
+          # The update must download as testers would get it, without signing in.
+          curl --fail --silent --show-error --location --head "$url" > /dev/null
+
+      - name: Upload to the updater release
+        run: |
+          if ! gh release view updater > /dev/null 2>&1; then
+            # A prerelease that isn't marked latest, so it never shows as the newest Kopi.
+            gh release create updater --prerelease --latest=false --title "Updater" \
+              --notes "Tells the Kopi app where its latest update is. It isn't a release of Kopi: download Kopi from the releases above. See docs/RELEASING.md."
+          fi
+          gh release upload updater manifest/latest.json --clobber
+          echo "The app now updates to $TAG." >> "$GITHUB_STEP_SUMMARY"

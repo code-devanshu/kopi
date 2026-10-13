@@ -1,6 +1,6 @@
 # Releasing Kopi
 
-The [Release workflow](../.github/workflows/release.yml) builds a universal macOS `.dmg` (Apple silicon and Intel) and attaches it to a draft GitHub Release. This document is for maintainers. Testers should read [INSTALL_ALPHA.md](INSTALL_ALPHA.md).
+The [Release workflow](../.github/workflows/release.yml) builds a universal macOS `.dmg` (Apple silicon and Intel) and the update the app installs, and attaches them to a draft GitHub Release. When the release is published, the [Updater workflow](../.github/workflows/updater.yml) offers it to the app. This document is for maintainers. Testers should read [INSTALL_ALPHA.md](INSTALL_ALPHA.md).
 
 ## Cutting a release
 
@@ -13,8 +13,9 @@ The [Release workflow](../.github/workflows/release.yml) builds a universal macO
    git push origin v0.1.0-alpha.1
    ```
 
-4. Wait for the workflow. It creates a **draft** release with the `.dmg`, its `.sha256`, a note on opening it the first time and notes generated from the merged PRs.
+4. Wait for the workflow. It creates a **draft** release with the `.dmg`, its `.sha256`, the update (`.app.tar.gz` and its `.sig`), `latest.json`, a note on opening it the first time and notes generated from the merged PRs.
 5. Read the draft, download the `.dmg` and try it on a Mac. Then publish the release.
+6. Publishing runs the Updater workflow, which offers the release to everyone's Kopi. Check that it passed. Within a few hours, Kopi installs the update in the background, or straight away from **Check for Updates…**.
 
 ## Tags and versions
 
@@ -25,13 +26,13 @@ The [Release workflow](../.github/workflows/release.yml) builds a universal macO
 
 `<version>` must be the app version, or the workflow fails before it builds. The suffix only names the tag, the release and the file (`Kopi_0.1.0-alpha.1_universal.dmg`). The app itself reports `0.1.0`, because macOS versions are three numbers.
 
-Each build sets `CFBundleVersion` to the workflow's run number, so every build is newer than the last to macOS, even when the version stays the same.
+Each build sets `CFBundleVersion` to the workflow's run number, so every build is newer than the last to macOS and to the updater, even when the version stays the same.
 
 If the workflow fails after it creates the release, fix the problem and rerun the failed job. A rerun replaces the files on the draft. To rebuild from a different commit, delete the draft release and the tag, then tag again.
 
 ## Trying the workflow without releasing
 
-In **Actions → Release → Run workflow**, run it on a branch. It builds the `.dmg` and keeps it as a workflow artifact for 14 days. It doesn't create a release. Use this to test changes to the workflow or a new signing certificate before tagging.
+In **Actions → Release → Run workflow**, run it on a branch. It builds the `.dmg` and the update, and keeps them as a workflow artifact for 14 days. It doesn't create a release or a `latest.json`. Use this to test changes to the workflow or a new signing certificate before tagging.
 
 ## Signing
 
@@ -90,6 +91,31 @@ The first build signed with the certificate has a different designated requireme
 
 To sign a local build the same way, import `kopi-signing.p12` into your login keychain and build with `APPLE_SIGNING_IDENTITY="Kopi Release Signing"`.
 
+## Updates
+
+Kopi updates itself with the [Tauri updater](https://v2.tauri.app/plugin/updater/). It checks 30 seconds after launch and then every 6 hours, unless the user turns off **Update automatically** in Settings, and whenever they choose **Check for Updates…** in the menu bar. It downloads the update, checks its signature, replaces Kopi.app and offers **Restart to Update**. If the user waits, the update runs the next time Kopi starts. Development builds only check from the menu.
+
+- **Where the app looks:** `latest.json` on the [`updater` release](https://github.com/code-devanshu/kopi/releases/tag/updater), set in `tauri.conf.json`. It's a fixed address because GitHub's `releases/latest` skips prereleases, and every alpha is one. The release is a prerelease that's never marked latest, so it doesn't show as the newest Kopi.
+- **What moves it:** publishing a release. The Updater workflow copies that release's `latest.json` to the `updater` release. To offer a release again, run **Actions → Updater → Run workflow** with its tag.
+- **Which update wins:** a greater version, or the same version with a greater build number (`build` in `latest.json`, the run number). Kopi never installs an older build, so to undo a bad release, publish a fixed one.
+- **What's signed:** the update archive, with the updater key. Kopi checks the signature against the public key in `tauri.conf.json`, and that the signature names the version `latest.json` announces. The app inside is signed with the certificate as usual, so permissions survive the update.
+- **What it sends:** two requests to GitHub, for `latest.json` and the update, with no clip data and no ID. See [PRIVACY_DESIGN.md](PRIVACY_DESIGN.md#local-only-by-default).
+
+An update installed this way isn't quarantined, so Gatekeeper doesn't block it the way it blocks a download.
+
+### The updater key
+
+The workflow signs updates with two repository secrets:
+
+| Secret | What it is |
+|---|---|
+| `TAURI_SIGNING_PRIVATE_KEY` | The updater's private key, as `tauri signer generate` writes it |
+| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | The key's password |
+
+Without them, a manual run builds no update and a tag build fails.
+
+The key was made once with `pnpm --filter @kopi/desktop tauri signer generate -w kopi-updater.key`, and its public key is `plugins.updater.pubkey` in `tauri.conf.json`. Keep the private key and its password in a password manager. **Don't lose it:** every copy of Kopi only accepts updates signed with it. A new key means a release with the new public key that testers download and install by hand once, like the first install.
+
 ## What the workflow checks
 
 Before it uploads anything, the workflow checks that:
@@ -99,7 +125,8 @@ Before it uploads anything, the workflow checks that:
 - the signature is valid (`codesign --verify --deep --strict`)
 - for a signed build, the designated requirement names the certificate
 
+Before it offers a release to the app, the Updater workflow checks that the release is published and that its update downloads without signing in.
+
 ## Not yet
 
-- **Auto-update.** The [updater plugin](https://v2.tauri.app/plugin/updater/) is [#38](https://github.com/code-devanshu/kopi/issues/38). Until then, testers download each build.
 - **Windows.** Windows builds come with the Windows alpha. See [PLATFORM_NOTES.md](PLATFORM_NOTES.md#code-signing-and-smartscreen).
