@@ -1,7 +1,7 @@
 # Architecture
 
 > [!NOTE]
-> Kopi is being built. On macOS the desktop app captures copies and has the panel with history, search and preview. Paste, pins and settings come next. This document describes the design for the macOS alpha. It will change as the spikes in [ISSUES_TO_CREATE.md](ISSUES_TO_CREATE.md) report back. To comment, open a [discussion](https://github.com/code-devanshu/kopi/discussions) or a pull request against this file.
+> Kopi is being built. On macOS the desktop app captures copies and has the panel with history, search, preview, paste, pins and pinboards, and a Settings window. First-run onboarding comes next. This document describes the design for the macOS alpha. It will change as the spikes in [ISSUES_TO_CREATE.md](ISSUES_TO_CREATE.md) report back. To comment, open a [discussion](https://github.com/code-devanshu/kopi/discussions) or a pull request against this file.
 
 Related docs:
 
@@ -120,7 +120,7 @@ trait Pasteboard {
 trait ForegroundApp { fn current(&self) -> Option<AppRef>; fn running(&self, bundle_id: &str) -> Option<AppRef>; }
 trait UserIdle      { fn idle_time(&self) -> Option<Duration>; }  // slows polling when idle
 trait KeySender     { fn send_paste(&self) -> Result<()>; }        // Cmd+V or Ctrl+V
-trait Permissions   { fn is_granted(&self, p: Permission) -> bool; fn request(&self, p: Permission); }  // onboarding adds open_settings
+trait Permissions   { fn is_granted(&self, p: Permission) -> bool; fn request(&self, p: Permission); fn open_settings(&self, p: Permission); }
 ```
 
 All of them exist on macOS. The Windows versions arrive with the Windows alpha. On macOS every AppKit call runs on the main thread: from another thread it's queued on the main queue and waited for, with a 5 s limit so a thread being joined from the main thread can't deadlock with it.
@@ -137,19 +137,20 @@ On Windows, change notifications are pushed (`WM_CLIPBOARDUPDATE`). On macOS the
 | `storage` | Owns the SQLite connection pool (WAL mode, one writer thread), migrations, the content-addressed blob store and thumbnail generation. Upserts by content hash so repeated copies move to the top. |
 | `search` | Builds FTS5 queries from the search box (with a `LIKE` fallback for 1–2 character words), applies filters (kind, source app, pinboard), ranks the newest matches by length and recency, pages results and returns snippets. See [DATA_MODEL.md](DATA_MODEL.md#full-text-search-fts5). |
 | `paste` | Writes a clip back to the clipboard (all stored formats, or plain text only), returns focus to the target app and sends the paste keystroke through `KeySender`. Falls back to "copied, press ⌘V" when paste permission is missing. |
-| `settings` | Typed settings with defaults, stored in the `settings` table; publishes changes to the other modules. |
+| `settings` | Typed settings with defaults, stored in the `settings` table: the shortcut, the kinds to capture and the theme. The history limits are with `retention`. The app shell applies a change where it's used: the shortcut plugin, the privacy filter, the windows. |
 | `retention` | Applies history limits (count, age, total size) on its own thread, never touches pinned or pinboard clips, and sweeps orphaned blob and thumbnail files at startup. The queries live in `storage`. |
 
 ### App shell (`src-tauri`)
 
 | Area | Notes |
 | --- | --- |
-| Hotkeys | `tauri-plugin-global-shortcut`. The default shortcut is ⇧⌘V on macOS. It can be changed in Settings. |
+| Hotkeys | `tauri-plugin-global-shortcut`. The default shortcut is ⇧⌘V on macOS. It can be changed in Settings, which turns it off while recording a new one. A shortcut needs ⌘, ⌃ or ⌥. If the new one can't be registered, the old one stays. |
+| Settings window | An ordinary window (`settings.html`), built when it's opened from the tray or with ⌘, in the panel, and destroyed when it's closed. Opening it hides the panel. |
 | Panel window | Borderless, always on top, hidden from the Dock and app switcher, hides when it loses focus. On macOS it's converted to a non-activating `NSPanel` with `tauri-nspanel`, so it can appear over full-screen apps without activating Kopi. See [PLATFORM_NOTES.md](PLATFORM_NOTES.md#panel-window). |
-| Tray | Tauri's `tray-icon` feature. Menu: open Kopi, pause capture, settings, quit. On macOS the activation policy is `Accessory` and Info.plist sets `LSUIElement`, so there's no Dock icon, not even a flash at launch. |
-| Other plugins | `autostart` (launch at login), `single-instance`, `window-state` (settings window only), `log`. Later: `updater`. |
-| Commands | `search_clips`, `get_clip`, `source_apps`, `paste_clip`, `copy_clip`, `delete_clips`, `hide_panel`, `set_pinned`, `pinboard_*`, `get_settings`, `update_settings`, `excluded_apps_*`, `clear_history`, `set_paused`, `permission_status`, `open_permission_settings` |
-| Events | `clip:added`, `clip:updated`, `clip:removed`, `thumbnail:ready`, `history:cleared`, `capture:paused`, `permissions:changed`, `panel:shown`, `panel:hidden` |
+| Tray | Tauri's `tray-icon` feature. Menu: open Kopi, clear the last hour or day, settings, quit. Later: pause capture. On macOS the activation policy is `Accessory` and Info.plist sets `LSUIElement`, so there's no Dock icon, not even a flash at launch. |
+| Other plugins | `autostart` (launch at login, a LaunchAgent for now: see [PLATFORM_NOTES.md](PLATFORM_NOTES.md#official-plugins)), `single-instance`. Later: `window-state` for Settings, `log`, `updater`. |
+| Commands | `search_clips`, `get_clip`, `source_apps`, `paste_clip`, `copy_clip`, `delete_clips`, `hide_panel`, `set_pinned`, `pinboard_*`, `history_limits`, `set_history_limits`, `clear_history`, `get_settings`, `set_shortcut`, `suspend_shortcut`, `set_capture_kinds`, `set_theme`, `excluded_apps`, `add_excluded_app`, `remove_excluded_app`, `running_apps`, `launch_at_login`, `set_launch_at_login`, `permission_status`, `request_permission`, `open_permission_settings`, `open_settings`. Later: `set_paused` |
+| Events | `clip:added`, `clip:updated`, `clip:removed`, `pinboards:changed`, `thumbnail:ready`, `theme:changed`, `panel:shown`, `panel:hidden`. Later: `capture:paused` |
 
 ## Data flow: something is copied
 
@@ -232,10 +233,11 @@ kopi/
 │   ├── web/                   # Website (exists)
 │   └── desktop/               # @kopi/desktop
 │       ├── package.json
-│       ├── index.html
+│       ├── index.html         # the panel
+│       ├── settings.html      # the Settings window
 │       ├── vite.config.ts
 │       ├── src/               # React UI
-│       │   ├── main.tsx
+│       │   ├── main.tsx       # an entry per page: main.tsx, settings.tsx
 │       │   ├── windows/       # panel/, settings/, onboarding/: one entry per window
 │       │   ├── features/      # history/, search/, pinboards/, preview/, settings/
 │       │   ├── components/    # shared UI
@@ -253,6 +255,7 @@ kopi/
 │               ├── commands/  # thin wrappers that call kopi-core
 │               ├── events.rs
 │               ├── panel.rs   # window/NSPanel setup, show/hide
+│               ├── settings_window.rs
 │               ├── tray.rs
 │               ├── hotkeys.rs
 │               └── protocol.rs  # kopi:// handler for blobs and thumbnails

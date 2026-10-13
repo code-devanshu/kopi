@@ -260,6 +260,7 @@ mod tests {
         fn request(&self, _: Permission) {
             self.log().events.push("request");
         }
+        fn open_settings(&self, _: Permission) {}
     }
 
     struct Harness {

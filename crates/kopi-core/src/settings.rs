@@ -1,0 +1,149 @@
+//! Typed settings with their defaults, kept in the `settings` table. The history limits are in
+//! [`crate::retention`]. See `docs/DATA_MODEL.md`.
+//!
+//! A missing or invalid value reads as its default, so a hand-edited or newer database never
+//! stops Kopi from starting.
+
+use std::str::FromStr;
+
+use serde_json::Value;
+
+use crate::privacy::KindSet;
+use crate::storage::{ClipKind, StorageResult, Store};
+
+const SHORTCUT: &str = "shortcut";
+const CAPTURE_KINDS: &str = "capture.kinds";
+const THEME: &str = "appearance.theme";
+
+/// The app's color scheme.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Theme {
+    /// Follows the system's light or dark mode.
+    #[default]
+    System,
+    Light,
+    Dark,
+}
+
+impl Theme {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::System => "system",
+            Self::Light => "light",
+            Self::Dark => "dark",
+        }
+    }
+
+    fn parse(s: &str) -> Option<Self> {
+        match s {
+            "system" => Some(Self::System),
+            "light" => Some(Self::Light),
+            "dark" => Some(Self::Dark),
+            _ => None,
+        }
+    }
+}
+
+impl Store {
+    /// The shortcut that opens the panel, as the global-shortcut plugin writes it
+    /// (`shift+super+KeyV`), or none for the default.
+    pub fn shortcut(&self) -> StorageResult<Option<String>> {
+        Ok(self
+            .setting(SHORTCUT)?
+            .and_then(|v| v.as_str().map(str::to_owned))
+            .filter(|s| !s.is_empty()))
+    }
+
+    pub fn set_shortcut(&self, shortcut: &str) -> StorageResult<()> {
+        self.set_settings(&[(SHORTCUT, Value::from(shortcut))])
+    }
+
+    /// The kinds to capture. All of them by default. Names Kopi doesn't know are ignored.
+    pub fn capture_kinds(&self) -> StorageResult<KindSet> {
+        let Some(Value::Array(names)) = self.setting(CAPTURE_KINDS)? else {
+            return Ok(KindSet::ALL);
+        };
+        Ok(names
+            .iter()
+            .filter_map(|name| ClipKind::from_str(name.as_str()?).ok())
+            .collect())
+    }
+
+    pub fn set_capture_kinds(&self, kinds: KindSet) -> StorageResult<()> {
+        let names = kinds.iter().map(|k| Value::from(k.as_str())).collect();
+        self.set_settings(&[(CAPTURE_KINDS, Value::Array(names))])
+    }
+
+    pub fn theme(&self) -> StorageResult<Theme> {
+        Ok(self
+            .setting(THEME)?
+            .and_then(|v| v.as_str().and_then(Theme::parse))
+            .unwrap_or_default())
+    }
+
+    pub fn set_theme(&self, theme: Theme) -> StorageResult<()> {
+        self.set_settings(&[(THEME, Value::from(theme.as_str()))])
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn store() -> (tempfile::TempDir, Store) {
+        let dir = tempfile::tempdir().unwrap();
+        let store = Store::open(dir.path()).unwrap();
+        (dir, store)
+    }
+
+    #[test]
+    fn defaults() {
+        let (_dir, store) = store();
+        assert_eq!(store.shortcut().unwrap(), None);
+        assert_eq!(store.capture_kinds().unwrap(), KindSet::ALL);
+        assert_eq!(store.theme().unwrap(), Theme::System);
+    }
+
+    #[test]
+    fn round_trips() {
+        let (_dir, store) = store();
+        store.set_shortcut("alt+super+KeyC").unwrap();
+        assert_eq!(store.shortcut().unwrap().as_deref(), Some("alt+super+KeyC"));
+
+        let kinds = KindSet::ALL
+            .without(ClipKind::Image)
+            .without(ClipKind::File);
+        store.set_capture_kinds(kinds).unwrap();
+        assert_eq!(store.capture_kinds().unwrap(), kinds);
+        store.set_capture_kinds(KindSet::NONE).unwrap();
+        assert_eq!(store.capture_kinds().unwrap(), KindSet::NONE);
+
+        for theme in [Theme::Light, Theme::Dark, Theme::System] {
+            store.set_theme(theme).unwrap();
+            assert_eq!(store.theme().unwrap(), theme);
+        }
+    }
+
+    #[test]
+    fn invalid_values_read_as_defaults() {
+        let (_dir, store) = store();
+        store
+            .set_settings(&[
+                (SHORTCUT, Value::from(3)),
+                (CAPTURE_KINDS, Value::from("text")),
+                (THEME, Value::from("sepia")),
+            ])
+            .unwrap();
+        assert_eq!(store.shortcut().unwrap(), None);
+        assert_eq!(store.capture_kinds().unwrap(), KindSet::ALL);
+        assert_eq!(store.theme().unwrap(), Theme::System);
+
+        store
+            .set_settings(&[(CAPTURE_KINDS, serde_json::json!(["link", "hologram", 7]))])
+            .unwrap();
+        assert_eq!(
+            store.capture_kinds().unwrap(),
+            KindSet::NONE.with(ClipKind::Link)
+        );
+    }
+}

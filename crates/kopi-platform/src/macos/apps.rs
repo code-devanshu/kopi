@@ -3,7 +3,7 @@
 
 use std::time::Duration;
 
-use objc2_app_kit::{NSRunningApplication, NSWorkspace};
+use objc2_app_kit::{NSApplicationActivationPolicy, NSRunningApplication, NSWorkspace};
 use objc2_foundation::NSString;
 
 use super::on_main;
@@ -35,6 +35,21 @@ impl ForegroundApp for MacForegroundApp {
         })
         .flatten()
     }
+}
+
+/// The apps running now that have a Dock icon, for choosing apps to exclude. Kopi itself and
+/// background agents aren't in it.
+pub fn running_apps() -> Vec<AppRef> {
+    on_main(|| {
+        NSWorkspace::sharedWorkspace()
+            .runningApplications()
+            .iter()
+            .filter(|app| app.activationPolicy() == NSApplicationActivationPolicy::Regular)
+            .map(|app| app_ref(&app))
+            .filter(|app| app.bundle_id.is_some())
+            .collect()
+    })
+    .unwrap_or_default()
 }
 
 fn app_ref(app: &NSRunningApplication) -> AppRef {

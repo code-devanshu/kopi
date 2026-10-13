@@ -49,6 +49,35 @@ export const commands = {
 	 *  clips were deleted.
 	 */
 	clearHistory: (range: ClearRange, keepPinned: boolean) => typedError<number, string>(__TAURI_INVOKE("clear_history", { range, keepPinned })),
+	/**  The shortcut, the kinds to capture and the theme. */
+	getSettings: () => typedError<Settings, string>(__TAURI_INVOKE("get_settings")),
+	/**
+	 *  Switches the shortcut that opens the panel and saves it. Fails, keeping the old one, if the
+	 *  new one is taken. Returns the new one as the plugin writes it.
+	 */
+	setShortcut: (shortcut: string) => typedError<string, string>(__TAURI_INVOKE("set_shortcut", { shortcut })),
+	/**  Turns the shortcut off while Settings records a new one, and back on after. */
+	suspendShortcut: (suspended: boolean) => typedError<null, string>(__TAURI_INVOKE("suspend_shortcut", { suspended })),
+	/**  Saves the kinds to capture. The next copy uses them. */
+	setCaptureKinds: (kinds: ClipKind[]) => typedError<null, string>(__TAURI_INVOKE("set_capture_kinds", { kinds })),
+	/**  Saves the theme and applies it to every window. Sends `theme:changed`. */
+	setTheme: (theme: Theme) => typedError<null, string>(__TAURI_INVOKE("set_theme", { theme })),
+	/**  The apps excluded on this OS, by name. */
+	excludedApps: () => typedError<ExcludedApp[], string>(__TAURI_INVOKE("excluded_apps")),
+	/**  Stops capturing from an app. The next copy from it is skipped. */
+	addExcludedApp: (id: string, name: string) => typedError<null, string>(__TAURI_INVOKE("add_excluded_app", { id, name })),
+	/**  Captures from an app again. */
+	removeExcludedApp: (id: string) => typedError<null, string>(__TAURI_INVOKE("remove_excluded_app", { id })),
+	/**  The apps running now that have a Dock icon, by name, for choosing one to exclude. */
+	runningApps: () => typedError<SourceApp[], string>(__TAURI_INVOKE("running_apps")),
+	/**  Whether Kopi has the permissions it needs. */
+	permissionStatus: () => typedError<PermissionStatus, string>(__TAURI_INVOKE("permission_status")),
+	/**  Shows the system's request for a permission, where there is one. */
+	requestPermission: (permission: Permission) => __TAURI_INVOKE<void>("request_permission", { permission }),
+	/**  Opens the page of System Settings where the user grants a permission. */
+	openPermissionSettings: (permission: Permission) => __TAURI_INVOKE<void>("open_permission_settings", { permission }),
+	/**  Opens the Settings window. */
+	openSettings: () => typedError<null, string>(__TAURI_INVOKE("open_settings")),
 	/**
 	 *  Pastes a clip into the app in front, or only copies it while Accessibility isn't granted.
 	 *  `plain` pastes only its plain text.
@@ -86,6 +115,7 @@ export const events = {
 	panelHidden: makeEvent<PanelHidden>("panel:hidden"),
 	panelShown: makeEvent<PanelShown>("panel:shown"),
 	pinboardsChanged: makeEvent<PinboardsChanged>("pinboards:changed"),
+	themeChanged: makeEvent<ThemeChanged>("theme:changed"),
 	thumbnailReady: makeEvent<ThumbnailReady>("thumbnail:ready"),
 };
 
@@ -156,6 +186,15 @@ export type ClipsRemoved = {
 	ids: number[],
 };
 
+/**  An app Kopi never captures from. */
+export type ExcludedApp = {
+	/**  A macOS bundle ID. */
+	id: string,
+	name: string,
+	/**  One Kopi excludes out of the box, such as a password manager. */
+	isDefault: boolean,
+};
+
 /**
  *  The history limits, each unlimited when unset. Pinned clips and clips on a pinboard are never
  *  removed by them.
@@ -177,6 +216,15 @@ export type PanelHidden = null;
 /**  The panel was shown. The search box takes focus. */
 export type PanelShown = null;
 
+/**  Whether Kopi may read the clipboard in the background, from "Paste from Other Apps". */
+export type PasteAccess = 
+/**  Always allowed, or the OS doesn't ask (before macOS 15.4, or not enforced). */
+"allowed" | 
+/**  The user hasn't chosen. Each copy would ask. */
+"notAsked" | 
+/**  Each copy asks. */
+"ask" | "denied";
+
 /**  How a paste ended. */
 export type PasteOutcome = 
 /**  Pasted into the app in front. The panel is hidden. */
@@ -186,6 +234,18 @@ export type PasteOutcome =
  *  panel is still showing.
  */
 "copied";
+
+/**  A permission Kopi needs from the OS. */
+export type Permission = 
+/**  Pasting into other apps. Without it a paste only copies. */
+"accessibility" | 
+/**  Reading copies in the background (macOS 15.4+). Without it nothing is captured. */
+"pasteFromOtherApps";
+
+export type PermissionStatus = {
+	accessibility: boolean,
+	pasteFromOtherApps: PasteAccess,
+};
 
 /**  A pinboard, for the switcher. */
 export type Pinboard = {
@@ -241,6 +301,15 @@ export type SearchQuery = {
 	limit?: number,
 };
 
+/**  The settings that aren't in a command of their own. */
+export type Settings = {
+	/**  The shortcut that opens the panel, as the shortcut plugin writes it: `shift+super+KeyV`. */
+	shortcut: string,
+	/**  The kinds of clip to capture. */
+	captureKinds: ClipKind[],
+	theme: Theme,
+};
+
 /**  An app that clips came from. */
 export type SourceApp = {
 	/**  A macOS bundle ID. */
@@ -252,6 +321,16 @@ export type SourceApp = {
 export type Span = {
 	text: string,
 	matched: boolean,
+};
+
+/**  The app's color scheme. */
+export type Theme = 
+/**  Follows the system's light or dark mode. */
+"system" | "light" | "dark";
+
+/**  The theme setting changed. Every window applies it. */
+export type ThemeChanged = {
+	theme: Theme,
 };
 
 /**  An image clip's thumbnail was written, so `kopi://…/thumb/<hash>` now loads. */

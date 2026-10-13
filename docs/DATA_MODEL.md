@@ -159,7 +159,16 @@ CREATE TABLE settings (
 ) WITHOUT ROWID;
 ```
 
-Keys are defined and validated in Rust, with defaults applied when a key is missing. Examples include `hotkey.open_panel`, `capture.paused`, `capture.kinds`, `history.max_items`, `history.max_age_days`, `history.max_total_bytes`, `limits.max_clip_bytes`, `paste.default_plain_text`, `app.launch_at_login` and `ui.theme`.
+Keys are defined and read in Rust (`kopi_core::settings`, and `storage::retention` for the history limits). A missing or invalid value reads as its default, so a hand-edited database never stops Kopi from starting.
+
+| Key | Value | Default |
+| --- | --- | --- |
+| `shortcut` | The shortcut that opens the panel, as the shortcut plugin writes it: `"shift+super+KeyV"` | ⇧⌘V on macOS |
+| `capture.kinds` | The kinds to capture: `["text", "link", …]`. Unknown names are ignored | Every kind |
+| `appearance.theme` | `"system"`, `"light"` or `"dark"` | `"system"` |
+| `history.max_items`, `history.max_age_days`, `history.max_total_bytes` | A positive number, or `null` for unlimited. See [Retention and cleanup](#retention-and-cleanup) | |
+
+Launch at login isn't a key: the login item itself is the setting. Later keys include `capture.paused`, `limits.max_clip_bytes` and `paste.default_plain_text`.
 
 ### `excluded_apps`
 

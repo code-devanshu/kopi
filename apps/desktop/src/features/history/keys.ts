@@ -19,6 +19,8 @@ export type Action =
   /** ⌘[ and ⌘]: the previous or next view, from History through Pinned to each pinboard. */
   | { type: "view"; by: 1 | -1 }
   | { type: "togglePreview" }
+  /** ⌘,: Settings, as in every Mac app. */
+  | { type: "settings" }
   | { type: "hide" };
 
 /** The parts of a KeyboardEvent the shortcuts look at. */
@@ -73,6 +75,7 @@ export function actionFor(e: Key, typing: boolean): Action | null {
     if (e.code === "KeyK") return { type: "menu" };
     if (e.code === "BracketLeft") return { type: "view", by: -1 };
     if (e.code === "BracketRight") return { type: "view", by: 1 };
+    if (e.code === "Comma") return { type: "settings" };
   }
   return null;
 }

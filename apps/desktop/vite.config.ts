@@ -1,3 +1,4 @@
+import { resolve } from "node:path";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
@@ -21,5 +22,12 @@ export default defineConfig({
     target: "safari17",
     minify: !process.env.TAURI_ENV_DEBUG,
     sourcemap: !!process.env.TAURI_ENV_DEBUG,
+    // A page per window: the panel, and Settings.
+    rolldownOptions: {
+      input: {
+        panel: resolve(import.meta.dirname, "index.html"),
+        settings: resolve(import.meta.dirname, "settings.html"),
+      },
+    },
   },
 });

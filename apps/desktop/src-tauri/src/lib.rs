@@ -6,6 +6,7 @@ mod events;
 mod hotkeys;
 mod panel;
 mod protocol;
+mod settings_window;
 mod tray;
 
 use std::sync::Arc;
@@ -31,6 +32,19 @@ pub fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::history::history_limits,
             commands::history::set_history_limits,
             commands::history::clear_history,
+            commands::settings::get_settings,
+            commands::settings::set_shortcut,
+            commands::settings::suspend_shortcut,
+            commands::settings::set_capture_kinds,
+            commands::settings::set_theme,
+            commands::settings::excluded_apps,
+            commands::settings::add_excluded_app,
+            commands::settings::remove_excluded_app,
+            commands::settings::running_apps,
+            commands::settings::permission_status,
+            commands::settings::request_permission,
+            commands::settings::open_permission_settings,
+            commands::settings::open_settings,
             commands::paste::paste_clip,
             commands::paste::copy_clip,
             commands::pinboards::set_pinned,
@@ -52,6 +66,7 @@ pub fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             events::ThumbnailReady,
             events::PanelShown,
             events::PanelHidden,
+            events::ThemeChanged,
         ])
 }
 
@@ -121,14 +136,24 @@ pub fn run() {
             #[cfg(target_os = "macos")]
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
 
+            commands::settings::apply_theme(app.handle());
             panel::create(app.handle())?;
             commands::paste::manage_engine(app.handle());
-            hotkeys::register(app.handle());
+            hotkeys::register(app.handle(), &store);
             capture::start(app.handle(), store)?;
             tray::create(app.handle())?;
             Ok(())
         })
         .on_window_event(|window, event| {
+            if window.label() == settings_window::SETTINGS {
+                // Closed while recording a shortcut. Off the main thread: the shortcut plugin
+                // waits for it.
+                if let WindowEvent::Destroyed = event {
+                    let app = window.app_handle().clone();
+                    tauri::async_runtime::spawn_blocking(move || hotkeys::suspend(&app, false));
+                }
+                return;
+            }
             if window.label() != panel::PANEL {
                 return;
             }

@@ -12,6 +12,7 @@ import { Switcher, type Editing } from "../../features/pinboards/Switcher";
 import { useDrag, type DragItem } from "../../features/pinboards/useDrag";
 import { Preview } from "../../features/preview/Preview";
 import { SearchBar } from "../../features/search/SearchBar";
+import { useThemeSetting } from "../../features/settings/theme";
 import { KIND_LABELS } from "../../lib/format";
 import { commands, events, unwrap, type Pinboard, type SearchHit, type SourceApp } from "../../lib/ipc";
 import { Hints } from "./Hints";
@@ -28,6 +29,7 @@ const FLASH_MS = 1400;
 type OpenMenu = { label: string; x: number; y: number; entries: MenuEntry[] };
 
 export function Panel() {
+  useThemeSetting();
   const [history] = useState(() => new History((query) => unwrap(commands.searchClips(query))));
   const state = useHistory(history);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -415,6 +417,8 @@ export function Panel() {
         return history.setView(stepView(boards, state.view, action.by));
       case "togglePreview":
         return setPreviewOpen((open) => !open);
+      case "settings":
+        return void unwrap(commands.openSettings()).catch(failed("open Settings"));
       case "hide":
         return void commands.hidePanel();
     }

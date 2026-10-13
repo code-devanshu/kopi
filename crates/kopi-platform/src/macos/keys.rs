@@ -1,12 +1,14 @@
-//! ⌘V through `CGEvent`, and the Accessibility check it needs. The recipe is the one spike 0003
+//! ⌘V through `CGEvent`, and the permission checks. The paste recipe is the one spike 0003
 //! tested (`docs/spikes/0003-macos-paste.md`).
 
 use std::ffi::c_void;
 
-use objc2_foundation::{NSDictionary, NSNumber, NSString};
+use objc2_app_kit::NSWorkspace;
+use objc2_foundation::{NSDictionary, NSNumber, NSString, NSURL};
 
-use super::on_main;
+use super::{MacPasteboard, on_main};
 use crate::keys::{KeyError, KeySender, Permission, Permissions};
+use crate::pasteboard::Pasteboard;
 
 /// Posts ⌘V to the session event tap, which delivers it to the frontmost app.
 #[derive(Debug, Clone, Default)]
@@ -20,7 +22,7 @@ impl KeySender for MacKeySender {
     }
 }
 
-/// `AXIsProcessTrusted`, and its prompt.
+/// `AXIsProcessTrusted` and its prompt, and the pasteboard's `accessBehavior`.
 #[derive(Debug, Clone, Default)]
 pub struct MacPermissions;
 
@@ -29,6 +31,9 @@ impl Permissions for MacPermissions {
         match permission {
             // SAFETY: takes nothing and returns a Boolean. Safe from any thread.
             Permission::Accessibility => unsafe { AXIsProcessTrusted() != 0 },
+            Permission::PasteFromOtherApps => MacPasteboard::general()
+                .access()
+                .is_ok_and(|access| access.allows_background_reads()),
         }
     }
 
@@ -45,9 +50,31 @@ impl Permissions for MacPermissions {
                     unsafe { AXIsProcessTrustedWithOptions(&*options as *const _ as Ref) };
                 });
             }
+            // Apple asks apps to send the user to System Settings instead.
+            Permission::PasteFromOtherApps => {}
         }
     }
+
+    fn open_settings(&self, permission: Permission) {
+        let url = match permission {
+            Permission::Accessibility => ACCESSIBILITY_SETTINGS,
+            Permission::PasteFromOtherApps => PASTEBOARD_SETTINGS,
+        };
+        on_main(move || {
+            if let Some(url) = NSURL::URLWithString(&NSString::from_str(url)) {
+                NSWorkspace::sharedWorkspace().openURL(&url);
+            }
+        });
+    }
 }
+
+/// System Settings → Privacy & Security → Accessibility.
+const ACCESSIBILITY_SETTINGS: &str =
+    "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility";
+/// System Settings → Privacy & Security → Paste from Other Apps. An anchor System Settings
+/// doesn't know opens Privacy & Security, which lists it.
+const PASTEBOARD_SETTINGS: &str =
+    "x-apple.systempreferences:com.apple.preference.security?Privacy_Pasteboard";
 
 /// ⌘ in `CGEventFlags`.
 const FLAG_COMMAND: u64 = 0x0010_0000;

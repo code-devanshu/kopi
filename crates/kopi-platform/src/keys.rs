@@ -1,4 +1,4 @@
-//! Pasting into the app in front, and the permission that needs.
+//! Pasting into the app in front, and the permissions Kopi asks for.
 
 use thiserror::Error;
 
@@ -24,14 +24,21 @@ pub enum KeyError {
 pub enum Permission {
     /// macOS: posting keys into other apps, for pasting.
     Accessibility,
+    /// macOS 15.4+: reading the clipboard in the background, "Paste from Other Apps" in
+    /// Privacy & Security. Granted where the OS doesn't ask for it.
+    PasteFromOtherApps,
 }
 
-/// Checks and asks for permissions. Onboarding (#16) adds opening the settings page.
+/// Checks and asks for permissions, and opens the OS settings where they're granted.
 pub trait Permissions: Send + Sync {
     /// Whether the user has granted `permission`. A grant takes effect while Kopi runs.
     fn is_granted(&self, permission: Permission) -> bool;
 
     /// Shows the system's request for `permission`. Returns at once, before the user answers,
-    /// so poll [`is_granted`](Self::is_granted) for the answer.
+    /// so poll [`is_granted`](Self::is_granted) for the answer. The OS has no request for
+    /// [`Permission::PasteFromOtherApps`], only its setting, so this does nothing for it.
     fn request(&self, permission: Permission);
+
+    /// Opens the page of the OS settings where the user grants `permission`.
+    fn open_settings(&self, permission: Permission);
 }

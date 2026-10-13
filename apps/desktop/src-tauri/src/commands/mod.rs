@@ -5,6 +5,7 @@ pub mod history;
 pub mod paste;
 pub mod pinboards;
 pub mod search;
+pub mod settings;
 
 use serde::Serialize;
 use specta::Type;
