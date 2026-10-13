@@ -35,7 +35,7 @@ Kopi isn't notarized by Apple, so macOS blocks it the first time. Kopi is open s
   4. Click **Open Anyway** again in the dialog that follows.
 - **macOS 14 Sonoma:** Control-click Kopi in Applications, choose **Open**, then click **Open**.
 
-You do this once for each build you download.
+You do this once. Kopi installs its updates itself, and macOS doesn't block those.
 
 ## 4. Set it up
 
@@ -64,6 +64,12 @@ If you choose **Ask** instead, macOS asks every time you copy something, so Kopi
 Press **⇧⌘V** in any app to open Kopi. You can choose another shortcut in the setup window or in Settings, and turn on launch at login there too.
 
 ## Updating
+
+Kopi checks for updates every few hours and installs them in the background. When one is ready, **Restart to Update** appears at the top of Kopi's menu bar menu. If you don't restart, the update runs the next time Kopi starts. Choose **Check for Updates…** in the menu bar to check now.
+
+To stop Kopi checking by itself, turn off **Update automatically** in Settings. **Check for Updates…** still works. Updates come from this project's GitHub releases, and Kopi sends nothing about you or your clips to check for them.
+
+If you install your first build from before the updater, or want to update by hand:
 
 1. Quit Kopi from its menu bar menu.
 2. Install the new build as in steps 1 to 3, and replace the old one in Applications.
