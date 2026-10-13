@@ -9,6 +9,8 @@ export type Action =
   | { type: "paste"; plain: boolean }
   /** ⌘1–9: the result at `index`, from 0. */
   | { type: "quickPaste"; index: number; plain: boolean }
+  /** ⌘C: puts the selected clip on the clipboard without pasting it. */
+  | { type: "copy"; plain: boolean }
   | { type: "delete" }
   | { type: "togglePreview" }
   | { type: "hide" };
@@ -59,6 +61,7 @@ export function actionFor(e: Key, typing: boolean): Action | null {
     if (digit) return { type: "quickPaste", index: Number(digit[1]) - 1, plain: alt };
     // ⌘Y opens a preview everywhere on macOS, and works while typing.
     if (e.code === "KeyY" && !alt) return { type: "togglePreview" };
+    if (e.code === "KeyC") return { type: "copy", plain: alt };
   }
   return null;
 }

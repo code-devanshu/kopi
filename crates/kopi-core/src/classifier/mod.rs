@@ -260,7 +260,7 @@ fn decode(data: &[u8]) -> String {
 }
 
 /// `file:///Users/me/My%20Notes.txt` as `/Users/me/My Notes.txt`.
-fn file_path(data: &[u8]) -> Option<String> {
+pub(crate) fn file_path(data: &[u8]) -> Option<String> {
     let url = decode(data);
     let rest = url.trim().strip_prefix("file://")?;
     let rest = rest.strip_prefix("localhost").unwrap_or(rest);

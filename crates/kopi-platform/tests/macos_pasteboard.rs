@@ -35,6 +35,8 @@ mod macos {
         ),
         ("over_the_limit_reads_nothing", over_the_limit_reads_nothing),
         ("change_count_follows_writes", change_count_follows_writes),
+        ("write_puts_back_each_item", write_puts_back_each_item),
+        ("write_marks_the_source", write_marks_the_source),
     ];
 
     pub fn run() {
@@ -171,5 +173,72 @@ mod macos {
         let second = f.write(&[&[(uti::PLAIN_TEXT, b"again")]]);
         assert!(second > first);
         assert_eq!(f.pasteboard.change_count().unwrap(), second);
+    }
+
+    fn write_puts_back_each_item(f: &Fixture) {
+        two_items(f);
+        let formats = vec![
+            RawFormat {
+                item_index: 0,
+                format: uti::PLAIN_TEXT.into(),
+                data: b"first".to_vec(),
+            },
+            RawFormat {
+                item_index: 1,
+                format: uti::FILE_URL.into(),
+                data: b"file:///tmp/b.txt".to_vec(),
+            },
+            RawFormat {
+                item_index: 0,
+                format: uti::HTML.into(),
+                data: b"<i>first</i>".to_vec(),
+            },
+        ];
+        let count = f.pasteboard.write(&formats, None).unwrap();
+        assert_eq!(f.pasteboard.change_count().unwrap(), count);
+        let types = f.pasteboard.types().unwrap();
+        assert_eq!(types.items.len(), 2);
+        assert!(!types.contains(uti::SOURCE));
+        let read = f
+            .pasteboard
+            .read(
+                count,
+                &[
+                    vec![uti::PLAIN_TEXT.into(), uti::HTML.into()],
+                    vec![uti::FILE_URL.into(), uti::PLAIN_TEXT.into()],
+                ],
+                1024,
+            )
+            .unwrap();
+        let got: Vec<(u32, &str, &[u8])> = read
+            .iter()
+            .map(|r| (r.item_index, r.format.as_str(), &r.data[..]))
+            .collect();
+        assert_eq!(
+            got,
+            [
+                (0, uti::PLAIN_TEXT, &b"first"[..]),
+                (0, uti::HTML, b"<i>first</i>"),
+                (1, uti::FILE_URL, b"file:///tmp/b.txt"),
+            ]
+        );
+    }
+
+    fn write_marks_the_source(f: &Fixture) {
+        let formats = [RawFormat {
+            item_index: 0,
+            format: uti::PLAIN_TEXT.into(),
+            data: b"marked".to_vec(),
+        }];
+        let count = f
+            .pasteboard
+            .write(&formats, Some("in.devanshuverma.kopi"))
+            .unwrap();
+        let read = f
+            .pasteboard
+            .read(count, &[vec![uti::SOURCE.into()]], 1024)
+            .unwrap();
+        assert_eq!(read.len(), 1);
+        assert_eq!(read[0].data, b"in.devanshuverma.kopi");
     }
 }

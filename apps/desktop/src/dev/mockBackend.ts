@@ -7,6 +7,9 @@
 //   ?select=3       selects the fourth row
 //   ?theme=dark     forces dark or light
 //   ?preview=closed starts with the preview closed
+//   ?paste=pasted   pastes as with Accessibility granted. Without it, a paste only copies, as
+//                   when Accessibility isn't granted, which is the case that shows a message.
+//   ?paste=error    makes pasting and copying fail
 // In the console, kopiDev.copy("text") adds a clip as a copy would.
 import { emit } from "@tauri-apps/api/event";
 import { mockIPC } from "@tauri-apps/api/mocks";
@@ -122,6 +125,16 @@ function search(query: SearchQuery): SearchPage {
   return { hits, hasMore: offset + limit < found.length };
 }
 
+/** What paste_clip and copy_clip do here: move the clip to the top, as a real paste does. */
+function markUsed(id: number): void {
+  if (params.get("paste") === "error") throw `mock backend: no clip ${id}`;
+  const c = clips.find((c) => c.id === id);
+  if (!c) throw `no clip ${id}`;
+  c.lastUsedAt = Date.now();
+  c.useCount += 1;
+  void emit("clip:updated", { id });
+}
+
 function sourceApps(): SourceApp[] {
   const seen = new Map<string, SourceApp>();
   for (const c of [...clips].sort((a, b) => b.lastUsedAt - a.lastUsedAt)) {
@@ -148,6 +161,17 @@ mockIPC(
       }
       case "source_apps":
         return sourceApps();
+      case "paste_clip": {
+        markUsed(a.id as number);
+        const pasted = params.get("paste") === "pasted";
+        console.info(`kopi: paste_clip ${a.id}${a.plain ? " as plain text" : ""}`);
+        if (pasted) console.info("kopi: hide_panel");
+        return pasted ? "pasted" : "copied";
+      }
+      case "copy_clip":
+        markUsed(a.id as number);
+        console.info(`kopi: copy_clip ${a.id}${a.plain ? " as plain text" : ""}`);
+        return null;
       case "hide_panel":
         console.info("kopi: hide_panel");
         return null;

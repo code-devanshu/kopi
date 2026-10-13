@@ -1,9 +1,10 @@
 //! The only crate that calls OS APIs. Everything above it works with plain Rust types.
 //!
-//! `Pasteboard`, `ForegroundApp` and `UserIdle` are here. `KeySender` and `Permissions` arrive
-//! with the features that need them. See `docs/ARCHITECTURE.md`.
+//! `Pasteboard`, `ForegroundApp`, `UserIdle`, `KeySender` and `Permissions` are here. See
+//! `docs/ARCHITECTURE.md`.
 
 mod apps;
+mod keys;
 mod pasteboard;
 
 #[cfg(target_os = "macos")]
@@ -12,6 +13,7 @@ pub mod macos;
 mod windows;
 
 pub use apps::{AppRef, ForegroundApp, UserIdle};
+pub use keys::{KeyError, KeySender, Permission, Permissions};
 pub use pasteboard::{
     Pasteboard, PasteboardAccess, PasteboardError, PasteboardTypes, RawFormat, uti,
 };
