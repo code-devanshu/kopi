@@ -9,6 +9,11 @@ export function NoticeBar({ notice }: { notice: Notice | null }) {
         <div className={`notice ${notice.tone}`}>
           <p className="notice-message">{notice.message}</p>
           {notice.detail && <p className="notice-detail">{notice.detail}</p>}
+          {notice.action && (
+            <button type="button" className="notice-action" onClick={notice.action.run}>
+              {notice.action.label}
+            </button>
+          )}
         </div>
       )}
     </div>

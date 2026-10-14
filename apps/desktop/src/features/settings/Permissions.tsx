@@ -38,7 +38,11 @@ export function PermissionRows({
               />
             </>
           }
-          description="Lets Kopi paste into the app you're using. Without it, Kopi copies the clip and you press ⌘V."
+          description={
+            status && !status.accessibility
+              ? "Lets Kopi paste into the app you're using. Without it, Kopi copies the clip and you press ⌘V. In System Settings, turn on Kopi. If it isn't listed, add it with +. If it's on already, select it, remove it with −, and add it again with +."
+              : "Lets Kopi paste into the app you're using. Without it, Kopi copies the clip and you press ⌘V."
+          }
         >
           {status &&
             !status.accessibility &&
