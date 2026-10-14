@@ -53,7 +53,7 @@ export function SyncAnimation() {
       ref={ref}
       role="img"
       aria-label="Animation: a clip copied on a Mac travels, encrypted, to a Windows PC and appears in its clipboard history."
-      className="grid gap-0 md:grid-cols-[1fr_7rem_1fr] md:items-center"
+      className="grid grid-cols-1 gap-0 md:grid-cols-[1fr_7rem_1fr] md:items-center"
     >
       <div aria-hidden="true">
         <DeviceWindow
