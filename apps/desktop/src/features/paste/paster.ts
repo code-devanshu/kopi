@@ -7,6 +7,8 @@ export type Notice = {
   message: string;
   detail?: string;
   tone: "info" | "error";
+  /** A button in the message. */
+  action?: { label: string; run: () => void };
 };
 
 export type PasterDeps = {
@@ -14,10 +16,13 @@ export type PasterDeps = {
   copy: (id: number, plain: boolean) => Promise<unknown>;
   hide: () => void;
   notify: (notice: Notice | null) => void;
+  /** Shows where to allow Kopi under Accessibility, so it can paste. */
+  openAccessibility: () => void;
 };
 
-/** How long "Copied" shows before the panel closes, so there's time to read it. */
-export const COPIED_CLOSE_MS = 1800;
+/** How long "Copied" shows before the panel closes, so there's time to read it and press its
+ * button. */
+export const COPIED_CLOSE_MS = 6000;
 /** After ⌘C the message is only a confirmation. */
 export const COPY_CLOSE_MS = 700;
 
@@ -42,8 +47,10 @@ export class Paster {
       if ((await this.#deps.paste(id, plain)) === "copied") {
         this.#closeAfter(COPIED_CLOSE_MS, {
           message: "Copied. Press ⌘V to paste.",
-          detail: "Allow Kopi in Accessibility settings and it pastes for you.",
+          detail:
+            "To have Kopi paste for you, turn on Kopi in System Settings → Privacy & Security → Accessibility. Not listed? Add it with +. Already on? Remove it with −, then add it again.",
           tone: "info",
+          action: { label: "Open Accessibility Settings", run: () => this.#openAccessibility() },
         });
       }
     }, "Couldn't paste");
@@ -60,6 +67,11 @@ export class Paster {
   closeNow() {
     this.reset();
     this.#deps.hide();
+  }
+
+  #openAccessibility() {
+    this.closeNow();
+    this.#deps.openAccessibility();
   }
 
   /** Drops the message and any planned close: the panel was shown or hidden. */

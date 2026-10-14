@@ -52,6 +52,7 @@ export function Panel() {
         paste: (id, plain) => unwrap(commands.pasteClip(id, plain)),
         copy: (id, plain) => unwrap(commands.copyClip(id, plain)),
         hide: () => void commands.hidePanel(),
+        openAccessibility: () => void commands.openPermissionSettings("accessibility"),
         notify: (n) => {
           clearTimeout(flashTimer.current);
           setNotice(n);

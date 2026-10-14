@@ -3,6 +3,7 @@ import { COPIED_CLOSE_MS, COPY_CLOSE_MS, Paster, type Notice } from "./paster";
 
 let notices: (Notice | null)[];
 let hidden: number;
+let openedAccessibility: number;
 
 function paster(outcome: "pasted" | "copied" | Error = "pasted") {
   const calls: string[] = [];
@@ -17,6 +18,7 @@ function paster(outcome: "pasted" | "copied" | Error = "pasted") {
     },
     hide: () => hidden++,
     notify: (n) => notices.push(n),
+    openAccessibility: () => openedAccessibility++,
   });
   return { p, calls };
 }
@@ -27,6 +29,7 @@ beforeEach(() => {
   vi.useFakeTimers();
   notices = [];
   hidden = 0;
+  openedAccessibility = 0;
 });
 
 afterEach(() => vi.useRealTimers());
@@ -51,6 +54,17 @@ test("without Accessibility it says Copied, then closes", async () => {
   expect(hidden).toBe(1);
   expect(last()).toBeNull();
   expect(p.closing).toBe(false);
+});
+
+test("its button closes the panel and opens the Accessibility settings", async () => {
+  const { p } = paster("copied");
+  await p.paste(3, false);
+  last()?.action?.run();
+  expect(hidden).toBe(1);
+  expect(openedAccessibility).toBe(1);
+  expect(p.closing).toBe(false);
+  vi.runAllTimers();
+  expect(hidden).toBe(1);
 });
 
 test("⌘V while it says Copied closes the panel at once", async () => {
