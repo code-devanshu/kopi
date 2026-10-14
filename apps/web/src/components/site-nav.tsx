@@ -58,7 +58,7 @@ export function SiteNav() {
             data-track="github_click" data-track-location="nav"
             target="_blank"
             rel="noreferrer"
-            className={buttonStyles({ variant: "ghost", size: "sm", className: "hidden sm:inline-flex" })}
+            className={buttonStyles({ variant: "ghost", size: "sm", className: "max-sm:hidden" })}
           >
             <GitHubIcon className="size-4" />
             GitHub
@@ -68,7 +68,7 @@ export function SiteNav() {
             data-track="download_click" data-track-platform="macos" data-track-location="nav"
             target="_blank"
             rel="noreferrer"
-            className={buttonStyles({ size: "sm", className: "hidden sm:inline-flex" })}
+            className={buttonStyles({ size: "sm", className: "max-sm:hidden" })}
           >
             Download
           </a>

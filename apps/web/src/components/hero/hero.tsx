@@ -19,7 +19,8 @@ export function Hero() {
       <div aria-hidden="true" className="hero-grain pointer-events-none absolute inset-0" />
 
       <Container className="relative grid items-center gap-8 pt-14 pb-20 sm:pt-20 lg:grid-cols-[1.05fr_1fr] lg:gap-12 lg:pt-24 lg:pb-28">
-        <div>
+        {/* min-w-0 lets the column shrink; otherwise the one-line install command widens it past the screen. */}
+        <div className="min-w-0">
           <Reveal>
             <p className="inline-flex rounded-full border border-border bg-surface/70 px-3 py-1 text-xs font-medium text-muted-foreground">
               Open source · Free · macOS alpha
