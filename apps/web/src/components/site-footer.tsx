@@ -1,16 +1,10 @@
-import { GitHubIcon, XIcon } from "@/components/brand/brand-icons";
+import { GitHubIcon } from "@/components/brand/brand-icons";
 import { Logo } from "@/components/brand/logo";
 import { Container } from "@/components/ui/section";
 import { siteConfig } from "@/lib/site";
 
 const links = [
   { label: "GitHub", href: siteConfig.links.github, external: true, track: { "data-track": "github_click" } },
-  {
-    label: "Twitter / X",
-    href: siteConfig.links.twitter,
-    external: true,
-    track: { "data-track": "social_click", "data-track-network": "x" },
-  },
   {
     label: "Privacy",
     href: siteConfig.links.privacy,
@@ -27,7 +21,7 @@ export function SiteFooter() {
         <div className="max-w-xs">
           <Logo />
           <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-            An open-source clipboard manager for macOS and Windows. Brewing now.
+            An open-source clipboard manager. The macOS alpha is out, and Windows is next.
           </p>
           <div className="mt-5 flex gap-2">
             <a
@@ -40,18 +34,6 @@ export function SiteFooter() {
               className="inline-flex size-9 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-foreground"
             >
               <GitHubIcon className="size-4" />
-            </a>
-            <a
-              href={siteConfig.links.twitter}
-              data-track="social_click"
-              data-track-network="x"
-              data-track-location="footer"
-              target="_blank"
-              rel="noreferrer"
-              aria-label="Kopi on X"
-              className="inline-flex size-9 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-foreground"
-            >
-              <XIcon className="size-3.5" />
             </a>
           </div>
         </div>
