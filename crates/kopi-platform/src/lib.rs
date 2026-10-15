@@ -10,7 +10,7 @@ mod pasteboard;
 #[cfg(target_os = "macos")]
 pub mod macos;
 #[cfg(target_os = "windows")]
-mod windows;
+pub mod windows;
 
 pub use apps::{AppRef, ForegroundApp, UserIdle};
 pub use keys::{KeyError, KeySender, Permission, Permissions};

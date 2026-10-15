@@ -4,6 +4,7 @@ import { KindIcon } from "../../components/KindIcon";
 import { thumbnailUrl } from "../../lib/assets";
 import { ago, hex, KIND_LABELS } from "../../lib/format";
 import type { SearchHit } from "../../lib/ipc";
+import { keys } from "../../lib/platform";
 
 /** Every row has this height, so the list can work out which rows are in view. */
 export const ROW_HEIGHT = 52;
@@ -62,7 +63,7 @@ export const ClipRow = memo(function ClipRow({
       {hit.pinned && <Pin className="row-pin" size={13} strokeWidth={1.75} aria-label="Pinned" />}
       {index < 9 && (
         <kbd className="row-key" aria-hidden="true">
-          ⌘{index + 1}
+          {keys(`⌘${index + 1}`)}
         </kbd>
       )}
     </div>

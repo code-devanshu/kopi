@@ -1,5 +1,7 @@
 // The panel's keyboard shortcuts. The search box keeps focus, so these are read from its
-// key events.
+// key events. They're written for macOS: on Windows, Ctrl does what ⌘ does.
+
+import { IS_WINDOWS } from "../../lib/platform";
 
 export type Action =
   | { type: "move"; by: number }
@@ -33,10 +35,13 @@ export type Key = Pick<
  * The action for a key press, or null to let it type. `typing` is whether the search box has
  * text, since Space is then a space.
  */
-export function actionFor(e: Key, typing: boolean): Action | null {
+export function actionFor(e: Key, typing: boolean, windows = IS_WINDOWS): Action | null {
   // An input method is composing. The press-and-hold accent picker sets only keyCode 229.
   if (e.isComposing || e.keyCode === 229) return null;
-  const { metaKey: cmd, ctrlKey: ctrl, altKey: alt, shiftKey: shift } = e;
+  const { altKey: alt, shiftKey: shift } = e;
+  // On Windows, Ctrl does what ⌘ does, and the Windows key stands in for ⌃.
+  const cmd = windows ? e.ctrlKey : e.metaKey;
+  const ctrl = windows ? e.metaKey : e.ctrlKey;
   const plain = !cmd && !ctrl && !alt && !shift;
 
   switch (e.key) {
@@ -59,8 +64,8 @@ export function actionFor(e: Key, typing: boolean): Action | null {
     case " ":
       return plain && !typing ? { type: "togglePreview" } : null;
   }
-  // ⌃N and ⌃P move, as in other macOS lists.
-  if (ctrl && !cmd && !alt && !shift && (e.key === "n" || e.key === "p")) {
+  // ⌃N and ⌃P move, as in other macOS lists. Windows has no such keys.
+  if (!windows && ctrl && !cmd && !alt && !shift && (e.key === "n" || e.key === "p")) {
     return { type: "move", by: e.key === "n" ? 1 : -1 };
   }
   if (cmd && !ctrl && !shift) {

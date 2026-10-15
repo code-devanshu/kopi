@@ -55,7 +55,7 @@ impl PasteboardTypes {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RawFormat {
     pub item_index: u32,
-    /// A macOS UTI (`public.rtf`) or a Windows format name (`HTML Format`).
+    /// A macOS UTI (`public.rtf`). The Windows clipboard translates its own formats to these.
     pub format: String,
     pub data: Vec<u8>,
 }
@@ -75,6 +75,9 @@ pub enum PasteboardError {
     /// The main thread didn't run the call in time. macOS pasteboard calls must run there.
     #[error("the main thread is busy")]
     MainThreadBusy,
+    /// Another app kept the clipboard open. On Windows only one app at a time may open it.
+    #[error("another app has the clipboard open")]
+    Busy,
     /// The OS turned the write down.
     #[error("couldn't write to the clipboard")]
     WriteFailed,

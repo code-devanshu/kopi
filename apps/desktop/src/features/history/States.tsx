@@ -1,6 +1,7 @@
 import { ClipboardList, LayoutGrid, Pin, SearchX, TriangleAlert } from "lucide-react";
 import { KIND_LABELS } from "../../lib/format";
 import type { ClipKind } from "../../lib/ipc";
+import { keys } from "../../lib/platform";
 
 /** Placeholder rows shaped like the real ones, until the first results arrive. */
 export function LoadingRows() {
@@ -36,7 +37,7 @@ export function Empty({ place, text, kind, appName, onClearFilters }: EmptyProps
       <div className="state" role="status">
         <Pin size={28} strokeWidth={1.5} aria-hidden="true" />
         <h2>No pinned clips</h2>
-        <p>Press ⌘P on a clip to keep it here. Pinned clips are never cleaned up.</p>
+        <p>Press {keys("⌘P")} on a clip to keep it here. Pinned clips are never cleaned up.</p>
       </div>
     );
   }
@@ -45,7 +46,7 @@ export function Empty({ place, text, kind, appName, onClearFilters }: EmptyProps
       <div className="state" role="status">
         <LayoutGrid size={28} strokeWidth={1.5} aria-hidden="true" />
         <h2>{place.board} is empty</h2>
-        <p>Drag clips onto its tab, or add them from a clip’s menu with ⌘K.</p>
+        <p>Drag clips onto its tab, or add them from a clip’s menu with {keys("⌘K")}.</p>
       </div>
     );
   }

@@ -8,7 +8,7 @@
 //!    stays on the clipboard for the user to paste, and the system is asked for the permission,
 //!    once per run.
 //!
-//! macOS formats only. Windows formats arrive with the Windows paste engine.
+//! Formats are macOS names (UTIs) on every OS. The Windows clipboard translates them.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, PoisonError};

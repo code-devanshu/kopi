@@ -48,14 +48,15 @@ Usable builds for early testers on macOS, out now on [GitHub Releases](https://g
 - ⏳ Retest pasteboard privacy on macOS 27.2 ([#21](https://github.com/code-devanshu/kopi/issues/21))
 - ⏳ Fixes from testers' reports
 
-## 4. Windows alpha ⏳
+## 4. Windows alpha 🔨
 
-The same app, built for Windows. This is next.
+The same app, built for Windows. This is in progress.
 
-- ⏳ Windows clipboard watcher, hotkey and paste
-- ⏳ Source-app detection on Windows
+- 🔨 Windows clipboard watcher, hotkey and paste
+- 🔨 Source-app detection on Windows
 - ⏳ Tray icon and launch at login
 - ⏳ Feature parity with the macOS alpha
+- 🔨 Windows installer and automatic updates, built by CI
 
 ## 5. Private beta ⏳
 

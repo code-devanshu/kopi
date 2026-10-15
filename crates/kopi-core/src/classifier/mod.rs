@@ -68,6 +68,7 @@ impl Classified {
             source_app_name,
             source_app_id,
             metadata: self.metadata,
+            // Format names are UTIs on every OS: the Windows clipboard translates them.
             platform: Platform::MacOs,
             formats: self.formats,
         }
@@ -259,16 +260,36 @@ fn decode(data: &[u8]) -> String {
         .to_owned()
 }
 
-/// `file:///Users/me/My%20Notes.txt` as `/Users/me/My Notes.txt`.
+/// `file:///Users/me/My%20Notes.txt` as `/Users/me/My Notes.txt`. Windows paths come back as
+/// Windows writes them: `file:///C:/Users/me/a.txt` as `C:\Users\me\a.txt`, and
+/// `file://server/share/a.txt` as `\\server\share\a.txt`.
 pub(crate) fn file_path(data: &[u8]) -> Option<String> {
     let url = decode(data);
     let rest = url.trim().strip_prefix("file://")?;
     let rest = rest.strip_prefix("localhost").unwrap_or(rest);
-    if !rest.starts_with('/') {
-        return None;
-    }
     let path = percent_decode(rest)?;
+    let path = if path.starts_with('/') {
+        windows_drive(&path).unwrap_or(path)
+    } else {
+        // A host before the path: a Windows network share.
+        let (host, share) = path.split_once('/')?;
+        if host.is_empty() || share.is_empty() {
+            return None;
+        }
+        format!("\\\\{host}\\{}", share.replace('/', "\\"))
+    };
     Some(path).filter(|p| !p.contains('\0'))
+}
+
+/// `/C:/Users/me` as `C:\Users\me`, or `None` if it doesn't start with a drive.
+fn windows_drive(path: &str) -> Option<String> {
+    let rest = path.strip_prefix('/')?;
+    let bytes = rest.as_bytes();
+    let drive = bytes.len() >= 2
+        && bytes[0].is_ascii_alphabetic()
+        && bytes[1] == b':'
+        && (bytes.len() == 2 || bytes[2] == b'/');
+    drive.then(|| rest.replace('/', "\\"))
 }
 
 fn percent_decode(text: &str) -> Option<String> {
@@ -288,10 +309,11 @@ fn percent_decode(text: &str) -> Option<String> {
     String::from_utf8(out).ok()
 }
 
-/// The last component, keeping a folder's name: `/a/Folder/` gives `Folder`.
+/// The last component, keeping a folder's name: `/a/Folder/` gives `Folder`, and so does
+/// `C:\a\Folder\`.
 fn file_name(path: &str) -> &str {
-    let trimmed = path.trim_end_matches('/');
-    match trimmed.rsplit('/').next() {
+    let trimmed = path.trim_end_matches(['/', '\\']);
+    match trimmed.rsplit(['/', '\\']).next() {
         Some(name) if !name.is_empty() => name,
         _ => "/",
     }
@@ -481,6 +503,29 @@ mod tests {
 
         let text = classify(text("Hello\0")).unwrap();
         assert_eq!(text.plain_text.as_deref(), Some("Hello"));
+    }
+
+    #[test]
+    fn windows_file_urls() {
+        let path = |url: &str| file_path(url.as_bytes());
+        assert_eq!(
+            path("file:///C:/Users/me/My%20Notes.txt").as_deref(),
+            Some(r"C:\Users\me\My Notes.txt")
+        );
+        assert_eq!(path("file:///D:/").as_deref(), Some(r"D:\"));
+        assert_eq!(
+            path("file://server/share/a.txt").as_deref(),
+            Some(r"\\server\share\a.txt")
+        );
+        assert_eq!(path("file://server").as_deref(), None);
+        assert_eq!(path("file:///Cx/a").as_deref(), Some("/Cx/a"));
+
+        let files = classify(vec![
+            raw(0, uti::FILE_URL, b"file:///C:/Users/me/a.txt"),
+            raw(1, uti::FILE_URL, b"file:///C:/Users/me/Photos/"),
+        ])
+        .unwrap();
+        assert_eq!(files.plain_text.as_deref(), Some("a.txt\nPhotos"));
     }
 
     #[test]

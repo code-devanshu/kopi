@@ -1,6 +1,6 @@
 # Releasing Kopi
 
-The [Release workflow](../.github/workflows/release.yml) builds a universal macOS `.dmg` (Apple silicon and Intel) and the update the app installs, and attaches them to a draft GitHub Release. When the release is published, the [Updater workflow](../.github/workflows/updater.yml) offers it to the app. This document is for maintainers. Testers should read [INSTALL_ALPHA.md](INSTALL_ALPHA.md).
+The [Release workflow](../.github/workflows/release.yml) builds a universal macOS `.dmg` (Apple silicon and Intel), a Windows installer (x64) and the updates the app installs, and attaches them to a draft GitHub Release. When the release is published, the [Updater workflow](../.github/workflows/updater.yml) offers it to the app. This document is for maintainers. Testers should read [INSTALL_ALPHA.md](INSTALL_ALPHA.md).
 
 ## Cutting a release
 
@@ -13,8 +13,8 @@ The [Release workflow](../.github/workflows/release.yml) builds a universal macO
    git push origin v0.1.0-alpha.1
    ```
 
-4. Wait for the workflow. It creates a **draft** release with the `.dmg`, its `.sha256`, the update (`.app.tar.gz` and its `.sig`), `latest.json`, a note on opening it the first time and notes generated from the merged PRs.
-5. Read the draft, download the `.dmg` and try it on a Mac. Then publish the release.
+4. Wait for the workflow. It creates a **draft** release with the `.dmg`, its `.sha256`, the macOS update (`.app.tar.gz` and its `.sig`), the Windows installer (`_x64-setup.exe`, its `.sha256` and its `.sig`), `latest.json`, a note on opening it the first time and notes generated from the merged PRs.
+5. Read the draft, download the `.dmg` and the `.exe`, and try them on a Mac and on Windows. Then publish the release.
 6. Publishing runs the Updater workflow, which offers the release to everyone's Kopi. Check that it passed. Within a few hours, Kopi installs the update in the background, or straight away from **Check for Updates…**.
 
 ## Tags and versions
@@ -46,7 +46,11 @@ The script names the certificate by its hash. **With a new certificate, update `
 
 ## Trying the workflow without releasing
 
-In **Actions → Release → Run workflow**, run it on a branch. It builds the `.dmg` and the update, and keeps them as a workflow artifact for 14 days. It doesn't create a release or a `latest.json`. Use this to test changes to the workflow or a new signing certificate before tagging.
+In **Actions → Release → Run workflow**, run it on a branch. It builds the `.dmg`, the Windows installer and the updates, and keeps them as workflow artifacts for 14 days. It doesn't create a release or a `latest.json`. Use this to test changes to the workflow or a new signing certificate before tagging, or to try a branch on Windows:
+
+1. Run the workflow on the branch, from the Actions page or with `gh workflow run release.yml --ref <branch>`.
+2. When it's done, open the run on a Windows PC, signed in to GitHub, and download the `Kopi_<version>-dev.<run>_x64-setup` artifact at the bottom of the page. GitHub only lets signed-in users download artifacts.
+3. Unzip it and open the `.exe`. A dev build installs over the release you have, and the next release replaces it.
 
 ## Signing
 
@@ -109,9 +113,11 @@ To sign a local build the same way, import `kopi-signing.p12` into your login ke
 
 Kopi updates itself with the [Tauri updater](https://v2.tauri.app/plugin/updater/). It checks 30 seconds after launch and then every 6 hours, unless the user turns off **Update automatically** in Settings, and whenever they choose **Check for Updates…** in the menu bar. It downloads the update, checks its signature, replaces Kopi.app and offers **Restart to Update**. If the user waits, the update runs the next time Kopi starts. Development builds only check from the menu, and don't install what they find.
 
+On Windows the installer can't run while Kopi does, and installing quits Kopi. So there Kopi only downloads the update by itself, and **Restart to Update** quits Kopi and runs the installer, which opens Kopi again. The update is the installer itself, signed with the same updater key.
+
 - **Where the app looks:** `latest.json` on the [`updater` release](https://github.com/code-devanshu/kopi/releases/tag/updater), set in `tauri.conf.json`. It's a fixed address because GitHub's `releases/latest` skips prereleases, and every alpha is one. The release is a prerelease that's never marked latest, so it doesn't show as the newest Kopi.
 - **What moves it:** publishing a release. The Updater workflow copies that release's `latest.json` to the `updater` release. To offer a release again, run **Actions → Updater → Run workflow** with its tag.
-- **Which update wins:** a greater version, or the same version with a greater build number (`build` in `latest.json`, the run number). Kopi never installs an older build, so to undo a bad release, publish a fixed one.
+- **Which update wins:** a greater version, or the same version with a greater build number (`build` in `latest.json`, the run number). Windows builds carry the same number: the workflow sets `bundle.macOS.bundleVersion` on both, and the app reads it from its built-in config. Kopi never installs an older build, so to undo a bad release, publish a fixed one.
 - **What's signed:** the update archive, with the updater key. Kopi checks the signature against the public key in `tauri.conf.json`, and that the signature names the version `latest.json` announces. The app inside is signed with the certificate as usual, so permissions survive the update.
 - **What it sends:** two requests to GitHub, for `latest.json` and the update, with no clip data and no ID. See [PRIVACY_DESIGN.md](PRIVACY_DESIGN.md#local-only-by-default).
 
@@ -143,4 +149,4 @@ Before it offers a release to the app, the Updater workflow checks that the rele
 
 ## Not yet
 
-- **Windows.** Windows builds come with the Windows alpha. See [PLATFORM_NOTES.md](PLATFORM_NOTES.md#code-signing-and-smartscreen).
+- **Signing on Windows.** The installer isn't signed, so SmartScreen warns about it and testers choose **More info → Run anyway**. See [PLATFORM_NOTES.md](PLATFORM_NOTES.md#code-signing-and-smartscreen).

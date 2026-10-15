@@ -186,7 +186,7 @@ impl Default for PrivacySettings {
 }
 
 impl PrivacySettings {
-    /// Replaces the excluded apps, by bundle ID on macOS or exe path on Windows.
+    /// Replaces the excluded apps, by bundle ID on macOS or exe file name on Windows.
     pub fn set_excluded_apps<I, S>(&mut self, app_ids: I)
     where
         I: IntoIterator<Item = S>,

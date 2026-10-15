@@ -1,4 +1,4 @@
-//! The menu bar icon and its menu.
+//! The menu bar icon and its menu: on Windows, the notification area icon.
 
 use tauri::menu::{Menu, MenuBuilder, MenuItemBuilder, PredefinedMenuItem, SubmenuBuilder};
 use tauri::tray::TrayIconBuilder;
@@ -50,9 +50,16 @@ pub fn create(app: &AppHandle) -> tauri::Result<()> {
         .item(&quit)
         .build()?;
 
+    // A template image follows the menu bar's light or dark appearance on macOS. Windows has no
+    // template images, and a black glyph would vanish on its dark taskbar, so it gets the app
+    // icon.
+    #[cfg(target_os = "macos")]
+    let icon = include_image!("icons/tray.png");
+    #[cfg(not(target_os = "macos"))]
+    let icon = include_image!("icons/32x32.png");
+
     TrayIconBuilder::with_id("main")
-        .icon(include_image!("icons/tray.png"))
-        // A template image follows the menu bar's light or dark appearance on macOS.
+        .icon(icon)
         .icon_as_template(true)
         .tooltip("Kopi")
         .menu(&menu)

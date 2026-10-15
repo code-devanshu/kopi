@@ -187,7 +187,7 @@ pub struct Pinboard {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExcludedApp {
     pub platform: Platform,
-    /// A macOS bundle ID, or a Windows exe path.
+    /// A macOS bundle ID, or a Windows exe file name such as `KeePassXC.exe`.
     pub app_id: String,
     pub app_name: String,
     /// `true` for the defaults Kopi seeded, `false` for apps the user added.

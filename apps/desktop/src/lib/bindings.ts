@@ -70,7 +70,10 @@ export const commands = {
 	addExcludedApp: (id: string, name: string) => typedError<null, string>(__TAURI_INVOKE("add_excluded_app", { id, name })),
 	/**  Captures from an app again. */
 	removeExcludedApp: (id: string) => typedError<null, string>(__TAURI_INVOKE("remove_excluded_app", { id })),
-	/**  The apps running now that have a Dock icon, by name, for choosing one to exclude. */
+	/**
+	 *  The apps running now that have a Dock icon, or on Windows a taskbar button, by name, for
+	 *  choosing one to exclude.
+	 */
 	runningApps: () => typedError<SourceApp[], string>(__TAURI_INVOKE("running_apps")),
 	/**  Whether Kopi has the permissions it needs. */
 	permissionStatus: () => typedError<PermissionStatus, string>(__TAURI_INVOKE("permission_status")),

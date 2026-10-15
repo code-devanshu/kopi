@@ -1,10 +1,10 @@
 name: Release
 
-# Builds a universal macOS .dmg and the update the in-app updater installs. A version tag
-# (v0.1.0, or v0.1.0-alpha.1 for a prerelease) attaches them to a draft GitHub Release, with the
-# latest.json that the Updater workflow publishes once the release is. A manual run only keeps
-# them as a workflow artifact. Releases are signed with a self-signed certificate and aren't
-# notarized. See docs/RELEASING.md.
+# Builds a universal macOS .dmg, a Windows installer and the updates the in-app updater installs.
+# A version tag (v0.1.0, or v0.1.0-alpha.1 for a prerelease) attaches them to a draft GitHub
+# Release, with the latest.json that the Updater workflow publishes once the release is. A manual
+# run only keeps them as workflow artifacts. The .dmg is signed with a self-signed certificate
+# and isn't notarized. The Windows installer isn't signed. See docs/RELEASING.md.
 
 on:
   push:
@@ -19,31 +19,17 @@ permissions:
   contents: read
 
 jobs:
-  macos:
-    name: Build universal .dmg
-    runs-on: macos-latest
-    permissions:
-      # Creates the draft release.
-      contents: write
+  version:
+    name: Check the version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      name: ${{ steps.version.outputs.name }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
     steps:
       - uses: actions/checkout@v5
 
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 24
-          cache: pnpm
-
-      # No Rust cache: release builds start clean.
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-apple-darwin, x86_64-apple-darwin
-
-      - run: pnpm install --frozen-lockfile
-
-      - name: Check the version
-        id: version
+      - id: version
         run: |
           version=$(node -p "require('./apps/desktop/package.json').version")
           crate=$(cargo metadata --no-deps --format-version 1 --locked \
@@ -70,6 +56,27 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "name=$name" >> "$GITHUB_OUTPUT"
           echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
+
+  macos:
+    name: Build universal .dmg
+    needs: version
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+
+      # No Rust cache: release builds start clean.
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin, x86_64-apple-darwin
+
+      - run: pnpm install --frozen-lockfile
 
       # Kopi isn't in the Apple Developer Program, so it's signed with a self-signed certificate
       # and isn't notarized. The certificate gives every build the same designated requirement,
@@ -145,12 +152,10 @@ jobs:
             --config "{\"bundle\":{\"createUpdaterArtifacts\":$updater,\"macOS\":{\"bundleVersion\":\"$GITHUB_RUN_NUMBER\"}}}"
 
       - name: Check the build
-        id: check
         env:
           SIGNING: ${{ steps.signing.outputs.signing }}
           IDENTITY: ${{ steps.signing.outputs.identity }}
-          VERSION: ${{ steps.version.outputs.version }}
-          NAME: ${{ steps.version.outputs.name }}
+          NAME: ${{ needs.version.outputs.name }}
           UPDATER: ${{ steps.build.outputs.updater }}
         run: |
           mkdir dist
@@ -190,27 +195,6 @@ jobs:
           fi
 
           (cd dist && shasum -a 256 "$(basename "$dmg")" > "$(basename "$dmg").sha256")
-          echo "dmg=$dmg" >> "$GITHUB_OUTPUT"
-
-          # What the app reads to find this update, once the release is published. The app
-          # compares the version, then the build number: every alpha of a version has the same
-          # version. "version" must match the one the update was signed for.
-          if [ "$UPDATER" = true ] && [ "$GITHUB_REF_TYPE" = tag ]; then
-            update=Kopi_${NAME}_universal.app.tar.gz
-            jq -n \
-              --arg version "$VERSION" \
-              --argjson build "$GITHUB_RUN_NUMBER" \
-              --arg release "$NAME" \
-              --arg date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-              --arg url "https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/$update" \
-              --arg signature "$(cat "dist/$update.sig")" \
-              '{version: $version, build: $build, release: $release, pub_date: $date,
-                platforms: {
-                  "darwin-aarch64": {url: $url, signature: $signature},
-                  "darwin-x86_64": {url: $url, signature: $signature}
-                }}' > dist/latest.json
-            cat dist/latest.json
-          fi
 
           {
             echo "### Kopi $NAME"
@@ -223,20 +207,136 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Kopi_${{ steps.version.outputs.name }}_universal
+          name: Kopi_${{ needs.version.outputs.name }}_universal
           path: dist/
           retention-days: 14
 
-      - name: Attach to a draft release
-        if: github.ref_type == 'tag'
+
+  windows:
+    name: Build Windows installer
+    needs: version
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+
+      # No Rust cache: release builds start clean.
+      - uses: dtolnay/rust-toolchain@stable
+
+      - run: pnpm install --frozen-lockfile
+
+      # The installer isn't signed, so SmartScreen warns about it until it has a reputation.
+      # Testers choose More info, then Run anyway. See docs/INSTALL_ALPHA.md.
+      - name: Build
+        id: build
         env:
-          GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.ref_name }}
-          NAME: ${{ steps.version.outputs.name }}
-          PRERELEASE: ${{ steps.version.outputs.prerelease }}
-          DMG: ${{ steps.check.outputs.dmg }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
-          files=("$DMG" "$DMG.sha256" dist/*.app.tar.gz dist/*.app.tar.gz.sig dist/latest.json)
+          updater=true
+          if [ -z "$TAURI_SIGNING_PRIVATE_KEY" ]; then
+            if [ "$GITHUB_REF_TYPE" = tag ]; then
+              echo "::error::A release needs the TAURI_SIGNING_PRIVATE_KEY secret, or testers can't update to it from the app."
+              exit 1
+            fi
+            echo "::warning::No updater key, so this build has no update for the app to install."
+            updater=false
+          fi
+          echo "updater=$updater" >> "$GITHUB_OUTPUT"
+
+          # The build number is the macOS bundle version on every OS, since the app reads it
+          # from its built-in config. See updates.rs.
+          pnpm --filter @kopi/desktop tauri build --bundles nsis \
+            --config "{\"bundle\":{\"createUpdaterArtifacts\":$updater,\"macOS\":{\"bundleVersion\":\"$GITHUB_RUN_NUMBER\"}}}"
+
+      - name: Check the build
+        env:
+          NAME: ${{ needs.version.outputs.name }}
+          UPDATER: ${{ steps.build.outputs.updater }}
+        run: |
+          mkdir dist
+          bundle=target/release/bundle/nsis
+          ls -l "$bundle"
+          setup=dist/Kopi_${NAME}_x64-setup.exe
+          mv "$bundle"/*-setup.exe "$setup"
+          if [ "$UPDATER" = true ]; then
+            mv "$bundle"/*-setup.exe.sig "$setup.sig"
+          fi
+          (cd dist && sha256sum "$(basename "$setup")" > "$(basename "$setup").sha256")
+
+          {
+            echo "### Kopi $NAME for Windows"
+            echo
+            echo "- Signing: **none**"
+            echo "- SHA-256: \`$(cut -d' ' -f1 "$setup.sha256")\`"
+            echo "- Update for the app: **$([ "$UPDATER" = true ] && echo signed || echo none)**"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Kopi_${{ needs.version.outputs.name }}_x64-setup
+          path: dist/
+          retention-days: 14
+
+  release:
+    name: Attach to a draft release
+    if: github.ref_type == 'tag'
+    needs: [version, macos, windows]
+    runs-on: ubuntu-latest
+    permissions:
+      # Creates the draft release.
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      TAG: ${{ github.ref_name }}
+      VERSION: ${{ needs.version.outputs.version }}
+      NAME: ${{ needs.version.outputs.name }}
+      PRERELEASE: ${{ needs.version.outputs.prerelease }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      # What the app reads to find this update, once the release is published. The app compares
+      # the version, then the build number: every alpha of a version has the same version.
+      # "version" must match the one the updates were signed for.
+      - name: Write latest.json
+        run: |
+          mac=Kopi_${NAME}_universal.app.tar.gz
+          win=Kopi_${NAME}_x64-setup.exe
+          url=https://github.com/$GH_REPO/releases/download/$TAG
+          jq -n \
+            --arg version "$VERSION" \
+            --argjson build "$GITHUB_RUN_NUMBER" \
+            --arg release "$NAME" \
+            --arg date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg mac_url "$url/$mac" \
+            --arg mac_signature "$(cat "dist/$mac.sig")" \
+            --arg win_url "$url/$win" \
+            --arg win_signature "$(cat "dist/$win.sig")" \
+            '{version: $version, build: $build, release: $release, pub_date: $date,
+              platforms: {
+                "darwin-aarch64": {url: $mac_url, signature: $mac_signature},
+                "darwin-x86_64": {url: $mac_url, signature: $mac_signature},
+                "windows-x86_64": {url: $win_url, signature: $win_signature}
+              }}' > dist/latest.json
+          cat dist/latest.json
+
+      - name: Create the draft
+        run: |
+          files=(dist/*.dmg dist/*.dmg.sha256 dist/*.app.tar.gz dist/*.app.tar.gz.sig \
+            dist/*-setup.exe dist/*-setup.exe.sha256 dist/*-setup.exe.sig dist/latest.json)
 
           # A rerun replaces the files on the release the first run made.
           if gh release view "$TAG" > /dev/null 2>&1; then
@@ -244,9 +344,9 @@ jobs:
             exit 0
           fi
 
-          install="https://github.com/$GITHUB_REPOSITORY/blob/$TAG/docs/INSTALL_ALPHA.md"
+          install="https://github.com/$GH_REPO/blob/$TAG/docs/INSTALL_ALPHA.md"
           {
-            echo "Download \`$(basename "$DMG")\`. It runs on Apple silicon and Intel Macs with macOS 14 or later."
+            echo "**Mac:** download \`Kopi_${NAME}_universal.dmg\`. It runs on Apple silicon and Intel Macs with macOS 14 or later."
             echo
             echo "> [!IMPORTANT]"
             echo "> Kopi isn't notarized by Apple, so macOS blocks it the first time you open it. [Installing Kopi]($install) shows how to open it and allow its permissions."
@@ -256,6 +356,11 @@ jobs:
             echo '```sh'
             echo "curl -fsSL https://kopi.devanshuverma.in/install.sh | bash"
             echo '```'
+            echo
+            echo "**Windows:** download \`Kopi_${NAME}_x64-setup.exe\`. It runs on Windows 10 and 11. Windows support is new in this release, so expect rough edges."
+            echo
+            echo "> [!IMPORTANT]"
+            echo "> The installer isn't signed yet, so Windows may say \"Windows protected your PC\". Choose **More info**, then **Run anyway**. [Installing Kopi]($install#windows) has the steps."
           } > notes.md
 
           flags=(--draft --verify-tag --title "Kopi $NAME" --notes-file notes.md --generate-notes)

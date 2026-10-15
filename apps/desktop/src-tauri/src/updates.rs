@@ -2,6 +2,9 @@
 //! hours, unless the user turned that off, and when they choose Check for Updates… in the menu
 //! bar. An update downloads, is checked against the updater key and replaces Kopi.app. It runs
 //! the next time Kopi starts, and the menu bar offers to restart now. See docs/RELEASING.md.
+//!
+//! On Windows the installer has to run while Kopi isn't, so installing quits Kopi. There an
+//! update only downloads by itself, and Restart to Update installs it.
 
 use std::cmp::Ordering;
 use std::sync::{Arc, Mutex};
@@ -36,6 +39,10 @@ enum State {
 
 struct Updates(Mutex<State>);
 
+/// The downloaded update that Restart to Update installs.
+#[cfg(target_os = "windows")]
+struct Downloaded(Mutex<Option<(tauri_plugin_updater::Update, Vec<u8>)>>);
+
 /// What a check found.
 enum Found {
     Nothing,
@@ -48,6 +55,8 @@ enum Found {
 /// Starts the automatic checks. Development builds don't check by themselves.
 pub fn start(app: &AppHandle) {
     app.manage(Updates(Mutex::new(State::Idle)));
+    #[cfg(target_os = "windows")]
+    app.manage(Downloaded(Mutex::new(None)));
     if cfg!(debug_assertions) {
         return;
     }
@@ -145,8 +154,31 @@ pub async fn check(app: &AppHandle, manual: bool) {
     }
 }
 
-/// Restarts into the installed update.
+/// Restarts into the installed update. On Windows, quits and runs the installer, which opens
+/// Kopi again once it's done.
 pub fn restart(app: &AppHandle) {
+    #[cfg(target_os = "windows")]
+    {
+        let downloaded = app
+            .state::<Downloaded>()
+            .0
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .take();
+        if let Some((update, bytes)) = downloaded {
+            // Returns only if the installer didn't start.
+            if let Err(error) = update.install(bytes) {
+                eprintln!("kopi: couldn't run the update: {error}");
+                alert::message(
+                    app,
+                    Kind::Error,
+                    "Couldn't update Kopi",
+                    &format!("{error}\n\nDownload Kopi again from GitHub to update."),
+                );
+            }
+            return;
+        }
+    }
     // Through the event loop, so the single-instance lock is released before the new Kopi
     // starts. Otherwise the new one would find it and quit.
     app.request_restart();
@@ -184,7 +216,16 @@ async fn install_newer(app: &AppHandle) -> Result<Found, tauri_plugin_updater::E
     if cfg!(debug_assertions) {
         return Ok(Found::Skipped(name));
     }
+    #[cfg(not(target_os = "windows"))]
     update.download_and_install(|_, _| {}, || {}).await?;
+    #[cfg(target_os = "windows")]
+    {
+        let bytes = update.download(|_, _| {}, || {}).await?;
+        *app.state::<Downloaded>()
+            .0
+            .lock()
+            .unwrap_or_else(|e| e.into_inner()) = Some((update, bytes));
+    }
     Ok(Found::Installed(name))
 }
 
@@ -208,7 +249,8 @@ fn is_newer(
     }
 }
 
-/// This build's number, `CFBundleVersion`. The Release workflow sets it to its run number.
+/// This build's number, `CFBundleVersion`. The Release workflow sets it to its run number. The
+/// setting is built into the app on every OS, so Windows builds have it too.
 fn build(app: &AppHandle) -> Option<u64> {
     app.config()
         .bundle
@@ -232,9 +274,15 @@ fn offer_restart(app: &AppHandle, name: &str) {
     alert::ask(
         app,
         "Kopi is ready to update",
-        &format!(
-            "Kopi {name} is installed. Restart Kopi now to use it, or it starts the next time you open Kopi."
-        ),
+        &if cfg!(target_os = "windows") {
+            format!(
+                "Kopi {name} is downloaded. Restart Kopi now to install it, or later from Kopi's menu."
+            )
+        } else {
+            format!(
+                "Kopi {name} is installed. Restart Kopi now to use it, or it starts the next time you open Kopi."
+            )
+        },
         "Restart Now",
         "Later",
         move |now| {

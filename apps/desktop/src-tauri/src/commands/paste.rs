@@ -63,7 +63,7 @@ pub async fn copy_clip(
     Ok(())
 }
 
-/// Sets up the paste engine. macOS only for now.
+/// Sets up the paste engine.
 #[cfg(target_os = "macos")]
 pub fn manage_engine(app: &AppHandle) {
     use kopi_platform::macos::{MacKeySender, MacPasteboard, MacPermissions};
@@ -76,7 +76,20 @@ pub fn manage_engine(app: &AppHandle) {
     )));
 }
 
-#[cfg(not(target_os = "macos"))]
+/// Sets up the paste engine.
+#[cfg(target_os = "windows")]
+pub fn manage_engine(app: &AppHandle) {
+    use kopi_platform::windows::{WinKeySender, WinPasteboard, WinPermissions};
+
+    app.manage(Arc::new(PasteEngine::new(
+        Box::new(WinPasteboard::general()),
+        Box::new(WinKeySender),
+        Box::new(WinPermissions),
+        app.config().identifier.clone(),
+    )));
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
 pub fn manage_engine(_app: &AppHandle) {}
 
 fn engine(app: &AppHandle) -> Result<Arc<PasteEngine>, String> {

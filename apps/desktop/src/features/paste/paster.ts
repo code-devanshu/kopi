@@ -1,6 +1,7 @@
 // Pasting and copying from the panel. The Rust side writes the clipboard, hides the panel and
 // posts ⌘V. This decides what the panel shows meanwhile, and when it closes.
 import type { PasteOutcome } from "../../lib/ipc";
+import { keys } from "../../lib/platform";
 
 /** A short message over the bottom of the panel. */
 export type Notice = {
@@ -46,7 +47,7 @@ export class Paster {
       // "pasted" means the panel is already hidden.
       if ((await this.#deps.paste(id, plain)) === "copied") {
         this.#closeAfter(COPIED_CLOSE_MS, {
-          message: "Copied. Press ⌘V to paste.",
+          message: `Copied. Press ${keys("⌘V")} to paste.`,
           detail:
             "To have Kopi paste for you, turn on Kopi in System Settings → Privacy & Security → Accessibility. Not listed? Add it with +. Already on? Remove it with −, then add it again.",
           tone: "info",

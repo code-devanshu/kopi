@@ -5,7 +5,8 @@ use std::time::Duration;
 /// An app, as far as the OS could tell us.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct AppRef {
-    /// A macOS bundle ID such as `com.apple.Safari`.
+    /// A macOS bundle ID such as `com.apple.Safari`, or a Windows exe file name such as
+    /// `chrome.exe`.
     pub bundle_id: Option<String>,
     /// The name to show, such as "Safari".
     pub name: Option<String>,
