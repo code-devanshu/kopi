@@ -103,6 +103,8 @@ impl From<Permission> for kopi_platform::Permission {
 /// Whether Kopi may read the clipboard in the background, from "Paste from Other Apps".
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
+// Only macOS asks, so elsewhere it's always allowed.
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
 pub enum PasteAccess {
     /// Always allowed, or the OS doesn't ask (before macOS 15.4, or not enforced).
     Allowed,
