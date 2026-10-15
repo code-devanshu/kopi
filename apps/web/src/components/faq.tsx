@@ -19,22 +19,22 @@ const faqs: Array<{ question: string; answer: ReactNode }> = [
     question: "Can I use it now?",
     answer: (
       <>
-        On a Mac, yes. The macOS alpha is on{" "}
-        <a href={siteConfig.links.releases} data-track="download_click" data-track-platform="macos" data-track-location="faq" target="_blank" rel="noreferrer" className="font-medium text-accent-text underline underline-offset-4">
+        Yes, on a Mac or a Windows PC. The alpha is on{" "}
+        <a href={siteConfig.links.releases} data-track="download_click" data-track-location="faq" target="_blank" rel="noreferrer" className="font-medium text-accent-text underline underline-offset-4">
           GitHub Releases
         </a>
-        , and Kopi updates itself from there. It&apos;s early, so expect rough edges and tell us what you find. Windows is next:{" "}
-        <a href="#waitlist" data-track="waitlist_cta_click" data-track-location="faq_windows" className="font-medium text-accent-text underline underline-offset-4">
-          join the waitlist
-        </a>{" "}
-        to hear when it&apos;s ready.
+        , and Kopi updates itself from there. It&apos;s early, and Windows is the newest, so expect rough edges and{" "}
+        <a href={`${siteConfig.links.github}/issues/new/choose`} data-track="github_click" data-track-location="faq_issues" target="_blank" rel="noreferrer" className="font-medium text-accent-text underline underline-offset-4">
+          tell us what you find
+        </a>
+        .
       </>
     ),
   },
   {
     question: "Which platforms will it support?",
     answer:
-      "macOS now, with Windows next. Both are the focus for 1.0, and encrypted sync between them follows after 1.0. If you'd like to see another platform, start a discussion on GitHub.",
+      "macOS and Windows, both in alpha now. They're the focus for 1.0, and encrypted sync between them follows after 1.0. If you'd like to see another platform, start a discussion on GitHub.",
   },
   {
     question: "Is my data private?",

@@ -1,5 +1,6 @@
 import { Download, Star } from "lucide-react";
 
+import { WindowsIcon } from "@/components/brand/brand-icons";
 import { HeroCardStack } from "@/components/hero/hero-card-stack";
 import { InstallCommand } from "@/components/hero/install-command";
 import { PlatformNote } from "@/components/hero/platform-note";
@@ -23,7 +24,7 @@ export function Hero() {
         <div className="min-w-0">
           <Reveal>
             <p className="inline-flex rounded-full border border-border bg-surface/70 px-3 py-1 text-xs font-medium text-muted-foreground">
-              Open source · Free · macOS alpha
+              Open source · Free · Alpha for Mac and Windows
             </p>
           </Reveal>
 
@@ -40,7 +41,7 @@ export function Hero() {
             </p>
           </Reveal>
 
-          <Reveal delay={0.15} className="mt-8 flex flex-col gap-3 sm:flex-row">
+          <Reveal delay={0.15} className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             <a
               href={siteConfig.links.releases}
               data-track="download_click" data-track-platform="macos" data-track-location="hero"
@@ -50,6 +51,16 @@ export function Hero() {
             >
               <Download className="size-4" aria-hidden="true" />
               Download for macOS
+            </a>
+            <a
+              href={siteConfig.links.releases}
+              data-track="download_click" data-track-platform="windows" data-track-location="hero"
+              target="_blank"
+              rel="noreferrer"
+              className={buttonStyles({ size: "lg" })}
+            >
+              <WindowsIcon className="size-4" />
+              Download for Windows
             </a>
             <a
               href={siteConfig.links.github}

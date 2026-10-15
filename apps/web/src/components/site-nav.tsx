@@ -65,7 +65,7 @@ export function SiteNav() {
           </a>
           <a
             href={siteConfig.links.releases}
-            data-track="download_click" data-track-platform="macos" data-track-location="nav"
+            data-track="download_click" data-track-location="nav"
             target="_blank"
             rel="noreferrer"
             className={buttonStyles({ size: "sm", className: "max-sm:hidden" })}
@@ -123,7 +123,7 @@ export function SiteNav() {
                 </a>
                 <a
                   href={siteConfig.links.releases}
-                  data-track="download_click" data-track-platform="macos" data-track-location="nav_mobile"
+                  data-track="download_click" data-track-location="nav_mobile"
                   target="_blank"
                   rel="noreferrer"
                   className={buttonStyles()}

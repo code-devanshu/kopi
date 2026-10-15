@@ -6,17 +6,17 @@
 
 **Everything you copy, on every computer.**
 
-An open-source clipboard manager for macOS, with Windows next.
+An open-source clipboard manager for macOS and Windows.
 
 <p>
   <a href="https://github.com/code-devanshu/kopi/releases"><img alt="Latest release" src="https://img.shields.io/github/v/release/code-devanshu/kopi?include_prereleases&sort=semver&style=flat-square&label=release&color=d08a3a" /></a>
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-2b1d14?style=flat-square" /></a>
-  <img alt="Platforms: macOS, Windows next" src="https://img.shields.io/badge/platforms-macOS%20%C2%B7%20Windows%20next-93561a?style=flat-square" />
+  <img alt="Platforms: macOS and Windows" src="https://img.shields.io/badge/platforms-macOS%20%C2%B7%20Windows-93561a?style=flat-square" />
   <a href="https://github.com/code-devanshu/kopi/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/code-devanshu/kopi/ci.yml?branch=main&style=flat-square&label=CI" /></a>
 </p>
 
 <p>
-  <a href="https://github.com/code-devanshu/kopi/releases"><strong>Download for macOS</strong></a> ·
+  <a href="https://github.com/code-devanshu/kopi/releases"><strong>Download for macOS or Windows</strong></a> ·
   <a href="docs/INSTALL_ALPHA.md">Install guide</a> ·
   <a href="https://kopi.devanshuverma.in">Website</a> ·
   <a href="ROADMAP.md">Roadmap</a> ·
@@ -33,9 +33,11 @@ An open-source clipboard manager for macOS, with Windows next.
 <br />
 
 > [!NOTE]
-> Kopi is in **alpha** on macOS. It's usable every day, but expect rough edges, and please [report what you find](https://github.com/code-devanshu/kopi/issues/new/choose). Windows comes next.
+> Kopi is in **alpha** on macOS and Windows. It's usable every day, but expect rough edges, and please [report what you find](https://github.com/code-devanshu/kopi/issues/new/choose). Windows support is the newest, so it has the most of them.
 
 ## Download
+
+### macOS
 
 Kopi needs **macOS 14 Sonoma or later**, on Apple silicon or Intel.
 
@@ -55,20 +57,30 @@ Or download it:
 
 You do this once, and the `.dmg` window shows these steps too. Kopi installs its updates itself, and macOS doesn't block those. [docs/INSTALL_ALPHA.md](docs/INSTALL_ALPHA.md) walks through every step, the permissions Kopi asks for and how to remove it. The reasons behind not notarizing are in [ADR 0006](docs/decisions/0006-macos-distribution-without-notarization.md).
 
+### Windows
+
+Kopi needs **Windows 10 or 11** on a 64-bit PC.
+
+1. Download `Kopi_<version>_x64-setup.exe` from the newest release on the [releases page](https://github.com/code-devanshu/kopi/releases).
+2. Open it. The installer isn't signed yet, so Windows may say **Windows protected your PC**. Choose **More info**, then **Run anyway**.
+3. Kopi installs for your account, without asking for an administrator, and starts. Its icon is in the notification area.
+
+Press **Ctrl+Shift+V** to open it. Ctrl does what ⌘ does on a Mac. Kopi updates itself here too. [docs/INSTALL_ALPHA.md](docs/INSTALL_ALPHA.md#windows) has the details.
+
 ## What it does
 
-Kopi lives in the menu bar. Press **⇧⌘V** in any app to open it.
+Kopi lives in the menu bar on a Mac and in the notification area on Windows. Press **⇧⌘V** (**Ctrl+Shift+V** on Windows) in any app to open it.
 
 - **History** of text, rich text, links, images, files, colors and code, with the app each copy came from.
 - **Search** as you type, with filters by kind and app, and a preview of the selected clip.
 - **Paste** into the app you're in with Return, as plain text with ⌥Return, or one of the first nine with ⌘1–9.
 - **Pins and pinboards** for the snippets you reuse.
 - **Keyboard-first:** open, search, preview and paste without touching the mouse.
-- **Private by default:** history stays on your Mac, works offline and needs no account. Copies from password managers and content marked as concealed are skipped, and you can exclude any app.
+- **Private by default:** history stays on your computer, works offline and needs no account. Copies from password managers and content marked as concealed are skipped, and you can exclude any app.
 - **History limits** by count, age and size. Pinned clips are kept.
 - **Updates itself** from this repository's releases, with a switch to turn that off.
 
-Planned: the Windows app, then optional end-to-end encrypted sync between your computers.
+Planned: optional end-to-end encrypted sync between your computers.
 
 ## Why Kopi
 
@@ -83,7 +95,7 @@ Planned: the Windows app, then optional end-to-end encrypted sync between your c
 | Website and waitlist | ✅ Done |
 | Design and architecture | ✅ Done |
 | macOS alpha | 🔨 Out now, improving |
-| Windows alpha | Next |
+| Windows alpha | 🔨 Out now, improving |
 | Private beta | Planned |
 | v1.0 public launch | Planned |
 | Encrypted sync | Planned |
@@ -134,7 +146,7 @@ kopi/
 
 ## Contributing
 
-The most useful help right now is using the alpha and [reporting what breaks](https://github.com/code-devanshu/kopi/issues/new/choose), and work towards the Windows app. Read [CONTRIBUTING.md](CONTRIBUTING.md) to get started, and look for issues labelled [`good first issue`](https://github.com/code-devanshu/kopi/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
+The most useful help right now is using the alpha and [reporting what breaks](https://github.com/code-devanshu/kopi/issues/new/choose), especially on Windows. Read [CONTRIBUTING.md](CONTRIBUTING.md) to get started, and look for issues labelled [`good first issue`](https://github.com/code-devanshu/kopi/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
 
 Please follow the [Code of Conduct](CODE_OF_CONDUCT.md). To report a security issue, see [SECURITY.md](SECURITY.md) and don't open a public issue.
 

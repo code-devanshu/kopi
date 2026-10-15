@@ -40,7 +40,7 @@ export default function OpengraphImage() {
               fontSize: 24,
             }}
           >
-            macOS alpha
+            Alpha for Mac and Windows
           </div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
