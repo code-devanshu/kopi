@@ -6,11 +6,21 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.1.0-alpha.3] - 2026-10-15
+
+Testers on alpha.2 get this release as an update.
+
 ### Added
 
 - A one-line install from Terminal: `curl -fsSL https://kopi.devanshuverma.in/install.sh | bash`. macOS doesn't block Kopi installed this way, so there's no **Open Anyway** step. The script installs the newest release, and only if it's signed with Kopi's certificate. Run it again to update by hand.
 - The `.dmg` window shows the drag to Applications and how to open Kopi the first time. Builds from GitHub Actions had no layout before.
 - The website shows the install command, with a copy button, under the download button.
+
+### Fixed
+
+- When Kopi can't paste, the panel says to press ⌘V and how to allow Kopi under Privacy & Security → Accessibility, with a button that opens it. It covers Kopi missing from the list (add it with +) and Kopi on but still unable to paste (remove it with −, then add it again). The Accessibility row in Settings gives the same steps.
+- The website no longer scrolls sideways on phones.
+- The website's footer says the macOS alpha is out, instead of "Brewing now", and no longer links to an X account that doesn't exist.
 
 ## [0.1.0-alpha.2] - 2026-10-13
 
@@ -55,6 +65,7 @@ The first macOS alpha.
 - Release workflow: a version tag builds a universal macOS `.dmg` and attaches it to a draft GitHub Release. Releases are signed with a self-signed certificate, so testers keep their permissions across updates, and aren't notarized ([ADR 0006](docs/decisions/0006-macos-distribution-without-notarization.md)). Install steps for testers are in `docs/INSTALL_ALPHA.md`.
 - Automatic updates on macOS with the Tauri updater: Kopi checks GitHub a little after launch and every 6 hours, installs updates in the background and offers Restart to Update in the menu bar, with Check for Updates… there too and an **Update automatically** switch in Settings. Updates aren't quarantined, so Gatekeeper only blocks the first install. Publishing a release offers it to the app.
 
-[Unreleased]: https://github.com/code-devanshu/kopi/compare/v0.1.0-alpha.2...HEAD
+[Unreleased]: https://github.com/code-devanshu/kopi/compare/v0.1.0-alpha.3...HEAD
+[0.1.0-alpha.3]: https://github.com/code-devanshu/kopi/compare/v0.1.0-alpha.2...v0.1.0-alpha.3
 [0.1.0-alpha.2]: https://github.com/code-devanshu/kopi/releases/tag/v0.1.0-alpha.2
 [0.1.0-alpha.1]: https://github.com/code-devanshu/kopi/releases/tag/v0.1.0-alpha.1

@@ -13,7 +13,6 @@ export const siteConfig = {
     releases: "https://github.com/code-devanshu/kopi/releases",
     install: "https://github.com/code-devanshu/kopi/blob/main/docs/INSTALL_ALPHA.md",
     license: "https://github.com/code-devanshu/kopi/blob/main/LICENSE",
-    twitter: "https://x.com/your-handle", // TODO: real X/Twitter profile
     contact: "mailto:code.devanshu@gmail.com", // TODO: real contact address
     privacy: "#privacy", // TODO: link to a privacy policy page once one exists
   },
