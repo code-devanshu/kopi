@@ -9,6 +9,7 @@ use super::{StorageError, StorageResult};
 const MIGRATIONS: &[&str] = &[
     include_str!("../../migrations/0001_init.sql"),
     include_str!("../../migrations/0002_default_excluded_apps.sql"),
+    include_str!("../../migrations/0003_windows_excluded_apps.sql"),
 ];
 
 /// The schema version this build writes.

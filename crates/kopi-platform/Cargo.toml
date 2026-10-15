@@ -32,6 +32,21 @@ objc2-foundation = { version = "0.3", default-features = false, features = [
     "NSValue",
 ] }
 
+[target.'cfg(target_os = "windows")'.dependencies]
+# Bitmaps on the clipboard become PNG, and PNG goes back as a bitmap too.
+image = { version = "0.25", default-features = false, features = ["png", "bmp"] }
+windows-sys = { version = "0.61", features = [
+    "Win32_Foundation",
+    "Win32_Storage_FileSystem",
+    "Win32_System_DataExchange",
+    "Win32_System_Memory",
+    "Win32_System_SystemInformation",
+    "Win32_System_Threading",
+    "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_UI_Shell",
+    "Win32_UI_WindowsAndMessaging",
+] }
+
 [[test]]
 name = "macos_pasteboard"
 harness = false

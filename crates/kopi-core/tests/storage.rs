@@ -541,7 +541,18 @@ fn password_managers_are_excluded_by_default() {
         assert!(app.is_some_and(|a| a.is_default), "{id} not seeded");
     }
     assert!(apps.iter().all(|a| a.created_at > 0));
-    assert!(store.excluded_apps(Platform::Windows).unwrap().is_empty());
+
+    let apps = store.excluded_apps(Platform::Windows).unwrap();
+    for id in [
+        "1password.exe",
+        "Bitwarden.exe",
+        "KeePass.exe",
+        "KeePassXC.exe",
+    ] {
+        let app = apps.iter().find(|a| a.app_id.eq_ignore_ascii_case(id));
+        assert!(app.is_some_and(|a| a.is_default), "{id} not seeded");
+    }
+    assert!(!apps.iter().any(|a| a.app_id.starts_with("com.")));
 }
 
 #[test]
