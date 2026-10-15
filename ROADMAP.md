@@ -12,7 +12,7 @@ Want to help with a phase? Look for matching [issues](https://github.com/code-de
 
 A public home for the project and a way for people to follow along.
 
-- ✅ Website at [kopi.devanshuverma.in](https://kopi.devanshuverma.in), now with the macOS download
+- ✅ Website at [kopi.devanshuverma.in](https://kopi.devanshuverma.in), now with the macOS and Windows downloads
 - ✅ Waitlist form with spam protection
 - ✅ pnpm monorepo, ready for the desktop app
 - ✅ Open-source setup: license, contributing guide and issue templates
@@ -50,13 +50,14 @@ Usable builds for early testers on macOS, out now on [GitHub Releases](https://g
 
 ## 4. Windows alpha 🔨
 
-The same app, built for Windows. This is in progress.
+The same app, built for Windows 10 and 11, out now on [GitHub Releases](https://github.com/code-devanshu/kopi/releases).
 
-- 🔨 Windows clipboard watcher, hotkey and paste
-- 🔨 Source-app detection on Windows
-- ⏳ Tray icon and launch at login
-- ⏳ Feature parity with the macOS alpha
-- 🔨 Windows installer and automatic updates, built by CI
+- ✅ Windows clipboard watcher, hotkey and paste
+- ✅ Source-app detection on Windows
+- ✅ Tray icon and launch at login
+- ✅ Windows installer and automatic updates, built by CI
+- 🔨 Feature parity with the macOS alpha, checked by testers
+- ⏳ Fixes from testers' reports
 
 ## 5. Private beta ⏳
 

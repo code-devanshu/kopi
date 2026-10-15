@@ -6,10 +6,10 @@ By taking part, you agree to follow the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Where help is useful right now
 
-The macOS alpha is out. For now, the most useful contributions are:
+The alpha is out for macOS and Windows. For now, the most useful contributions are:
 
-- **Testing:** use the [alpha](https://github.com/code-devanshu/kopi/releases) every day and report what breaks, with your macOS version and steps to reproduce.
-- **Windows:** the Windows app is next. If you know the Windows clipboard APIs or Tauri on Windows, see [docs/PLATFORM_NOTES.md](docs/PLATFORM_NOTES.md) and the roadmap.
+- **Testing:** use the [alpha](https://github.com/code-devanshu/kopi/releases) every day and report what breaks, with your macOS or Windows version and steps to reproduce.
+- **Windows:** the Windows app is the newest, and the least tested. If you know the Windows clipboard APIs or Tauri on Windows, see `crates/kopi-platform/src/windows` and [docs/PLATFORM_NOTES.md](docs/PLATFORM_NOTES.md).
 - **Design:** layouts, flows and icons for the app. Share mockups in an issue or a discussion.
 - **Architecture:** read [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and weigh in on the open questions, especially if you know the macOS or Windows clipboard APIs, Tauri, Rust or encryption.
 - **The website:** fixes, accessibility and performance improvements in `apps/web`.

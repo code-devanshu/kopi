@@ -27,7 +27,7 @@ export function InstallCommand() {
 
   return (
     <div className="max-w-xl">
-      <p className="text-sm text-muted-foreground">Or install from Terminal, and macOS won&apos;t block it the first time:</p>
+      <p className="text-sm text-muted-foreground">On a Mac, you can install from Terminal instead, and macOS won&apos;t block it the first time:</p>
       <div className="mt-2 flex items-center gap-2 rounded-xl border border-border bg-surface py-1.5 pr-1.5 pl-4 shadow-soft">
         {/* Copying the command by hand counts too, not only the button. */}
         <code

@@ -6,10 +6,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.1.0-alpha.4] - 2026-10-15
+
+Kopi comes to Windows. Testers on an earlier alpha get this release as an update.
+
 ### Added
 
 - Kopi for Windows 10 and 11, a first build for testers. It captures copies, opens with Ctrl+Shift+V, pastes into the app you were in and updates itself. The shared code reads Windows clipboard formats, Ctrl stands in for ⌘ in the panel, and password managers are excluded by default. The installer isn't signed yet, so Windows asks you to confirm it the first time. See [Installing Kopi](docs/INSTALL_ALPHA.md#windows).
 - CI checks and builds the desktop app on Windows too, and the Release workflow builds a Windows installer next to the `.dmg`.
+- The website and the README offer the Windows download next to the macOS one. The waitlist is now for the beta and sync.
 
 ## [0.1.0-alpha.3] - 2026-10-15
 
@@ -70,7 +75,8 @@ The first macOS alpha.
 - Release workflow: a version tag builds a universal macOS `.dmg` and attaches it to a draft GitHub Release. Releases are signed with a self-signed certificate, so testers keep their permissions across updates, and aren't notarized ([ADR 0006](docs/decisions/0006-macos-distribution-without-notarization.md)). Install steps for testers are in `docs/INSTALL_ALPHA.md`.
 - Automatic updates on macOS with the Tauri updater: Kopi checks GitHub a little after launch and every 6 hours, installs updates in the background and offers Restart to Update in the menu bar, with Check for Updates… there too and an **Update automatically** switch in Settings. Updates aren't quarantined, so Gatekeeper only blocks the first install. Publishing a release offers it to the app.
 
-[Unreleased]: https://github.com/code-devanshu/kopi/compare/v0.1.0-alpha.3...HEAD
+[Unreleased]: https://github.com/code-devanshu/kopi/compare/v0.1.0-alpha.4...HEAD
+[0.1.0-alpha.4]: https://github.com/code-devanshu/kopi/compare/v0.1.0-alpha.3...v0.1.0-alpha.4
 [0.1.0-alpha.3]: https://github.com/code-devanshu/kopi/compare/v0.1.0-alpha.2...v0.1.0-alpha.3
 [0.1.0-alpha.2]: https://github.com/code-devanshu/kopi/releases/tag/v0.1.0-alpha.2
 [0.1.0-alpha.1]: https://github.com/code-devanshu/kopi/releases/tag/v0.1.0-alpha.1

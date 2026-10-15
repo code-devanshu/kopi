@@ -11,8 +11,8 @@ type Stage = { title: string; description: string; status: "done" | "current" | 
 const stages: Stage[] = [
   { title: "Website & waitlist", description: "A home for the project and a way to follow along.", status: "done" },
   { title: "Design", description: "Shaping the app and its architecture in the open.", status: "done" },
-  { title: "Mac alpha", description: "First builds for macOS, out now for early testers.", status: "current" },
-  { title: "Windows alpha", description: "The same app, native on Windows.", status: "next" },
+  { title: "Mac alpha", description: "First builds for macOS, out for early testers.", status: "done" },
+  { title: "Windows alpha", description: "The same app, native on Windows, out now for early testers.", status: "current" },
   { title: "Private beta", description: "More testers on both platforms, features rounded out.", status: "next" },
   { title: "1.0", description: "A stable release on both platforms, free for everyone.", status: "next" },
   { title: "Encrypted sync", description: "Optional, end-to-end encrypted sync between your computers.", status: "next" },

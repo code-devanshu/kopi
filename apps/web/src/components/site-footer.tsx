@@ -21,7 +21,7 @@ export function SiteFooter() {
         <div className="max-w-xs">
           <Logo />
           <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-            An open-source clipboard manager. The macOS alpha is out, and Windows is next.
+            An open-source clipboard manager. The alpha is out for macOS and Windows.
           </p>
           <div className="mt-5 flex gap-2">
             <a
