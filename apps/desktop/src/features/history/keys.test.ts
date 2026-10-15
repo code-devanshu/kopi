@@ -93,3 +93,22 @@ test("keys are left alone while an input method composes", () => {
   expect(actionFor({ ...key("ArrowDown"), keyCode: 229 }, true)).toBeNull();
   expect(actionFor({ ...key("Escape"), keyCode: 229 }, true)).toBeNull();
 });
+
+/** On Windows, Ctrl does what ⌘ does, and ⌃N and ⌃P don't move. */
+const windowsCases: [string, Action | null][] = [
+  ["ctrl+Digit1", { type: "quickPaste", index: 0, plain: false }],
+  ["ctrl+alt+Digit3", { type: "quickPaste", index: 2, plain: true }],
+  ["ctrl+P", { type: "pin" }],
+  ["ctrl+N", null],
+  ["ctrl+Backspace", { type: "delete" }],
+  ["ctrl+C", { type: "copy", plain: false }],
+  ["ctrl+ArrowDown", { type: "last" }],
+  ["cmd+P", null],
+  ["cmd+N", null],
+  ["cmd+Digit1", null],
+  ["alt+Enter", { type: "paste", plain: true }],
+];
+
+test.each(windowsCases)("Windows: %s", (combo, want) => {
+  expect(actionFor(key(combo), false, true)).toEqual(want);
+});

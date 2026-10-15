@@ -1,5 +1,6 @@
 import { Check } from "lucide-react";
 import { useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { keys } from "../lib/platform";
 
 export type MenuEntry =
   | {
@@ -163,7 +164,7 @@ export function Menu({ label, x, y, entries, onClose }: Props) {
                 <span className="dot" style={{ background: entry.color ?? undefined }} aria-hidden="true" />
               )}
               <span className="menu-label">{confirming === i && entry.confirm ? entry.confirm : entry.label}</span>
-              {entry.shortcut && <kbd className="menu-shortcut">{entry.shortcut}</kbd>}
+              {entry.shortcut && <kbd className="menu-shortcut">{keys(entry.shortcut)}</kbd>}
             </div>
           );
         })}

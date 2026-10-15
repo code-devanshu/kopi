@@ -252,7 +252,8 @@ pub async fn remove_excluded_app(
     .await
 }
 
-/// The apps running now that have a Dock icon, by name, for choosing one to exclude.
+/// The apps running now that have a Dock icon, or on Windows a taskbar button, by name, for
+/// choosing one to exclude.
 #[tauri::command]
 #[specta::specta]
 pub async fn running_apps() -> Result<Vec<SourceApp>, String> {
@@ -260,7 +261,11 @@ pub async fn running_apps() -> Result<Vec<SourceApp>, String> {
     let apps = tauri::async_runtime::spawn_blocking(kopi_platform::macos::running_apps)
         .await
         .map_err(|e| e.to_string())?;
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(target_os = "windows")]
+    let apps = tauri::async_runtime::spawn_blocking(kopi_platform::windows::running_apps)
+        .await
+        .map_err(|e| e.to_string())?;
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
     let apps: Vec<kopi_platform::AppRef> = Vec::new();
 
     let mut apps: Vec<SourceApp> = apps
@@ -344,7 +349,7 @@ mod permissions {
     }
 }
 
-/// Nothing to grant until the Windows alpha.
+/// Nothing to grant: Windows lets any app read the clipboard and type into other apps.
 #[cfg(not(target_os = "macos"))]
 mod permissions {
     use kopi_platform::Permission;

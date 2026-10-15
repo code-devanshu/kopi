@@ -1,5 +1,5 @@
-//! The global shortcut that opens the panel: ⇧⌘V on macOS unless the user picked another in
-//! Settings.
+//! The global shortcut that opens the panel: ⇧⌘V on macOS and Ctrl+Shift+V on Windows, unless
+//! the user picked another in Settings.
 
 use std::sync::{Mutex, PoisonError};
 
@@ -14,6 +14,13 @@ use crate::panel;
 pub const DEFAULT: &str = "shift+super+KeyV";
 #[cfg(not(target_os = "macos"))]
 pub const DEFAULT: &str = "shift+control+KeyV";
+
+/// The OS, as error messages name it.
+const OS: &str = if cfg!(target_os = "windows") {
+    "Windows"
+} else {
+    "macOS"
+};
 
 /// The shortcut in use, and whether it's registered. Settings suspends it while recording a
 /// new one, so pressing the current one there doesn't open the panel.
@@ -66,7 +73,7 @@ pub fn change(app: &AppHandle, store: &Store, text: &str) -> Result<String, Stri
             // Put the old one back.
             current.registered = bind(app, current.shortcut).is_ok();
             return Err(format!(
-                "{} is taken by macOS or another app ({error})",
+                "{} is taken by {OS} or another app ({error})",
                 shortcut.into_string()
             ));
         }
@@ -108,7 +115,11 @@ fn parse(text: &str) -> Result<Shortcut, String> {
         .map_err(|_| format!("{text:?} isn't a shortcut"))?;
     let needed = Modifiers::SUPER | Modifiers::CONTROL | Modifiers::ALT;
     if !shortcut.mods.intersects(needed) {
-        return Err("A shortcut needs ⌘, ⌃ or ⌥".to_owned());
+        return Err(if cfg!(target_os = "windows") {
+            "A shortcut needs Ctrl, Alt or Win".to_owned()
+        } else {
+            "A shortcut needs ⌘, ⌃ or ⌥".to_owned()
+        });
     }
     Ok(shortcut)
 }

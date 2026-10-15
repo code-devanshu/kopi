@@ -1,3 +1,5 @@
+import { keys } from "../../lib/platform";
+
 type Props = {
   typing: boolean;
   previewOpen: boolean;
@@ -20,9 +22,9 @@ export function Hints({ typing, previewOpen, inBoard }: Props) {
   ];
   return (
     <footer className="hints" aria-hidden="true">
-      {hints.map(([keys, label]) => (
-        <span key={keys} className="hint">
-          <kbd>{keys}</kbd>
+      {hints.map(([shortcut, label]) => (
+        <span key={shortcut} className="hint">
+          <kbd>{keys(shortcut)}</kbd>
           {label}
         </span>
       ))}

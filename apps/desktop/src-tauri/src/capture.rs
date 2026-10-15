@@ -1,6 +1,4 @@
 //! Runs the clipboard watcher, stores what it captures and tells the UI.
-//!
-//! macOS only for now. The Windows watcher arrives with the Windows alpha.
 
 use std::sync::Arc;
 
@@ -35,7 +33,7 @@ pub fn reload(filter: &PrivacyFilter, store: &Store) -> StorageResult<()> {
     Ok(())
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 fn watch(
     app: &AppHandle,
     store: Arc<Store>,
@@ -43,8 +41,7 @@ fn watch(
 ) -> Result<(), Box<dyn std::error::Error>> {
     use kopi_core::classifier::{self, Saved};
     use kopi_core::retention::Retention;
-    use kopi_core::watcher::{WatchEvent, Watcher, WatcherConfig, WatcherDeps};
-    use kopi_platform::macos::{MacForegroundApp, MacPasteboard, MacUserIdle};
+    use kopi_core::watcher::{WatchEvent, Watcher, WatcherConfig};
     use tauri_specta::Event;
 
     use crate::events::{ClipAdded, ClipUpdated};
@@ -73,11 +70,7 @@ fn watch(
         }
     };
     let watcher = Watcher::spawn(
-        WatcherDeps {
-            pasteboard: Box::new(MacPasteboard::general()),
-            apps: Box::new(MacForegroundApp),
-            idle: Box::new(MacUserIdle),
-        },
+        deps(),
         WatcherConfig::new(app.config().identifier.clone()),
         Box::new(filter),
         Box::new(listener),
@@ -86,7 +79,29 @@ fn watch(
     Ok(())
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(target_os = "macos")]
+fn deps() -> kopi_core::watcher::WatcherDeps {
+    use kopi_platform::macos::{MacForegroundApp, MacPasteboard, MacUserIdle};
+
+    kopi_core::watcher::WatcherDeps {
+        pasteboard: Box::new(MacPasteboard::general()),
+        apps: Box::new(MacForegroundApp),
+        idle: Box::new(MacUserIdle),
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn deps() -> kopi_core::watcher::WatcherDeps {
+    use kopi_platform::windows::{WinForegroundApp, WinPasteboard, WinUserIdle};
+
+    kopi_core::watcher::WatcherDeps {
+        pasteboard: Box::new(WinPasteboard::general()),
+        apps: Box::new(WinForegroundApp::default()),
+        idle: Box::new(WinUserIdle),
+    }
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
 fn watch(
     _app: &AppHandle,
     _store: Arc<Store>,
@@ -96,7 +111,7 @@ fn watch(
 }
 
 /// Keeps the watcher running for as long as the app does.
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 struct Capture {
     _watcher: kopi_core::watcher::Watcher,
 }

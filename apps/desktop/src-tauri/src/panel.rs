@@ -3,6 +3,9 @@
 //! On macOS it's a non-activating `NSPanel` (tauri-nspanel). It's built once at launch and then
 //! only shown and hidden. The app the user was in stays frontmost, so a paste lands there. See
 //! `docs/spikes/0002-macos-nspanel.md`.
+//!
+//! On Windows it's a borderless window that takes focus while it shows, and gives it back to the
+//! window the user was in when it hides.
 
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc;
@@ -241,19 +244,55 @@ mod platform {
     }
 }
 
-/// A plain borderless window until the Windows alpha.
+/// A borderless window over every other. Unlike the macOS panel, showing it takes focus from
+/// the app the user was in, so hiding it while it has focus hands focus back, and a paste lands
+/// there.
 #[cfg(not(target_os = "macos"))]
 mod platform {
-    use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
+    use std::sync::{Mutex, OnceLock, PoisonError};
+    use std::thread::{self, ThreadId};
 
+    use tauri::{
+        AppHandle, Manager, PhysicalPosition, WebviewUrl, WebviewWindow, WebviewWindowBuilder,
+    };
+
+    use self::focus::{WindowRef, activate, foreground_window};
     use super::{HEIGHT, PANEL, WIDTH};
 
+    #[cfg(target_os = "windows")]
+    mod focus {
+        pub use kopi_platform::windows::{WindowRef, activate, foreground_window};
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    mod focus {
+        pub type WindowRef = ();
+
+        pub fn foreground_window() -> Option<WindowRef> {
+            None
+        }
+
+        pub fn activate(_: WindowRef) -> bool {
+            false
+        }
+    }
+
+    /// The thread that built the panel, which is the main thread.
+    static MAIN: OnceLock<ThreadId> = OnceLock::new();
+
+    /// The window that had focus when the panel opened.
+    struct Previous(Mutex<Option<WindowRef>>);
+
     pub fn create(app: &AppHandle) -> tauri::Result<()> {
+        let _ = MAIN.set(thread::current().id());
+        app.manage(Previous(Mutex::new(None)));
         WebviewWindowBuilder::new(app, PANEL, WebviewUrl::App("index.html".into()))
             .title("Kopi")
             .inner_size(WIDTH, HEIGHT)
             .decorations(false)
             .transparent(true)
+            // With a shadow, Windows draws a border around the page's rounded corners.
+            .shadow(false)
             .always_on_top(true)
             .skip_taskbar(true)
             .resizable(false)
@@ -264,10 +303,15 @@ mod platform {
     }
 
     pub fn show(app: &AppHandle) {
-        if let Some(window) = app.get_webview_window(PANEL) {
-            let _ = window.show();
-            let _ = window.set_focus();
+        let Some(window) = app.get_webview_window(PANEL) else {
+            return;
+        };
+        if !window.is_visible().unwrap_or(false) {
+            *previous(app) = foreground_window();
+            place(app, &window);
         }
+        let _ = window.show();
+        let _ = window.set_focus();
     }
 
     pub fn hide(app: &AppHandle) -> bool {
@@ -275,7 +319,15 @@ mod platform {
             return false;
         };
         let visible = window.is_visible().unwrap_or(false);
+        let before = previous(app).take();
         if visible {
+            // While the panel has focus, Kopi may hand it on. Done before hiding, so Windows
+            // doesn't pick another window first. Clicking another window took focus already.
+            if window.is_focused().unwrap_or(false)
+                && let Some(before) = before
+            {
+                activate(before);
+            }
             let _ = window.hide();
         }
         visible
@@ -292,6 +344,32 @@ mod platform {
     }
 
     pub fn is_main_thread() -> bool {
-        false
+        MAIN.get() == Some(&thread::current().id())
+    }
+
+    fn previous(app: &AppHandle) -> std::sync::MutexGuard<'_, Option<WindowRef>> {
+        app.state::<Previous>()
+            .inner()
+            .0
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+    }
+
+    /// Centers the panel across the screen with the pointer, a little above the middle.
+    fn place(app: &AppHandle, window: &WebviewWindow) {
+        let monitor = app
+            .cursor_position()
+            .ok()
+            .and_then(|p| app.monitor_from_point(p.x, p.y).ok().flatten())
+            .or_else(|| app.primary_monitor().ok().flatten());
+        let (Some(monitor), Ok(size)) = (monitor, window.outer_size()) else {
+            return;
+        };
+        let area = monitor.work_area();
+        let spare_x = i64::from(area.size.width) - i64::from(size.width);
+        let spare_y = i64::from(area.size.height) - i64::from(size.height);
+        let x = i64::from(area.position.x) + spare_x / 2;
+        let y = i64::from(area.position.y) + spare_y * 2 / 5;
+        let _ = window.set_position(PhysicalPosition::new(x as i32, y as i32));
     }
 }

@@ -39,3 +39,14 @@ test("formats as macOS does", () => {
   expect(parts("shift+control+KeyK")).toEqual(["⌃", "⇧", "K"]);
   expect(parts("")).toEqual([]);
 });
+
+test("formats as Windows does", () => {
+  expect(format("shift+control+KeyV", true)).toBe("Ctrl+Shift+V");
+  expect(format("alt+super+Comma", true)).toBe("Alt+Win+,");
+  expect(format("control+PageDown", true)).toBe("Ctrl+PgDn");
+  expect(record(press("ControlLeft", ["ctrl"]), true)).toEqual({ type: "partial", held: "Ctrl" });
+  expect(record(press("KeyV", ["shift"]), true)).toEqual({
+    type: "invalid",
+    message: "Include Ctrl, Alt or Win in the shortcut.",
+  });
+});

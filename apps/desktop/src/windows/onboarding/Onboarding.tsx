@@ -8,6 +8,7 @@ import { ShortcutRecorder } from "../../features/settings/ShortcutRecorder";
 import { useThemeSetting } from "../../features/settings/theme";
 import { usePermissions } from "../../features/settings/usePermissions";
 import { commands, unwrap, type Permission, type PermissionStatus } from "../../lib/ipc";
+import { DEVICE, TRAY } from "../../lib/platform";
 
 type Step = "welcome" | "permissions" | "shortcut" | "done";
 
@@ -97,7 +98,7 @@ export function Onboarding() {
         <p className="onboarding-lead">Kopi keeps what you copy, so you can find it and paste it again.</p>
         <ul className="onboarding-points">
           <Point icon={Keyboard}>Press {keys} in any app to search what you've copied and paste it.</Point>
-          <Point icon={HardDrive}>Your clips stay on this Mac. Kopi doesn't send them anywhere.</Point>
+          <Point icon={HardDrive}>Your clips stay on {DEVICE}. Kopi doesn't send them anywhere.</Point>
           <Point icon={ShieldCheck}>
             Kopi skips password managers and copies that apps mark as private. You can add apps to skip in Settings.
           </Point>
@@ -139,7 +140,7 @@ export function Onboarding() {
           <Row label="Shortcut" htmlFor="shortcut">
             {shortcut !== null && <ShortcutRecorder id="shortcut" value={shortcut} onChange={setShortcut} />}
           </Row>
-          <Row label="Launch at login" description="Start Kopi in the menu bar when you log in." htmlFor="launch">
+          <Row label="Launch at login" description={`Start Kopi in ${TRAY} when you log in.`} htmlFor="launch">
             <Switch id="launch" checked={launch ?? false} disabled={launch === null} onChange={changeLaunch} />
           </Row>
         </Group>
@@ -156,7 +157,7 @@ export function Onboarding() {
         <Title ref={title}>{stillMissing.length ? "Almost done" : "You're all set"}</Title>
         <p className="onboarding-lead">Copy something, then press {keys} to find it again.</p>
         <p className="onboarding-text">
-          Kopi lives in the menu bar. Its menu has Settings, and Set Up Kopi brings you back here.
+          Kopi lives in {TRAY}. Its menu has Settings, and Set Up Kopi brings you back here.
         </p>
         {stillMissing.length > 0 && (
           <p className="onboarding-note">

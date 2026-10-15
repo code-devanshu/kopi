@@ -15,6 +15,7 @@ import { SearchBar } from "../../features/search/SearchBar";
 import { useThemeSetting } from "../../features/settings/theme";
 import { KIND_LABELS } from "../../lib/format";
 import { commands, events, unwrap, type Pinboard, type SearchHit, type SourceApp } from "../../lib/ipc";
+import { primary } from "../../lib/platform";
 import { Hints } from "./Hints";
 import { NoticeBar } from "./NoticeBar";
 
@@ -376,7 +377,7 @@ export function Panel() {
   function onKeyDown(e: KeyboardEvent) {
     // After "Copied. Press ⌘V", ⌘V would paste into the search box, so it closes the panel
     // and the next ⌘V reaches the app.
-    if (paster.closing && e.metaKey && e.code === "KeyV") {
+    if (paster.closing && primary(e) && e.code === "KeyV") {
       e.preventDefault();
       return paster.closeNow();
     }

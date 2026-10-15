@@ -5,6 +5,7 @@ import { ShortcutRecorder } from "../../features/settings/ShortcutRecorder";
 import { applyTheme } from "../../features/settings/theme";
 import { usePermissions } from "../../features/settings/usePermissions";
 import { commands, unwrap, type Theme } from "../../lib/ipc";
+import { IS_WINDOWS, TRAY } from "../../lib/platform";
 
 const THEMES: { value: Theme; label: string }[] = [
   { value: "system", label: "System" },
@@ -66,7 +67,7 @@ export function GeneralSection() {
         <Row label="Open Kopi" description="The shortcut that shows Kopi over any app." htmlFor="shortcut">
           {shortcut !== null && <ShortcutRecorder id="shortcut" value={shortcut} onChange={setShortcut} />}
         </Row>
-        <Row label="Launch at login" description="Start Kopi in the menu bar when you log in." htmlFor="launch">
+        <Row label="Launch at login" description={`Start Kopi in ${TRAY} when you log in.`} htmlFor="launch">
           <Switch id="launch" checked={launch ?? false} disabled={launch === null} onChange={changeLaunch} />
         </Row>
         <Row label="Appearance">
@@ -85,9 +86,12 @@ export function GeneralSection() {
           />
         </Row>
       </Group>
-      <Group title="Permissions">
-        <PermissionRows status={permissions} />
-      </Group>
+      {/* Windows has no permissions to grant. */}
+      {!IS_WINDOWS && (
+        <Group title="Permissions">
+          <PermissionRows status={permissions} />
+        </Group>
+      )}
     </>
   );
 }
