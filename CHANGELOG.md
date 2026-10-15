@@ -6,6 +6,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- Kopi for Windows 10 and 11, a first build for testers. It captures copies, opens with Ctrl+Shift+V, pastes into the app you were in and updates itself. The shared code reads Windows clipboard formats, Ctrl stands in for ⌘ in the panel, and password managers are excluded by default. The installer isn't signed yet, so Windows asks you to confirm it the first time. See [Installing Kopi](docs/INSTALL_ALPHA.md#windows).
+- CI checks and builds the desktop app on Windows too, and the Release workflow builds a Windows installer next to the `.dmg`.
+
 ## [0.1.0-alpha.3] - 2026-10-15
 
 Testers on alpha.2 get this release as an update.

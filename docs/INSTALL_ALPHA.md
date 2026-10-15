@@ -1,6 +1,6 @@
 # Installing the Kopi alpha
 
-Thanks for trying Kopi. This guide covers installing the alpha on a Mac, allowing the permissions it needs, updating it and removing it. If something goes wrong, [open an issue](https://github.com/code-devanshu/kopi/issues/new/choose).
+Thanks for trying Kopi. This guide covers installing the alpha on a Mac, allowing the permissions it needs, updating it and removing it. On a Windows PC, skip to [Windows](#windows). If something goes wrong, [open an issue](https://github.com/code-devanshu/kopi/issues/new/choose).
 
 The alpha needs **macOS 14 Sonoma or later**, on Apple silicon or Intel. There's one download for both.
 
@@ -109,12 +109,44 @@ You'll need to do this once if you used a build from before the first alpha rele
 4. If launch at login was on, delete `~/Library/LaunchAgents/Kopi.plist`.
 5. To clear Kopi from the permission lists, run `tccutil reset All in.devanshuverma.kopi` in Terminal.
 
+## Windows
+
+Kopi for Windows is new, so expect rough edges, and please report them. It needs **Windows 10 or 11** on a 64-bit PC.
+
+### Install
+
+1. Download `Kopi_<version>_x64-setup.exe` from the [releases page](https://github.com/code-devanshu/kopi/releases).
+2. Open it. The installer isn't signed yet, so Windows may say **Windows protected your PC**. Choose **More info**, then **Run anyway**.
+3. The installer puts Kopi in your user account, so it doesn't ask for an administrator. When it's done, Kopi starts. Its icon is in the notification area, at the right of the taskbar. If you don't see it, it may be behind the **^** arrow.
+
+To check the download isn't damaged, also download the `.sha256` file next to it and run this in PowerShell, in the folder that has both. It should print `True`.
+
+```powershell
+(Get-FileHash Kopi_*_x64-setup.exe).Hash -eq (Get-Content Kopi_*_x64-setup.exe.sha256).Split(' ')[0]
+```
+
+### Use it
+
+Press **Ctrl+Shift+V** in any app to open Kopi. Ctrl does what ⌘ does on a Mac: **Ctrl+1** to **Ctrl+9** paste the first nine clips, **Ctrl+P** pins a clip and **Ctrl+K** opens its menu. Windows doesn't ask you to allow anything.
+
+- Browsers and some other apps use Ctrl+Shift+V to paste without formatting. Kopi takes that shortcut while it runs, so if you use it, choose another in Kopi's Settings.
+- Windows doesn't let Kopi paste into apps running as administrator. Kopi still copies the clip, so press Ctrl+V.
+
+### Update
+
+Kopi checks for updates and downloads them by itself. When one is ready, **Restart to Update** appears in Kopi's menu. Choosing it closes Kopi, installs the update and opens Kopi again.
+
+### Remove
+
+1. Open **Settings → Apps → Installed apps**, find **Kopi** and choose **Uninstall**.
+2. To delete your clip history and settings too, delete the folder `%LOCALAPPDATA%\in.devanshuverma.kopi`.
+
 ## Reporting a problem
 
 [Open an issue](https://github.com/code-devanshu/kopi/issues/new/choose) with:
 
 - the Kopi version from the release you downloaded
-- your macOS version and whether your Mac has Apple silicon or Intel
+- your macOS version and whether your Mac has Apple silicon or Intel, or your Windows version
 - what you did, what you expected and what happened
 
 Don't paste clips with personal data into an issue. To report a security problem, follow [SECURITY.md](../SECURITY.md) instead.

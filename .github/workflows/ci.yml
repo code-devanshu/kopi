@@ -34,7 +34,7 @@ jobs:
       - run: pnpm build:web
 
   desktop:
-    name: Check and build desktop app
+    name: Check and build desktop app on macOS
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v5
@@ -70,3 +70,32 @@ jobs:
 
       # An ad-hoc-signed .app only. Release builds are in release.yml.
       - run: pnpm build:desktop
+
+  desktop-windows:
+    name: Check and build desktop app on Windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - run: pnpm install --frozen-lockfile
+
+      # Formatting, the bindings and the UI don't depend on the OS, so the macOS job covers them.
+      - run: cargo clippy --workspace --all-targets --locked -- -D warnings
+
+      - run: cargo test --workspace --locked
+
+      # An unsigned installer, to check it builds. Release builds are in release.yml.
+      - run: pnpm --filter @kopi/desktop tauri build --bundles nsis
