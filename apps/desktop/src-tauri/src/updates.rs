@@ -108,7 +108,9 @@ pub async fn check(app: &AppHandle, manual: bool) {
         }
     }
 
+    crate::tray::show_update_status(app, Some("Checking for Updates…"));
     let result = install_newer(app).await;
+    crate::tray::show_update_status(app, None);
 
     let manual = {
         let mut state = lock(app);
@@ -216,11 +218,30 @@ async fn install_newer(app: &AppHandle) -> Result<Found, tauri_plugin_updater::E
     if cfg!(debug_assertions) {
         return Ok(Found::Skipped(name));
     }
+    crate::tray::show_update_status(app, Some("Downloading Update…"));
+    let mut received = 0;
+    let mut shown = None;
+    // The menu changes only when the whole percent does.
+    let progress = |chunk: usize, length: Option<u64>| {
+        received += chunk as u64;
+        let Some(length) = length.filter(|&l| l > 0) else {
+            return;
+        };
+        let percent = (received * 100 / length).min(100);
+        if shown != Some(percent) {
+            shown = Some(percent);
+            crate::tray::show_update_status(app, Some(&format!("Downloading Update… {percent}%")));
+        }
+    };
     #[cfg(not(target_os = "windows"))]
-    update.download_and_install(|_, _| {}, || {}).await?;
+    update
+        .download_and_install(progress, || {
+            crate::tray::show_update_status(app, Some("Installing Update…"));
+        })
+        .await?;
     #[cfg(target_os = "windows")]
     {
-        let bytes = update.download(|_, _| {}, || {}).await?;
+        let bytes = update.download(progress, || {}).await?;
         *app.state::<Downloaded>()
             .0
             .lock()

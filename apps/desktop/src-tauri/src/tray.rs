@@ -107,6 +107,26 @@ pub fn show_restart(app: &AppHandle) {
     }
 }
 
+/// Shows what an update check is doing in place of Check for Updates…, greyed out so another
+/// click doesn't look like it did nothing. `None` brings Check for Updates… back.
+pub fn show_update_status(app: &AppHandle, status: Option<&str>) {
+    let Some(menu) = app.try_state::<TrayMenu>() else {
+        return;
+    };
+    let Some(item) = menu.0.get(CHECK_UPDATES) else {
+        return;
+    };
+    let Some(item) = item.as_menuitem() else {
+        return;
+    };
+    let result = item
+        .set_text(status.unwrap_or("Check for Updates…"))
+        .and_then(|()| item.set_enabled(status.is_none()));
+    if let Err(error) = result {
+        eprintln!("kopi: couldn't show the update status: {error}");
+    }
+}
+
 /// Clears recent history off the main thread, keeping pinned clips and pinboards.
 fn clear_recent(app: &AppHandle, range: ClearRange) {
     let app = app.clone();
