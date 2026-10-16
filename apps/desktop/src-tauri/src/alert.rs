@@ -44,6 +44,7 @@ mod platform {
     use objc2::MainThreadMarker;
     use objc2_app_kit::{
         NSAlert, NSAlertFirstButtonReturn, NSAlertStyle, NSApplication, NSModalPanelRunLoopMode,
+        NSWindowCollectionBehavior,
     };
     use objc2_foundation::{NSArray, NSRunLoop, NSString};
     use tauri::AppHandle;
@@ -87,7 +88,8 @@ mod platform {
         // One at a time. Another click brings the open one forward.
         if let Some(window) = app.modalWindow() {
             app.activate();
-            window.makeKeyAndOrderFront(None);
+            window.orderFrontRegardless();
+            window.makeKeyWindow();
             return;
         }
 
@@ -110,6 +112,13 @@ mod platform {
         // runModal centers the alert on the main display. It starts hidden and moves to the
         // pointer's screen as soon as it's up.
         let window = alert.window();
+        // On every Space and over full-screen apps, like the panel. Otherwise it stays on the
+        // Space it opened on, and macOS doesn't switch Spaces for an app without a Dock icon, so
+        // the user doesn't see it while Kopi waits for an answer.
+        window.setCollectionBehavior(
+            NSWindowCollectionBehavior::CanJoinAllSpaces
+                | NSWindowCollectionBehavior::FullScreenAuxiliary,
+        );
         window.setAlphaValue(0.0);
         let shown = RcBlock::new(move || {
             crate::panel::place(mtm, &window, 0.75);
