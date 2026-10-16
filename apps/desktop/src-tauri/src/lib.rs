@@ -5,6 +5,7 @@ mod capture;
 mod commands;
 mod events;
 mod hotkeys;
+mod login_item;
 mod onboarding;
 mod panel;
 mod protocol;
@@ -88,7 +89,8 @@ pub fn run() {
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             panel::show(app);
         }))
-        // Only registers the plugin. Launch at login stays off until the user turns it on.
+        // Launch at login on Windows. On macOS it only finds the LaunchAgent of earlier
+        // versions, see login_item.rs. Stays off until the user turns it on.
         .plugin(tauri_plugin_autostart::init(
             MacosLauncher::LaunchAgent,
             None,
@@ -146,6 +148,7 @@ pub fn run() {
             #[cfg(target_os = "macos")]
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
 
+            login_item::migrate(app.handle());
             commands::settings::apply_theme(app.handle());
             panel::create(app.handle())?;
             commands::paste::manage_engine(app.handle());

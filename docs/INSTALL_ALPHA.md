@@ -36,7 +36,7 @@ It should print `OK`.
 2. Drag **Kopi** onto **Applications**. The window also shows the steps for opening it the first time.
 3. Eject the disk image.
 
-Keep Kopi in Applications. Launch at login points to where the app is, so it stops working if you move the app.
+Keep Kopi in Applications.
 
 ## 3. Open it the first time
 
@@ -106,7 +106,7 @@ You'll need to do this once if you used a build from before the first alpha rele
 1. Quit Kopi from its menu bar menu.
 2. Delete Kopi from Applications.
 3. To delete your clip history and settings too, delete `~/Library/Application Support/in.devanshuverma.kopi`.
-4. If launch at login was on, delete `~/Library/LaunchAgents/Kopi.plist`.
+4. If launch at login was on, remove Kopi from System Settings → General → Login Items. Versions up to 0.1.0-alpha.4 used `~/Library/LaunchAgents/Kopi.plist` instead, so delete that if it's there.
 5. To clear Kopi from the permission lists, run `tccutil reset All in.devanshuverma.kopi` in Terminal.
 
 ## Windows
