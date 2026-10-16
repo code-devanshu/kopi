@@ -6,6 +6,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.1.0-alpha.6] - 2026-10-16
+
+Testers on an earlier alpha get this release as an update.
+
+### Fixed
+
+- On macOS, **Check for Updates…** seemed to do nothing when another app was full screen or you were on another desktop: its result opened on a different Space, and Kopi waited for an answer you couldn't see. Kopi's alerts now open on the Space you're on, and choosing **Check for Updates…** again brings an open one forward.
+- While Kopi checks for an update, **Check for Updates…** in the menu bar shows what it's doing, as **Checking for Updates…**, **Downloading Update… 45%** and, on macOS, **Installing Update…**, and can't be chosen again until it's done.
+
 ## [0.1.0-alpha.5] - 2026-10-16
 
 Testers on an earlier alpha get this release as an update.
@@ -83,7 +92,8 @@ The first macOS alpha.
 - Release workflow: a version tag builds a universal macOS `.dmg` and attaches it to a draft GitHub Release. Releases are signed with a self-signed certificate, so testers keep their permissions across updates, and aren't notarized ([ADR 0006](docs/decisions/0006-macos-distribution-without-notarization.md)). Install steps for testers are in `docs/INSTALL_ALPHA.md`.
 - Automatic updates on macOS with the Tauri updater: Kopi checks GitHub a little after launch and every 6 hours, installs updates in the background and offers Restart to Update in the menu bar, with Check for Updates… there too and an **Update automatically** switch in Settings. Updates aren't quarantined, so Gatekeeper only blocks the first install. Publishing a release offers it to the app.
 
-[Unreleased]: https://github.com/code-devanshu/kopi/compare/v0.1.0-alpha.5...HEAD
+[Unreleased]: https://github.com/code-devanshu/kopi/compare/v0.1.0-alpha.6...HEAD
+[0.1.0-alpha.6]: https://github.com/code-devanshu/kopi/compare/v0.1.0-alpha.5...v0.1.0-alpha.6
 [0.1.0-alpha.5]: https://github.com/code-devanshu/kopi/compare/v0.1.0-alpha.4...v0.1.0-alpha.5
 [0.1.0-alpha.4]: https://github.com/code-devanshu/kopi/compare/v0.1.0-alpha.3...v0.1.0-alpha.4
 [0.1.0-alpha.3]: https://github.com/code-devanshu/kopi/compare/v0.1.0-alpha.2...v0.1.0-alpha.3
