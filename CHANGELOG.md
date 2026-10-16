@@ -6,6 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.1.0-alpha.5] - 2026-10-16
+
+Testers on an earlier alpha get this release as an update.
+
+### Fixed
+
+- On macOS, Kopi sometimes couldn't paste after it opened at login, even with Accessibility shown as allowed, until you quit and reopened it. Launch at login now adds Kopi to System Settings → General → Login Items, so macOS opens it like any other app. If you had launch at login on, Kopi moves it there the first time it starts and removes the old `~/Library/LaunchAgents/Kopi.plist`.
+
 ## [0.1.0-alpha.4] - 2026-10-15
 
 Kopi comes to Windows. Testers on an earlier alpha get this release as an update.
@@ -75,7 +83,8 @@ The first macOS alpha.
 - Release workflow: a version tag builds a universal macOS `.dmg` and attaches it to a draft GitHub Release. Releases are signed with a self-signed certificate, so testers keep their permissions across updates, and aren't notarized ([ADR 0006](docs/decisions/0006-macos-distribution-without-notarization.md)). Install steps for testers are in `docs/INSTALL_ALPHA.md`.
 - Automatic updates on macOS with the Tauri updater: Kopi checks GitHub a little after launch and every 6 hours, installs updates in the background and offers Restart to Update in the menu bar, with Check for Updates… there too and an **Update automatically** switch in Settings. Updates aren't quarantined, so Gatekeeper only blocks the first install. Publishing a release offers it to the app.
 
-[Unreleased]: https://github.com/code-devanshu/kopi/compare/v0.1.0-alpha.4...HEAD
+[Unreleased]: https://github.com/code-devanshu/kopi/compare/v0.1.0-alpha.5...HEAD
+[0.1.0-alpha.5]: https://github.com/code-devanshu/kopi/compare/v0.1.0-alpha.4...v0.1.0-alpha.5
 [0.1.0-alpha.4]: https://github.com/code-devanshu/kopi/compare/v0.1.0-alpha.3...v0.1.0-alpha.4
 [0.1.0-alpha.3]: https://github.com/code-devanshu/kopi/compare/v0.1.0-alpha.2...v0.1.0-alpha.3
 [0.1.0-alpha.2]: https://github.com/code-devanshu/kopi/releases/tag/v0.1.0-alpha.2
