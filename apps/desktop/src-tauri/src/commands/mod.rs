@@ -11,7 +11,6 @@ pub mod settings;
 use serde::Serialize;
 use specta::Type;
 use tauri::AppHandle;
-use tauri_plugin_autostart::ManagerExt;
 
 #[derive(Debug, Clone, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
@@ -52,20 +51,14 @@ pub fn app_info() -> AppInfo {
 #[tauri::command]
 #[specta::specta]
 pub fn launch_at_login(app: AppHandle) -> Result<bool, String> {
-    app.autolaunch().is_enabled().map_err(|e| e.to_string())
+    crate::login_item::is_enabled(&app)
 }
 
 /// Turns launch at login on or off.
 #[tauri::command]
 #[specta::specta]
 pub fn set_launch_at_login(app: AppHandle, enabled: bool) -> Result<(), String> {
-    let autostart = app.autolaunch();
-    let result = if enabled {
-        autostart.enable()
-    } else {
-        autostart.disable()
-    };
-    result.map_err(|e| e.to_string())
+    crate::login_item::set_enabled(&app, enabled)
 }
 
 /// Hides the panel: Esc, or after a paste.
