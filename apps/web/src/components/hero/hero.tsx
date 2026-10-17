@@ -1,13 +1,9 @@
-import { Download, Star } from "lucide-react";
-
-import { WindowsIcon } from "@/components/brand/brand-icons";
 import { HeroCardStack } from "@/components/hero/hero-card-stack";
+import { HeroDownloads } from "@/components/hero/hero-downloads";
 import { InstallCommand } from "@/components/hero/install-command";
 import { PlatformNote } from "@/components/hero/platform-note";
-import { buttonStyles } from "@/components/ui/button-styles";
 import { Reveal } from "@/components/ui/reveal";
 import { Container } from "@/components/ui/section";
-import { siteConfig } from "@/lib/site";
 
 export function Hero() {
   return (
@@ -19,7 +15,8 @@ export function Hero() {
       />
       <div aria-hidden="true" className="hero-grain pointer-events-none absolute inset-0" />
 
-      <Container className="relative grid items-center gap-8 pt-14 pb-20 sm:pt-20 lg:grid-cols-[1.05fr_1fr] lg:gap-12 lg:pt-24 lg:pb-28">
+      {/* Both columns sit at the top, so opening the install command grows the hero downwards instead of moving the cards. */}
+      <Container className="relative grid items-start gap-8 pt-14 pb-20 sm:pt-20 lg:grid-cols-[1.05fr_1fr] lg:gap-12 lg:pt-24 lg:pb-28">
         {/* min-w-0 lets the column shrink; otherwise the one-line install command widens it past the screen. */}
         <div className="min-w-0">
           <Reveal>
@@ -41,45 +38,13 @@ export function Hero() {
             </p>
           </Reveal>
 
-          <Reveal delay={0.15} className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-            <a
-              href={siteConfig.links.releases}
-              data-track="download_click" data-track-platform="macos" data-track-location="hero"
-              target="_blank"
-              rel="noreferrer"
-              className={buttonStyles({ size: "lg" })}
-            >
-              <Download className="size-4" aria-hidden="true" />
-              Download for macOS
-            </a>
-            <a
-              href={siteConfig.links.releases}
-              data-track="download_click" data-track-platform="windows" data-track-location="hero"
-              target="_blank"
-              rel="noreferrer"
-              className={buttonStyles({ size: "lg" })}
-            >
-              <WindowsIcon className="size-4" />
-              Download for Windows
-            </a>
-            <a
-              href={siteConfig.links.github}
-              data-track="github_click" data-track-location="hero"
-              target="_blank"
-              rel="noreferrer"
-              className={buttonStyles({ variant: "secondary", size: "lg" })}
-            >
-              <Star className="size-4" aria-hidden="true" />
-              Star on GitHub
-            </a>
+          <Reveal delay={0.15} className="mt-8">
+            <HeroDownloads />
           </Reveal>
 
-          <Reveal delay={0.2} className="mt-6">
-            <InstallCommand />
-          </Reveal>
-
-          <Reveal delay={0.25} className="mt-6">
+          <Reveal delay={0.2} className="mt-5 space-y-3">
             <PlatformNote />
+            <InstallCommand />
           </Reveal>
         </div>
 

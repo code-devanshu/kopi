@@ -19,11 +19,11 @@ const faqs: Array<{ question: string; answer: ReactNode }> = [
     question: "Can I use it now?",
     answer: (
       <>
-        Yes, on a Mac or a Windows PC. The alpha is on{" "}
-        <a href={siteConfig.links.releases} data-track="download_click" data-track-location="faq" target="_blank" rel="noreferrer" className="font-medium text-accent-text underline underline-offset-4">
-          GitHub Releases
-        </a>
-        , and Kopi updates itself from there. It&apos;s early, and Windows is the newest, so expect rough edges and{" "}
+        Yes, on a Mac or a Windows PC.{" "}
+        <a href="#top" data-track="download_cta_click" data-track-location="faq" className="font-medium text-accent-text underline underline-offset-4">
+          Download the alpha
+        </a>{" "}
+        at the top of this page, and Kopi updates itself after that. It&apos;s early, and Windows is the newest, so expect rough edges and{" "}
         <a href={`${siteConfig.links.github}/issues/new/choose`} data-track="github_click" data-track-location="faq_issues" target="_blank" rel="noreferrer" className="font-medium text-accent-text underline underline-offset-4">
           tell us what you find
         </a>

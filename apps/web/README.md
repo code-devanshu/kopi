@@ -33,7 +33,7 @@ The home page for Kopi: the macOS and Windows downloads, and a waitlist for the 
 <br />
 
 > [!NOTE]
-> The download buttons link to [GitHub Releases](https://github.com/code-devanshu/kopi/releases), not to a file, so the site doesn't change with every alpha. The waitlist form is how people sign up to hear about the beta and sync, or to help build Kopi. For what Kopi does, see the [root README](../../README.md).
+> The download buttons go to `/download/macos` and `/download/windows`, which redirect to the newest release's file on [GitHub Releases](https://github.com/code-devanshu/kopi/releases). They find it in the `updater` release's `latest.json`, as the app and the install command do, so the site doesn't change with every alpha. The page stays open and shows how to install. The waitlist form is how people sign up to hear about the beta and sync, or to help build Kopi. For what Kopi does, see the [root README](../../README.md).
 
 ## About this website
 
@@ -180,7 +180,7 @@ src/
 
 Google Analytics 4 loads only in production builds, and it sends nothing when the site runs on localhost. To track a click on any element, including in server components, add `data-track="event_name"`. Each `data-track-foo="bar"` attribute on the element becomes the event parameter `foo`. In client code, call `trackEvent(name, params)` from [`src/lib/analytics.ts`](src/lib/analytics.ts). If GA hasn't loaded, nothing is sent. Never put personal data such as emails, names or message text in event parameters.
 
-GA counts copies of the install command (`install_command_copy`, with `method` set to `button` or `manual`) and clicks on the download links (`download_click`). It can't see installs: the command runs in Terminal, and both it and the download links fetch the .dmg from GitHub Releases. GitHub counts each .dmg download:
+GA counts copies of the install command (`install_command_copy`, with `method` set to `button` or `manual`) and clicks on the download links (`download_click`). It can't see installs: the command runs in Terminal, and both it and the download buttons fetch the .dmg from GitHub Releases. GitHub counts each .dmg download:
 
 ```bash
 gh api repos/code-devanshu/kopi/releases --jq '.[] | {tag: .tag_name, assets: [.assets[] | {name, download_count}]}'
