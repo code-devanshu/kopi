@@ -20,9 +20,9 @@ Or install it by hand, in steps 1 to 3.
 
 ## 1. Download
 
-Download `Kopi_<version>_universal.dmg` from the [releases page](https://github.com/code-devanshu/kopi/releases).
+Click **Download for macOS** on [kopi.devanshuverma.in](https://kopi.devanshuverma.in). It downloads `Kopi_<version>_universal.dmg`, the newest release. Every release's files are also on the [releases page](https://github.com/code-devanshu/kopi/releases).
 
-To check the download isn't damaged, also download the `.sha256` file next to it and run this in Terminal, in the folder that has both:
+To check the download isn't damaged, also download its `.sha256` file from the releases page and run this in Terminal, in the folder that has both:
 
 ```sh
 shasum -a 256 -c Kopi_*_universal.dmg.sha256
@@ -115,11 +115,11 @@ Kopi for Windows is new, so expect rough edges, and please report them. It needs
 
 ### Install
 
-1. Download `Kopi_<version>_x64-setup.exe` from the [releases page](https://github.com/code-devanshu/kopi/releases).
+1. Click **Download for Windows** on [kopi.devanshuverma.in](https://kopi.devanshuverma.in). It downloads `Kopi_<version>_x64-setup.exe`, the newest release. Every release's files are also on the [releases page](https://github.com/code-devanshu/kopi/releases).
 2. Open it. The installer isn't signed yet, so Windows may say **Windows protected your PC**. Choose **More info**, then **Run anyway**.
 3. The installer puts Kopi in your user account, so it doesn't ask for an administrator. When it's done, Kopi starts. Its icon is in the notification area, at the right of the taskbar. If you don't see it, it may be behind the **^** arrow.
 
-To check the download isn't damaged, also download the `.sha256` file next to it and run this in PowerShell, in the folder that has both. It should print `True`.
+To check the download isn't damaged, also download its `.sha256` file from the releases page and run this in PowerShell, in the folder that has both. It should print `True`.
 
 ```powershell
 (Get-FileHash Kopi_*_x64-setup.exe).Hash -eq (Get-Content Kopi_*_x64-setup.exe.sha256).Split(' ')[0]

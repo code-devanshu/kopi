@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 
 import { GitHubIcon } from "@/components/brand/brand-icons";
 import { Logo } from "@/components/brand/logo";
+import { DownloadButton } from "@/components/download/download-button";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { buttonStyles } from "@/components/ui/button-styles";
 import { Container } from "@/components/ui/section";
@@ -63,15 +64,9 @@ export function SiteNav() {
             <GitHubIcon className="size-4" />
             GitHub
           </a>
-          <a
-            href={siteConfig.links.releases}
-            data-track="download_click" data-track-location="nav"
-            target="_blank"
-            rel="noreferrer"
-            className={buttonStyles({ size: "sm", className: "max-sm:hidden" })}
-          >
+          <DownloadButton platform="auto" location="nav" className={buttonStyles({ size: "sm", className: "max-sm:hidden" })}>
             Download
-          </a>
+          </DownloadButton>
           <button
             type="button"
             className="inline-flex size-9 items-center justify-center rounded-full hover:bg-surface-muted md:hidden"
@@ -121,15 +116,9 @@ export function SiteNav() {
                   <GitHubIcon className="size-4" />
                   GitHub
                 </a>
-                <a
-                  href={siteConfig.links.releases}
-                  data-track="download_click" data-track-location="nav_mobile"
-                  target="_blank"
-                  rel="noreferrer"
-                  className={buttonStyles()}
-                >
+                <DownloadButton platform="auto" location="nav_mobile" className={buttonStyles()}>
                   Download
-                </a>
+                </DownloadButton>
               </div>
             </Container>
           </motion.nav>

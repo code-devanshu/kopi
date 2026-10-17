@@ -56,7 +56,7 @@ export function SiteFooter() {
           </ul>
         </nav>
       </Container>
-      <Container className="border-t border-border py-6 text-sm text-muted-foreground">
+      <Container className="flex flex-col gap-2 border-t border-border py-6 text-sm text-muted-foreground sm:flex-row sm:justify-between">
         <p>
           © 2026 Kopi ·{" "}
           <a
@@ -68,6 +68,20 @@ export function SiteFooter() {
             className="transition-colors hover:text-foreground"
           >
             MIT licensed
+          </a>
+        </p>
+        <p>
+          Made by{" "}
+          {/* No noreferrer, so the portfolio's analytics see visits from Kopi. */}
+          <a
+            href={siteConfig.links.author}
+            data-track="author_click"
+            data-track-location="footer"
+            target="_blank"
+            rel="author noopener"
+            className="font-medium text-foreground transition-colors hover:text-accent-text"
+          >
+            Devanshu Verma
           </a>
         </p>
       </Container>

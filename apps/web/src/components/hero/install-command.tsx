@@ -1,12 +1,15 @@
 "use client";
 
-import { Check, Copy } from "lucide-react";
+import { Check, ChevronRight, Copy } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { trackEvent } from "@/lib/analytics";
 import { siteConfig } from "@/lib/site";
 
-/** The one-line install. macOS doesn't block Kopi installed this way, unlike the .dmg from a browser. */
+/**
+ * The one-line install, folded away. macOS doesn't block Kopi installed this way, unlike the .dmg
+ * from a browser, but most people want the button.
+ */
 export function InstallCommand() {
   const [copied, setCopied] = useState(false);
 
@@ -26,8 +29,12 @@ export function InstallCommand() {
   }
 
   return (
-    <div className="max-w-xl">
-      <p className="text-sm text-muted-foreground">On a Mac, you can install from Terminal instead, and macOS won&apos;t block it the first time:</p>
+    <details className="group max-w-xl">
+      <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground [&::-webkit-details-marker]:hidden">
+        <ChevronRight className="size-4 transition-transform group-open:rotate-90" aria-hidden="true" />
+        Or install on a Mac from Terminal
+      </summary>
+      <p className="mt-2 text-sm text-muted-foreground">macOS won&apos;t block Kopi installed this way.</p>
       <div className="mt-2 flex items-center gap-2 rounded-xl border border-border bg-surface py-1.5 pr-1.5 pl-4 shadow-soft">
         {/* Copying the command by hand counts too, not only the button. */}
         <code
@@ -49,6 +56,6 @@ export function InstallCommand() {
       <span className="sr-only" aria-live="polite">
         {copied ? "Copied" : ""}
       </span>
-    </div>
+    </details>
   );
 }

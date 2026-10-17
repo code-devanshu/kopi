@@ -9,11 +9,13 @@ export const siteConfig = {
   installCommand: "curl -fsSL https://kopi.devanshuverma.in/install.sh | bash",
   links: {
     github: "https://github.com/code-devanshu/kopi",
-    // The releases page, not a file, so it doesn't change with every alpha.
+    // Every file of every release. The download buttons go to /download/macos and
+    // /download/windows instead, which find the newest file.
     releases: "https://github.com/code-devanshu/kopi/releases",
     install: "https://github.com/code-devanshu/kopi/blob/main/docs/INSTALL_ALPHA.md",
     installWindows: "https://github.com/code-devanshu/kopi/blob/main/docs/INSTALL_ALPHA.md#windows",
     license: "https://github.com/code-devanshu/kopi/blob/main/LICENSE",
+    author: "https://www.devanshuverma.in",
     contact: "mailto:code.devanshu@gmail.com", // TODO: real contact address
     privacy: "#privacy", // TODO: link to a privacy policy page once one exists
   },
