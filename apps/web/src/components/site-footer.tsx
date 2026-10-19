@@ -36,10 +36,17 @@ export function SiteFooter() {
               <GitHubIcon className="size-4" />
             </a>
             {/* TryMacApps lists Kopi for free while this badge is on the homepage. Their checker
-                looks for this exact link and image, so keep it a plain <img>. */}
+                looks for this exact link and image, so keep it a plain <img>. The badge is dark gray
+                and they have no dark version, so it's inverted in dark mode. */}
             <a href="https://www.trymacapps.com" target="_blank" rel="noopener">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="https://www.trymacapps.com/badge.png" alt="Featured on TryMacApps" width="200" height="67" />
+              <img
+                src="https://www.trymacapps.com/badge.png"
+                alt="Featured on TryMacApps"
+                width="200"
+                height="67"
+                className="dark:invert"
+              />
             </a>
           </div>
         </div>
