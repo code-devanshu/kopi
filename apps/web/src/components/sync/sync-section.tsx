@@ -6,8 +6,8 @@ import { Section, SectionHeader } from "@/components/ui/section";
 
 const points = [
   "Copy on your Mac, paste on your Windows PC a moment later",
-  "Clips are encrypted on your device before they leave it",
-  "Choose what syncs: everything, pinboards only, or nothing at all",
+  "Encrypted end to end, straight between your computers on your network, never through a server",
+  "Off until you turn it on, and you choose which kinds of clips sync",
 ];
 
 export function SyncSection() {
@@ -16,7 +16,7 @@ export function SyncSection() {
       <SectionHeader
         id="sync-title"
         title="Copy on your Mac. Paste on your PC."
-        description="Plenty of us work across both. After 1.0, Kopi will keep one clipboard history across your computers, whichever operating system they run."
+        description="Plenty of us work across both. Kopi keeps one clipboard history across your computers on the same network, whichever operating system they run."
       />
       <Reveal className="mt-14">
         <SyncAnimation />

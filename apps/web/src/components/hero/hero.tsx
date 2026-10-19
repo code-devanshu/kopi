@@ -34,7 +34,7 @@ export function Hero() {
           <Reveal delay={0.1}>
             <p className="mt-6 max-w-xl text-lg leading-relaxed text-muted-foreground">
               Kopi keeps everything you copy on your Mac or PC, searchable in a keystroke. Open source
-              and private, with encrypted sync between them on the way.
+              and private, with encrypted sync between them over your local network.
             </p>
           </Reveal>
 
