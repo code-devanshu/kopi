@@ -36,7 +36,7 @@ The macOS alpha is the first build we hand to testers. Its job is to prove that 
 
 | Not included | Why / when |
 | --- | --- |
-| **Sync** (Mac ↔ Windows or Mac ↔ Mac) | After 1.0, end-to-end encrypted ([ADR 0005](decisions/0005-local-first-sync-later.md)) |
+| **Sync** (Mac ↔ Windows or Mac ↔ Mac) | Designed in [SYNC_DESIGN.md](SYNC_DESIGN.md): end-to-end encrypted, over the local network ([ADR 0007](decisions/0007-lan-sync.md)). Ships in a later alpha. |
 | **Windows** | Next phase ("Windows alpha"). The platform traits are designed for it now. |
 | **Snippets with variables** (templates, `{date}`, cursor placement) | Later. Pinboards cover saved text for now. |
 | **OCR** (searching text inside images) | Later. Possible with Vision on macOS. |

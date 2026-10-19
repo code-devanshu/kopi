@@ -322,4 +322,4 @@ Very large images (over `limits.max_clip_bytes`) are skipped, not downscaled. A 
 
 ## Sync later
 
-Nothing in the alpha syncs. A few choices keep sync possible without a schema rewrite: UUIDv7 `uuid` on synced entities, content hashes for dedupe across devices, and `updated_at` on pinboards. Tombstones and per-device clocks will come with the sync design.
+Nothing in the alpha syncs. A few choices keep sync possible without a schema rewrite: UUIDv7 `uuid` on synced entities, content hashes for dedupe across devices, and `updated_at` on pinboards. Tombstones and per-device clocks come with migration `0004`, in [SYNC_DESIGN.md](SYNC_DESIGN.md#schema-changes).

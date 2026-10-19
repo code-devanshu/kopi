@@ -9,6 +9,7 @@ Related docs:
 - [PLATFORM_NOTES.md](PLATFORM_NOTES.md): macOS, Windows and Tauri research, with sources
 - [PRIVACY_DESIGN.md](PRIVACY_DESIGN.md): what Kopi never stores, and the user controls
 - [MVP_SCOPE.md](MVP_SCOPE.md): what's in the macOS alpha, and what isn't
+- [SYNC_DESIGN.md](SYNC_DESIGN.md): how sync between computers on the local network will work
 - [decisions/](decisions/): Architecture Decision Records (ADRs)
 
 ## Goals
