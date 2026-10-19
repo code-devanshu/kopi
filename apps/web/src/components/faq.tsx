@@ -39,7 +39,7 @@ const faqs: Array<{ question: string; answer: ReactNode }> = [
   {
     question: "Is my data private?",
     answer:
-      "Your history is stored locally on your computer. Sync is optional, and when it's on, clips are end-to-end encrypted before they leave your device. Kopi skips copies from password managers and content marked as sensitive, and because the code is open, anyone can verify how it all works.",
+      "Your history is stored locally on your computer. Sync, coming after 1.0, will be optional, and when it's on, clips will be end-to-end encrypted before they leave your device. Kopi skips copies from password managers and content marked as sensitive, and because the code is open, anyone can verify how it all works.",
   },
   {
     question: "How can I contribute?",

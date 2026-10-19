@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { DEFAULT_SHORTCUT, format, parts, record, type RecordKey } from "./shortcut";
+import { clash, DEFAULT_SHORTCUT, format, parts, record, type RecordKey } from "./shortcut";
 
 function press(code: string, mods: string[] = []): RecordKey {
   return {
@@ -49,4 +49,12 @@ test("formats as Windows does", () => {
     type: "invalid",
     message: "Include Ctrl, Alt or Win in the shortcut.",
   });
+});
+
+test("warns about Ctrl+Shift+V only on Windows", () => {
+  expect(clash("shift+control+KeyV", true)).toMatch(/paste without formatting/);
+  expect(clash("Control+Shift+KeyV", true)).not.toBeNull();
+  expect(clash("alt+shift+KeyV", true)).toBeNull();
+  expect(clash("shift+control+KeyV", false)).toBeNull();
+  expect(clash("shift+super+KeyV", false)).toBeNull();
 });

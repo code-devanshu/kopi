@@ -114,6 +114,15 @@ export function format(shortcut: string, windows = IS_WINDOWS): string {
   return parts(shortcut, windows).join(windows ? "+" : "");
 }
 
+/**
+ * A warning when the shortcut is Ctrl+Shift+V on Windows, which browsers, Slack and VS Code use
+ * to paste without formatting. Kopi takes it from them while it runs. Null otherwise.
+ */
+export function clash(shortcut: string, windows = IS_WINDOWS): string | null {
+  if (!windows || format(shortcut, true) !== "Ctrl+Shift+V") return null;
+  return "Browsers and many other apps use Ctrl+Shift+V to paste without formatting. Kopi takes it while it runs, so choose another shortcut if you use that.";
+}
+
 function keyLabel(code: string, windows: boolean): string {
   if (code.startsWith("Key")) return code.slice(3);
   if (code.startsWith("Digit")) return code.slice(5);
