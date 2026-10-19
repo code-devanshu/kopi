@@ -1,6 +1,6 @@
 # 0005. Local-first now, end-to-end encrypted sync later
 
-- **Status:** Accepted
+- **Status:** Accepted. Partly superseded by [ADR 0007](0007-lan-sync.md), which designs sync over the local network and brings it before 1.0.
 - **Date:** 2026-10-11
 
 ## Context
