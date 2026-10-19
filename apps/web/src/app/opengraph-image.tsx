@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 
-export const alt = "Kopi: everything you copy, on every computer. Open-source clipboard manager, in alpha on macOS.";
+export const alt = "Kopi: everything you copy, on every computer. Open-source clipboard manager, in alpha on Mac and Windows.";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 

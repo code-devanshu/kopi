@@ -16,7 +16,7 @@ export function SyncSection() {
       <SectionHeader
         id="sync-title"
         title="Copy on your Mac. Paste on your PC."
-        description="Plenty of us work across both. Kopi keeps one clipboard history across your computers, whichever operating system they run."
+        description="Plenty of us work across both. After 1.0, Kopi will keep one clipboard history across your computers, whichever operating system they run."
       />
       <Reveal className="mt-14">
         <SyncAnimation />

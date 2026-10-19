@@ -12,7 +12,7 @@ const principles = [
   {
     icon: KeyRound,
     title: "End-to-end encrypted sync",
-    description: "When you turn sync on, clips are encrypted on your device with keys only you hold. Whatever relays them can't read them.",
+    description: "Sync, coming after 1.0, will be optional. Clips will be encrypted on your device with keys only you hold, so whatever relays them can't read them.",
   },
   {
     icon: EyeOff,
@@ -22,7 +22,7 @@ const principles = [
   {
     icon: FileCode2,
     title: "Open source, open to audit",
-    description: "Every line of Kopi will be public. Anyone can read how your data is handled, and check that the claims on this page hold up.",
+    description: "Every line of Kopi is public. Anyone can read how your data is handled, and check that the claims on this page hold up.",
   },
 ];
 
@@ -53,7 +53,7 @@ function SkippedClipMock() {
           <span className="rounded-full bg-accent-soft px-2 py-0.5 font-medium text-accent-text">Saved locally</span>
         </li>
       </ul>
-      <p className="mt-4 text-xs text-muted-foreground">Stored on this computer · Sync encrypted end to end</p>
+      <p className="mt-4 text-xs text-muted-foreground">Stored on this computer · Never sent anywhere</p>
     </div>
   );
 }
