@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, type ReactNode, type Ref } from "react";
 import icon from "../../../src-tauri/icons/128x128@2x.png";
 import { FormError, Group, Row, Switch } from "../../components/Form";
 import { PermissionRows } from "../../features/settings/Permissions";
-import { DEFAULT_SHORTCUT, parts } from "../../features/settings/shortcut";
+import { clash, DEFAULT_SHORTCUT, parts } from "../../features/settings/shortcut";
 import { ShortcutRecorder } from "../../features/settings/ShortcutRecorder";
 import { useThemeSetting } from "../../features/settings/theme";
 import { usePermissions } from "../../features/settings/usePermissions";
@@ -137,7 +137,7 @@ export function Onboarding() {
         <p className="onboarding-lead">Press the shortcut in any app to show your clips. Click it to choose another.</p>
         <FormError message={error} />
         <Group>
-          <Row label="Shortcut" htmlFor="shortcut">
+          <Row label="Shortcut" description={(shortcut !== null && clash(shortcut)) || undefined} htmlFor="shortcut">
             {shortcut !== null && <ShortcutRecorder id="shortcut" value={shortcut} onChange={setShortcut} />}
           </Row>
           <Row label="Launch at login" description={`Start Kopi in ${TRAY} when you log in.`} htmlFor="launch">

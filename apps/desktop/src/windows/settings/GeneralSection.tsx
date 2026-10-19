@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { FormError, Group, Row, Segmented, Switch } from "../../components/Form";
 import { PermissionRows } from "../../features/settings/Permissions";
+import { clash } from "../../features/settings/shortcut";
 import { ShortcutRecorder } from "../../features/settings/ShortcutRecorder";
 import { applyTheme } from "../../features/settings/theme";
 import { usePermissions } from "../../features/settings/usePermissions";
@@ -64,7 +65,11 @@ export function GeneralSection() {
     <>
       <FormError message={error} />
       <Group>
-        <Row label="Open Kopi" description="The shortcut that shows Kopi over any app." htmlFor="shortcut">
+        <Row
+          label="Open Kopi"
+          description={(shortcut !== null && clash(shortcut)) || "The shortcut that shows Kopi over any app."}
+          htmlFor="shortcut"
+        >
           {shortcut !== null && <ShortcutRecorder id="shortcut" value={shortcut} onChange={setShortcut} />}
         </Row>
         <Row label="Launch at login" description={`Start Kopi in ${TRAY} when you log in.`} htmlFor="launch">
