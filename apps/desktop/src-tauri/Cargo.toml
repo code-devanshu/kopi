@@ -19,6 +19,7 @@ tauri-build = { version = "2.7", features = [] }
 [dependencies]
 kopi-core.workspace = true
 kopi-platform.workspace = true
+kopi-sync.workspace = true
 semver = "1"
 serde.workspace = true
 serde_json.workspace = true

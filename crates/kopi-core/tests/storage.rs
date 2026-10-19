@@ -30,6 +30,7 @@ fn text_clip(text: &str, app: &str) -> NewClip {
             "public.utf8-plain-text",
             text.as_bytes().to_vec(),
         )],
+        local_only: false,
     }
 }
 
@@ -371,6 +372,7 @@ fn image_clips_get_a_thumbnail_off_the_calling_thread() {
         metadata: Some(serde_json::json!({ "w": 1200, "h": 600 })),
         platform: Platform::MacOs,
         formats: vec![format(0, "public.png", bytes)],
+        local_only: false,
     };
     let id = store.upsert_clip(clip).unwrap().id;
 
@@ -451,6 +453,7 @@ fn deleting_clips_removes_their_rows_files_and_thumbnails() {
             metadata: None,
             platform: Platform::MacOs,
             formats: vec![format(0, "public.png", bytes)],
+            local_only: false,
         })
         .unwrap()
         .id;

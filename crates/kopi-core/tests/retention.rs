@@ -52,6 +52,7 @@ fn add_with(store: &Store, text: &str, formats: Vec<NewFormat>, at: i64) -> i64 
         metadata: None,
         platform: Platform::MacOs,
         formats,
+        local_only: false,
     };
     store.upsert_clip_at(clip, at).unwrap().id
 }
@@ -251,6 +252,7 @@ fn removed_image_clips_take_their_thumbnails_with_them() {
             format: "public.png".into(),
             data: png,
         }],
+        local_only: false,
     };
     let hash = clip.content_hash.clone();
     let id = store.upsert_clip_at(clip, NOW - 10 * DAY).unwrap().id;

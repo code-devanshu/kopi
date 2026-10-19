@@ -11,17 +11,19 @@
 //! they never wait for a write.
 
 mod blobs;
+pub mod hlc;
 mod migrate;
 mod model;
 mod pinboards;
 mod retention;
 mod settings;
+pub mod sync;
 mod thumbs;
 
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
-use std::sync::{Mutex, MutexGuard, PoisonError};
+use std::sync::{Mutex, MutexGuard, PoisonError, RwLock};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use rusqlite::{Connection, OpenFlags, OptionalExtension, TransactionBehavior, params};
@@ -32,7 +34,7 @@ pub use model::{
     Clip, ClipFormat, ClipKind, ExcludedApp, NewClip, NewFormat, Pinboard, Platform, Upserted,
 };
 pub use pinboards::{KEPT, MAX_PINBOARD_NAME_CHARS};
-pub use retention::{DEFAULT_MAX_TOTAL_BYTES, Limits};
+pub use retention::{DEFAULT_MAX_TOTAL_BYTES, Limits, TOMBSTONE_DAYS};
 pub use thumbs::{THUMBNAIL_SIZE, ThumbnailDone, ThumbnailListener};
 
 use thumbs::{Source, SourceFormat, Thumbnailer};
@@ -68,6 +70,9 @@ pub enum StorageError {
 
 pub type StorageResult<T> = Result<T, StorageError>;
 
+/// Called after a write that gave a synced row a new `sync_seq`, so sync sends it.
+pub type ChangeListener = Box<dyn Fn() + Send + Sync + 'static>;
+
 pub struct Store {
     db_path: PathBuf,
     writer: Mutex<Connection>,
@@ -75,6 +80,8 @@ pub struct Store {
     blobs: BlobStore,
     thumbs_dir: PathBuf,
     thumbnailer: Thumbnailer,
+    clock: hlc::Clock,
+    change_listener: RwLock<Option<ChangeListener>>,
 }
 
 impl Store {
@@ -100,6 +107,7 @@ impl Store {
         let mut writer = Connection::open(&db_path)?;
         configure_writer(&writer)?;
         migrate::migrate(&mut writer)?;
+        let last_hlc = sync::last_hlc(&writer)?;
 
         Ok(Self {
             db_path,
@@ -108,7 +116,29 @@ impl Store {
             blobs: BlobStore::new(blobs_dir),
             thumbnailer: Thumbnailer::spawn(thumbs_dir.clone(), listener)?,
             thumbs_dir,
+            clock: hlc::Clock::new(last_hlc),
+            change_listener: RwLock::new(None),
         })
+    }
+
+    /// Sets the function called after each write that changes something sync sends.
+    pub fn set_change_listener(&self, listener: ChangeListener) {
+        *self
+            .change_listener
+            .write()
+            .unwrap_or_else(PoisonError::into_inner) = Some(listener);
+    }
+
+    /// Tells the change listener, if there is one.
+    fn changed(&self) {
+        if let Some(listener) = self
+            .change_listener
+            .read()
+            .unwrap_or_else(PoisonError::into_inner)
+            .as_ref()
+        {
+            listener();
+        }
     }
 
     pub fn blobs(&self) -> &BlobStore {
@@ -128,6 +158,7 @@ impl Store {
     ///   also gets its formats replaced, since the formatting may have changed.
     /// - A plain-text format that is an exact copy of `plain_text` isn't stored. Pass the full
     ///   text as a format when `plain_text` would be cut, or the rest is lost.
+    /// - Either way the clip gets a new HLC and `sync_seq`, and counts as copied here.
     pub fn upsert_clip_at(&self, clip: NewClip, now: i64) -> StorageResult<Upserted> {
         blobs::check_hash(&clip.content_hash)?;
         let (plain_text, truncated) = match clip.plain_text {
@@ -173,18 +204,24 @@ impl Store {
         }
 
         let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let seq = next_seq(&tx)?;
         let (id, uuid): (i64, String) = tx
             .prepare_cached(
                 "INSERT INTO clips (uuid, kind, plain_text, content_hash, size_bytes,
-                                    source_app_name, source_app_id, created_at, last_used_at, metadata)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?8, ?9)
+                                    source_app_name, source_app_id, created_at, last_used_at, metadata,
+                                    used_hlc, sync_seq, local_only)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?8, ?9, ?10, ?11, ?12)
                  ON CONFLICT (content_hash) DO UPDATE SET
                    size_bytes = excluded.size_bytes,
                    source_app_name = excluded.source_app_name,
                    source_app_id = excluded.source_app_id,
                    last_used_at = excluded.last_used_at,
                    use_count = use_count + 1,
-                   metadata = excluded.metadata
+                   metadata = excluded.metadata,
+                   used_hlc = excluded.used_hlc,
+                   sync_seq = excluded.sync_seq,
+                   copied_on = NULL,
+                   local_only = max(local_only, excluded.local_only)
                  RETURNING id, uuid",
             )?
             .query_row(
@@ -198,6 +235,9 @@ impl Store {
                     clip.source_app_id,
                     now,
                     metadata,
+                    self.clock.tick(now),
+                    seq,
+                    clip.local_only,
                 ],
                 |row| Ok((row.get(0)?, row.get(1)?)),
             )?;
@@ -234,6 +274,7 @@ impl Store {
         tx.commit()?;
         remove_unreferenced_blobs(&conn, &self.blobs, replaced_blobs)?;
         drop(conn);
+        self.changed();
 
         if inserted && clip.kind == ClipKind::Image {
             let source = formats
@@ -255,23 +296,41 @@ impl Store {
 
     /// Moves a clip to the top after it's pasted. Returns `false` if there's no such clip.
     pub fn mark_used(&self, id: i64, now: i64) -> StorageResult<bool> {
-        let changed = self
-            .writer()
+        let mut conn = self.writer();
+        let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let changed = tx
             .prepare_cached(
-                "UPDATE clips SET last_used_at = ?2, use_count = use_count + 1 WHERE id = ?1",
+                "UPDATE clips SET last_used_at = ?2, use_count = use_count + 1, used_hlc = ?3,
+                                  sync_seq = ?4
+                 WHERE id = ?1",
             )?
-            .execute(params![id, now])?;
-        Ok(changed > 0)
+            .execute(params![id, now, self.clock.tick(now), next_seq(&tx)?])?;
+        if changed == 0 {
+            return Ok(false);
+        }
+        tx.commit()?;
+        drop(conn);
+        self.changed();
+        Ok(true)
     }
 
     /// Deletes clips, pinned or not, with their formats, blob files and thumbnails. Returns the
-    /// ids that were found and deleted, in the order given.
+    /// ids that were found and deleted, in the order given. Each leaves a tombstone, so the
+    /// delete reaches the other computers.
     pub fn delete_clips(&self, ids: &[i64]) -> StorageResult<Vec<i64>> {
         let mut conn = self.writer();
         let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
         let removed = delete_in(&tx, ids.iter().copied())?;
+        let hlc = self.clock.tick(now_ms());
+        for hash in &removed.content_hashes {
+            put_tombstone(&tx, Tombstone::CLIP, hash, hlc)?;
+        }
         tx.commit()?;
-        self.remove_files(conn, removed)
+        let ids = self.remove_files(conn, removed)?;
+        if !ids.is_empty() {
+            self.changed();
+        }
+        Ok(ids)
     }
 
     pub fn get_clip(&self, id: i64) -> StorageResult<Option<Clip>> {
@@ -279,7 +338,8 @@ impl Store {
             let row = conn
                 .prepare_cached(
                     "SELECT id, uuid, kind, plain_text, content_hash, size_bytes, source_app_name,
-                            source_app_id, created_at, last_used_at, use_count, pinned, metadata
+                            source_app_id, created_at, last_used_at, use_count, pinned, metadata,
+                            (SELECT d.name FROM sync_devices d WHERE d.device_id = copied_on)
                      FROM clips WHERE id = ?1",
                 )?
                 .query_row([id], |row| {
@@ -298,6 +358,7 @@ impl Store {
                             use_count: row.get(10)?,
                             pinned: row.get(11)?,
                             metadata: None,
+                            copied_on: row.get(13)?,
                         },
                         row.get::<_, String>(2)?,
                         row.get::<_, Option<String>>(12)?,
@@ -622,6 +683,53 @@ pub(crate) fn truncate_text(mut text: String) -> (String, bool) {
     }
     text.truncate(end);
     (text, true)
+}
+
+/// Gives out the next `sync_seq`. Call it inside the write's transaction, so numbers are
+/// committed in order.
+pub(crate) fn next_seq(conn: &Connection) -> rusqlite::Result<i64> {
+    conn.prepare_cached(
+        "UPDATE settings SET value = CAST(value AS INTEGER) + 1 WHERE key = 'sync.seq'
+         RETURNING CAST(value AS INTEGER)",
+    )?
+    .query_row([], |row| row.get(0))
+}
+
+/// The kinds of thing a tombstone can stand for.
+pub(crate) struct Tombstone;
+
+impl Tombstone {
+    pub(crate) const CLIP: &'static str = "clip";
+    pub(crate) const PINBOARD: &'static str = "pinboard";
+    pub(crate) const PINBOARD_ITEM: &'static str = "pinboard_item";
+
+    /// The key of a pinboard item's tombstone.
+    pub(crate) fn item_key(pinboard_uuid: &str, content_hash: &str) -> String {
+        format!("{pinboard_uuid}/{content_hash}")
+    }
+}
+
+/// Records a delete, or moves an older tombstone for the same thing forward. Returns whether
+/// it changed anything.
+pub(crate) fn put_tombstone(
+    conn: &Connection,
+    entity: &str,
+    key: &str,
+    hlc: i64,
+) -> rusqlite::Result<bool> {
+    let current: Option<i64> = conn
+        .prepare_cached("SELECT hlc FROM tombstones WHERE entity = ?1 AND key = ?2")?
+        .query_row(params![entity, key], |row| row.get(0))
+        .optional()?;
+    if current.is_some_and(|current| current >= hlc) {
+        return Ok(false);
+    }
+    conn.prepare_cached(
+        "INSERT INTO tombstones (entity, key, hlc, sync_seq) VALUES (?1, ?2, ?3, ?4)
+         ON CONFLICT (entity, key) DO UPDATE SET hlc = excluded.hlc, sync_seq = excluded.sync_seq",
+    )?
+    .execute(params![entity, key, hlc, next_seq(conn)?])?;
+    Ok(true)
 }
 
 /// The current time in Unix milliseconds.

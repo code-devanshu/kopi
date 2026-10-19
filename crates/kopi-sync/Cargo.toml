@@ -1,0 +1,35 @@
+[package]
+name = "kopi-sync"
+description = "Kopi's sync between computers on the local network: discovery, pairing, encrypted sessions and the wire protocol."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+kopi-core.workspace = true
+blake3 = "1.8"
+ciborium = "0.2"
+getrandom = "0.3"
+mdns-sd = "0.21"
+serde.workspace = true
+# Pure Rust primitives only. The default `std` feature pulls in ring, which needs a C toolchain.
+snow = { version = "0.10", default-features = false, features = [
+    "use-curve25519",
+    "use-chacha20poly1305",
+    "use-blake2",
+    "use-getrandom",
+] }
+spake2 = "0.4"
+thiserror = "2"
+tokio = { version = "1", features = ["io-util", "macros", "net", "rt", "sync", "time"] }
+uuid = { version = "1.28", features = ["v7"] }
+
+[dev-dependencies]
+tempfile = "3"
+tokio = { version = "1", features = ["io-util", "macros", "net", "rt-multi-thread", "sync", "time"] }
+
+[lints]
+workspace = true

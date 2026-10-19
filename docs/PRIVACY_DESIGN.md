@@ -5,7 +5,7 @@ A clipboard manager sees passwords, tokens, addresses and private messages. Kopi
 ## Principles
 
 1. **Don't read what we won't keep.** Wherever possible, decisions are made from the format list and the source app *before* any content is read. The few rules that need the content are checked in memory, and failing content is discarded without being stored or logged.
-2. **Local only by default.** History never leaves the device unless the user turns on sync, which doesn't exist yet.
+2. **Local only by default.** History never leaves the device unless the user turns on sync, and then only to the computers they pair, encrypted end to end.
 3. **No telemetry.** The app sends no analytics. Any crash reporting will be opt-in and will never include clip content.
 4. **The user stays in control.** Pause, exclude apps, delete clips, clear everything, and set limits.
 5. **Verifiable.** The code is open, so anyone can check that these rules hold.
@@ -48,7 +48,7 @@ A dropped copy leaves no trace: no row, no file and no log line with content. A 
 ## Local only by default
 
 - **Where data lives:** the database and files are in the local, non-roaming app data folder ([DATA_MODEL.md](DATA_MODEL.md#storage-location)), created with user-only permissions.
-- **Network:** Kopi's only network requests are the updater's. Every few hours it fetches `latest.json` from the project's GitHub releases, and the update itself when there's one. They send no clip data, no settings and no ID, only what any download sends (an IP address and a user agent). **Update automatically** in Settings turns the automatic checks off, leaving **Check for Updates…** in the menu bar. See [RELEASING.md](RELEASING.md#updates). The webview's content security policy (`connect-src`) allows no remote hosts, and the app doesn't include Tauri's HTTP plugin.
+- **Network:** apart from sync, which is off until the user turns it on, Kopi's only network requests are the updater's. Every few hours it fetches `latest.json` from the project's GitHub releases, and the update itself when there's one. They send no clip data, no settings and no ID, only what any download sends (an IP address and a user agent). **Update automatically** in Settings turns the automatic checks off, leaving **Check for Updates…** in the menu bar. See [RELEASING.md](RELEASING.md#updates). The webview's content security policy (`connect-src`) allows no remote hosts, and the app doesn't include Tauri's HTTP plugin.
 - **Webview isolation:** the UI has no direct clipboard, file system or SQL access. It can only call Kopi's own commands (see [ARCHITECTURE.md](ARCHITECTURE.md)). The content security policy blocks remote scripts.
 - **Encryption at rest:** the alpha relies on FileVault / BitLocker. Encrypting the database (for example with SQLCipher and a key in the Keychain / Credential Manager) is an open question for the beta. It protects against other local processes reading the file, at a cost to complexity and speed.
 - **Screen sharing:** Concealed content is never stored, so it can't be shown in the panel. A "hide previews while screen sharing" option is a later idea.
@@ -83,6 +83,19 @@ SQLite is set up to overwrite deleted content: `PRAGMA secure_delete = ON` for t
 
 Onboarding asks for each permission with a one-sentence reason and a link to this document. The Paste from Other Apps step only appears on macOS versions that enforce it. On older versions there's nothing to grant, so the step is skipped. Kopi asks for nothing else.
 
-## Sync (later)
+## Sync
 
-Sync isn't built yet. The design is in [SYNC_DESIGN.md](SYNC_DESIGN.md) ([ADR 0007](decisions/0007-lan-sync.md)). Clips go directly between the user's paired computers over the local network, **end-to-end encrypted** with keys that never leave them. There's no server. Sync will be opt-in, won't sync file clips or copies marked with `CanUploadToCloudClipboard` = 0, will respect the excluded apps, and will let the user choose which kinds of clips sync. Deleting a clip, or clearing history, deletes it on every paired computer.
+Settings → Sync syncs history, pins and pinboards between the user's own computers. The design is in [SYNC_DESIGN.md](SYNC_DESIGN.md) ([ADR 0007](decisions/0007-lan-sync.md)).
+
+- **Off by default.** While it's off, Kopi opens no socket and advertises nothing.
+- **Local network only, no server.** Clips go straight from one paired computer to another, **end-to-end encrypted** (Noise, with keys pinned at pairing). The keys never leave the computer: each is in `<data dir>/sync/device.key`, readable only by the user.
+- **Only computers the user pairs**, one at a time, with a 6-digit code shown on screen. A wrong code fails, and the code changes after every attempt.
+- **What others on the network see:** while sync is on, a computer advertises a Kopi service under a random name that changes every time sync starts. Anyone who connects can learn its public key, which is a stable identifier, but nothing else: a computer that isn't paired is refused before anything is sent.
+- **Never synced:** file clips, copies Windows marks with `CanUploadToCloudClipboard` = 0, and kinds the user unticks in **What to sync**. Concealed and transient copies are never stored, so they can't sync.
+- **Excluded apps** on the receiving computer apply to clips copied on a computer of the same OS: a clip from an app it excludes is dropped on arrival.
+- **Deletes and Clear history reach every computer** in the group.
+- **Received data is untrusted**, even from a paired computer: sizes are limited, fields are checked, and each clip's hash is recomputed from its content.
+- **Removing a computer** stops every computer in the group accepting it. It keeps what it already received; Kopi can't reach into another computer.
+- **Logs** have device IDs, counts and errors, never clip content.
+
+macOS asks for the Local Network permission when sync is first turned on, and Windows Defender Firewall asks to allow Kopi. See [INSTALL_ALPHA.md](INSTALL_ALPHA.md#sync).

@@ -34,6 +34,8 @@ export const commands = {
 	sizeBytes: number,
 	pinned: boolean,
 	metadata: ClipMetadata | null,
+	/**  The paired computer it was last copied on. None for this computer. */
+	copiedOn: string | null,
 } | null, string>(__TAURI_INVOKE("get_clip", { id })),
 	/**  Deletes clips, and sends `clip:removed` with the ids that were found. */
 	deleteClips: (ids: ClipId[]) => typedError<null, string>(__TAURI_INVOKE("delete_clips", { ids })),
@@ -114,6 +116,30 @@ export const commands = {
 	pinboardRemoveClips: (id: PinboardId, clipIds: ClipId[]) => typedError<null, string>(__TAURI_INVOKE("pinboard_remove_clips", { id, clipIds })),
 	/**  The ids of the pinboards a clip is on, for its menu. */
 	clipPinboards: (id: ClipId) => typedError<PinboardId[], string>(__TAURI_INVOKE("clip_pinboards", { id })),
+	/**  Everything Settings → Sync shows. */
+	syncStatus: () => typedError<SyncStatus, string>(__TAURI_INVOKE("sync_status")),
+	/**
+	 *  Turns sync on or off. Turning it on makes this computer's identity the first time, and on
+	 *  macOS is when the Local Network permission is asked for.
+	 */
+	setSyncEnabled: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("set_sync_enabled", { enabled })),
+	/**  Renames this computer. Returns the name as saved, trimmed. */
+	setSyncDeviceName: (name: string) => typedError<string, string>(__TAURI_INVOKE("set_sync_device_name", { name })),
+	/**  The kinds to send and take. Files are never synced. */
+	setSyncKinds: (kinds: ClipKind[]) => typedError<null, string>(__TAURI_INVOKE("set_sync_kinds", { kinds })),
+	/**  Removes a computer from the group, on every computer in it. It keeps what it already has. */
+	removeSyncDevice: (id: string) => typedError<null, string>(__TAURI_INVOKE("remove_sync_device", { id })),
+	/**  Opens pairing: a code to show, and this computer listed to others pairing nearby. */
+	startPairing: () => typedError<null, string>(__TAURI_INVOKE("start_pairing")),
+	/**  Closes pairing. The code stops working. */
+	stopPairing: () => typedError<null, string>(__TAURI_INVOKE("stop_pairing")),
+	/**  Pairs with a computer nearby, with the code it shows. Returns its name. */
+	pairWith: (id: string, code: string) => typedError<string, string>(__TAURI_INVOKE("pair_with", { id, code })),
+	/**
+	 *  Opens System Settings at Privacy & Security → Local Network, where Kopi can be allowed.
+	 *  Does nothing outside macOS.
+	 */
+	openLocalNetworkSettings: () => __TAURI_INVOKE<void>("open_local_network_settings"),
 };
 
 /** Events */
@@ -124,6 +150,9 @@ export const events = {
 	panelHidden: makeEvent<PanelHidden>("panel:hidden"),
 	panelShown: makeEvent<PanelShown>("panel:shown"),
 	pinboardsChanged: makeEvent<PinboardsChanged>("pinboards:changed"),
+	syncChanged: makeEvent<SyncChanged>("sync:changed"),
+	syncPaired: makeEvent<SyncPaired>("sync:paired"),
+	syncPairingFailed: makeEvent<SyncPairingFailed>("sync:pairing-failed"),
 	themeChanged: makeEvent<ThemeChanged>("theme:changed"),
 	thumbnailReady: makeEvent<ThumbnailReady>("thumbnail:ready"),
 };
@@ -161,6 +190,8 @@ export type ClipDetail = {
 	sizeBytes: number,
 	pinned: boolean,
 	metadata: ClipMetadata | null,
+	/**  The paired computer it was last copied on. None for this computer. */
+	copiedOn: string | null,
 };
 
 /**  A clip's id, as a command argument. */
@@ -217,7 +248,19 @@ export type HistoryLimits = {
 	maxTotalBytes: number | null,
 };
 
+export type NearbyComputer = {
+	id: string,
+	name: string,
+};
+
 export type Os = "macos" | "windows" | "other";
+
+export type Pairing = {
+	/**  6 digits. */
+	code: string,
+	expiresAt: number,
+	nearby: NearbyComputer[],
+};
 
 /**  The panel was hidden. */
 export type PanelHidden = null;
@@ -332,6 +375,59 @@ export type SourceApp = {
 export type Span = {
 	text: string,
 	matched: boolean,
+};
+
+/**
+ *  Something Settings → Sync shows changed: sync was turned on or off, a computer connected,
+ *  was paired or removed, the pairing code changed, or a problem appeared.
+ */
+export type SyncChanged = null;
+
+export type SyncDevice = {
+	id: string,
+	name: string,
+	os: Os,
+	/**  A session with it is running now. */
+	connected: boolean,
+	/**  It runs a newer Kopi, which this one needs to sync with it. */
+	needsUpdate: boolean,
+	/**  When it last synced with this computer, in Unix milliseconds. */
+	lastSeenAt: number | null,
+	/**
+	 *  It hasn't synced for longer than deletes are remembered, so it may bring deleted clips
+	 *  back. Removing it and pairing again is safer.
+	 */
+	stale: boolean,
+};
+
+/**  Pairing finished, on either computer. */
+export type SyncPaired = {
+	/**  The other computer's name. */
+	name: string,
+};
+
+/**  A pairing attempt failed, such as with a wrong code. */
+export type SyncPairingFailed = {
+	reason: string,
+};
+
+export type SyncProblem = 
+/**  macOS's Local Network permission is off for Kopi. */
+"localNetworkDenied" | 
+/**  Kopi couldn't advertise or browse on the network. */
+"discovery";
+
+export type SyncStatus = {
+	enabled: boolean,
+	/**  What the other computers call this one. */
+	deviceName: string,
+	/**  The kinds sent and taken. Never files. */
+	kinds: ClipKind[],
+	/**  The other computers in the group, by name. */
+	devices: SyncDevice[],
+	problem: SyncProblem | null,
+	/**  The code and the computers nearby, while the pairing sheet is open. */
+	pairing: Pairing | null,
 };
 
 /**  The app's color scheme. */

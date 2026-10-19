@@ -63,6 +63,12 @@ export function Preview({
             <dd>{detail.sourceAppName}</dd>
           </>
         )}
+        {detail.copiedOn && (
+          <>
+            <dt>Copied on</dt>
+            <dd>{detail.copiedOn}</dd>
+          </>
+        )}
         <dt>Copied</dt>
         <dd>{dateTime(detail.createdAt)}</dd>
         {detail.lastUsedAt !== detail.createdAt && (

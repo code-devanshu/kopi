@@ -42,6 +42,8 @@ pub struct ClipDetail {
     pub size_bytes: i64,
     pub pinned: bool,
     pub metadata: Option<ClipMetadata>,
+    /// The paired computer it was last copied on. None for this computer.
+    pub copied_on: Option<String>,
 }
 
 impl From<storage::Clip> for ClipDetail {
@@ -59,6 +61,7 @@ impl From<storage::Clip> for ClipDetail {
             size_bytes: clip.size_bytes,
             pinned: clip.pinned,
             metadata: ClipMetadata::parse(clip.metadata),
+            copied_on: clip.copied_on,
         }
     }
 }

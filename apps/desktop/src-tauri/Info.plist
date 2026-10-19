@@ -6,5 +6,12 @@
 	<!-- Menu bar app: no Dock icon and no app switcher entry, not even at launch. -->
 	<key>LSUIElement</key>
 	<true/>
+	<!-- Sync, which is off until the user turns it on. Turning it on is when macOS asks. -->
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Kopi finds your other computers on this network to sync your clips with them.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_kopi._tcp</string>
+	</array>
 </dict>
 </plist>

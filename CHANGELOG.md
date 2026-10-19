@@ -6,6 +6,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- **Sync between your computers.** Settings → Sync syncs your history, pins and pinboards between your Macs and Windows PCs, in any mix, directly over your local network. Clips go straight from one computer to the other, end-to-end encrypted, and never through a server. It's off until you turn it on.
+  - Pair a computer once with a 6-digit code. To add a third, pair it with any one of the others.
+  - Text, rich text, links, code, colors and images sync, and you can choose which. File clips stay on the computer they were copied on.
+  - Deleting a clip, or clearing history, deletes it on every computer. Each keeps its own history limits, settings and excluded apps.
+  - A clip from another computer shows where it was copied in the preview.
+  - On a Mac, turning sync on makes macOS ask whether Kopi may find devices on your local network. On Windows, Windows Defender Firewall asks to allow Kopi. See [INSTALL_ALPHA.md](docs/INSTALL_ALPHA.md#sync).
+
+### Changed
+
+- On Windows, copies an app marks as not for other devices (`CanUploadToCloudClipboard`) are kept in your history but never synced.
+
 ## [0.1.0-alpha.7] - 2026-10-19
 
 Testers on an earlier alpha get this release as an update.

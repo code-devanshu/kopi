@@ -7,6 +7,7 @@ pub mod paste;
 pub mod pinboards;
 pub mod search;
 pub mod settings;
+pub mod sync;
 
 use serde::Serialize;
 use specta::Type;

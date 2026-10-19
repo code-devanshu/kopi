@@ -152,6 +152,7 @@ fn make_clip(rng: &mut Rng, i: usize) -> NewClip {
             data: text.clone().into_bytes(),
         }],
         plain_text: Some(text),
+        local_only: false,
     }
 }
 

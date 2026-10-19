@@ -127,7 +127,7 @@ To check the download isn't damaged, also download its `.sha256` file from the r
 
 ### Use it
 
-Press **Ctrl+Shift+V** in any app to open Kopi. Ctrl does what ⌘ does on a Mac: **Ctrl+1** to **Ctrl+9** paste the first nine clips, **Ctrl+P** pins a clip and **Ctrl+K** opens its menu. Windows doesn't ask you to allow anything.
+Press **Ctrl+Shift+V** in any app to open Kopi. Ctrl does what ⌘ does on a Mac: **Ctrl+1** to **Ctrl+9** paste the first nine clips, **Ctrl+P** pins a clip and **Ctrl+K** opens its menu. Windows doesn't ask you to allow anything, unless you turn on [sync](#sync).
 
 - Browsers and some other apps use Ctrl+Shift+V to paste without formatting. Kopi takes that shortcut while it runs, so if you use it, choose another in Kopi's Settings.
 - Windows doesn't let Kopi paste into apps running as administrator. Kopi still copies the clip, so press Ctrl+V.
@@ -140,6 +140,28 @@ Kopi checks for updates and downloads them by itself. When one is ready, **Resta
 
 1. Open **Settings → Apps → Installed apps**, find **Kopi** and choose **Uninstall**.
 2. To delete your clip history and settings too, delete the folder `%LOCALAPPDATA%\in.devanshuverma.kopi`.
+
+## Sync
+
+Kopi can sync your history, pins and pinboards between your Macs and Windows PCs, directly over your local network. It's off until you turn it on, and clips never go through a server.
+
+1. On each computer, open Kopi's **Settings → Sync** and turn on **Sync with your other computers**.
+   - **On a Mac**, macOS asks whether Kopi may find devices on your local network. Choose **Allow**. If you chose **Don't Allow**, Settings shows a button that opens **System Settings → Privacy & Security → Local Network**, where you can turn Kopi on.
+   - **On Windows**, Windows Defender Firewall asks whether Kopi may communicate on networks. Allow it on **private networks**. On a standard account this needs an administrator's password. If you cancelled, open **Windows Security → Firewall & network protection → Allow an app through firewall** and tick Kopi for **Private**.
+2. On both computers, choose **Add a computer…**. Each shows a 6-digit code and lists the other.
+3. On one of them, pick the other computer and type the code it shows. Both say **Paired**, and your clips start syncing.
+
+To add a third computer, pair it with any one of the others. It finds the rest by itself.
+
+Both computers must be on the same network with Kopi running. A computer that was away catches up when it's back. If they can't find each other:
+
+- On Windows, the network must be set to **Private**: **Settings → Network & internet**, choose the network, then **Private network**.
+- Guest Wi-Fi and many office networks keep computers from seeing each other. Sync can't work there.
+- Check that Kopi is allowed in the Mac's Local Network settings and in the Windows firewall, as above.
+
+File clips don't sync, since a file's path means nothing on another computer. **What to sync** in Settings chooses the other kinds. Deleting a clip, or clearing history, deletes it on every paired computer. To stop syncing with a computer, choose **Remove…** next to it; it keeps the clips it already has.
+
+macOS may ask about the local network again after an update. If sync stops finding your other computers after one, check Settings → Sync, and [let us know](#reporting-a-problem): it tells us whether every update will ask.
 
 ## Reporting a problem
 

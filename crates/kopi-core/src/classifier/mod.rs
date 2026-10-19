@@ -71,6 +71,7 @@ impl Classified {
             // Format names are UTIs on every OS: the Windows clipboard translates them.
             platform: Platform::MacOs,
             formats: self.formats,
+            local_only: false,
         }
     }
 }
@@ -114,7 +115,10 @@ pub fn save(store: &Store, filter: &PrivacyFilter, capture: Capture) -> StorageR
         return Ok(Saved::Dropped(reason));
     }
     let kind = classified.kind;
-    let clip = store.upsert_clip(classified.into_clip(capture.source))?;
+    let clip = store.upsert_clip(NewClip {
+        local_only: capture.local_only,
+        ..classified.into_clip(capture.source)
+    })?;
     Ok(Saved::Stored { kind, clip })
 }
 
@@ -125,6 +129,53 @@ pub fn content_hash(kind: ClipKind, payload: &[u8]) -> String {
     hasher.update(&[0]);
     hasher.update(payload);
     hasher.finalize().to_hex().to_string()
+}
+
+/// Checks a clip received from another computer: that `content_hash` really is the hash of
+/// its `kind` and `formats`, as [`classify`] would make it. Returns the plain text to store,
+/// or `None` if the hash doesn't match, so the clip is dropped.
+///
+/// A clip classified the same way here passes. So does one an older or newer Kopi classified
+/// differently, as long as its hash covers its text or its image under the kind it was sent
+/// with. File clips never sync, so they never pass.
+pub fn verify(kind: ClipKind, content_hash: &str, formats: &[NewFormat]) -> Option<Option<String>> {
+    if kind == ClipKind::File {
+        return None;
+    }
+    let raw: Vec<RawFormat> = formats
+        .iter()
+        .map(|f| RawFormat {
+            item_index: f.item_index,
+            format: f.format.clone(),
+            data: f.data.clone(),
+        })
+        .collect();
+    if let Some(picked) = pick(&raw)
+        && picked.kind == kind
+        && picked.hash == content_hash
+    {
+        return Some(picked.text.map(|text| truncate_text(text).0));
+    }
+    let all = |format: &'static str| formats.iter().filter(move |f| f.format == format);
+    let matches = |data: &[u8]| self::content_hash(kind, data) == content_hash;
+    if kind == ClipKind::Image {
+        // A TIFF-only image is sent with a PNG added, so either may be the one hashed.
+        return all(uti::PNG)
+            .chain(all(uti::TIFF))
+            .any(|f| matches(&f.data))
+            .then_some(None);
+    }
+    let text = all(uti::PLAIN_TEXT)
+        .map(|f| decode(&f.data))
+        .collect::<Vec<_>>()
+        .join("\n");
+    if !text.is_empty() {
+        return matches(text.as_bytes()).then(|| Some(truncate_text(text).0));
+    }
+    let rich = [uti::RTF, uti::RTFD, uti::HTML]
+        .into_iter()
+        .find_map(|format| all(format).next());
+    (kind == ClipKind::RichText && rich.is_some_and(|f| matches(&f.data))).then_some(None)
 }
 
 struct Picked {

@@ -1408,6 +1408,204 @@ mark {
   justify-content: flex-end;
 }
 
+.button-row.end {
+  justify-content: flex-end;
+}
+
+/* Settings → Sync */
+
+.text-field {
+  width: 200px;
+  height: 28px;
+  padding: 0 9px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+  font-size: 12.5px;
+  -webkit-user-select: text;
+  user-select: text;
+  cursor: text;
+}
+
+.text-field:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.text-field::placeholder {
+  color: var(--muted-foreground);
+  opacity: 0.6;
+}
+
+.callout {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--danger) 35%, var(--border));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--danger) 7%, var(--surface));
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.device-icon {
+  flex-shrink: 0;
+  color: var(--muted-foreground);
+}
+
+.device-status {
+  font-size: 11.5px;
+}
+
+.device-status.connected {
+  color: var(--success);
+}
+
+.kind-option.disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.kind-option.disabled:hover {
+  background: none;
+}
+
+.settings-note {
+  max-width: 62ch;
+  padding: 0 4px;
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgb(0 0 0 / 0.28);
+}
+
+.sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: min(440px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--background);
+  box-shadow: 0 18px 50px rgb(0 0 0 / 0.25);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.sheet-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.pair-part {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.pair-heading {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted-foreground);
+}
+
+.pair-code {
+  font-family: var(--mono);
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.pair-hint {
+  font-size: 11.5px;
+}
+
+.nearby {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.nearby-item {
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.nearby-item:hover {
+  background: var(--surface-muted);
+}
+
+.nearby-item[aria-checked="true"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.nearby-item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.pair-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.pair-form label {
+  flex-basis: 100%;
+  font-weight: 500;
+}
+
+.pair-code-input {
+  width: 120px;
+  font-size: 15px;
+  letter-spacing: 0.08em;
+}
+
+.pair-done {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--success);
+}
+
+.pair-done strong {
+  color: var(--foreground);
+}
+
+.pair-notice {
+  font-size: 12px;
+  color: var(--accent-text);
+}
+
 /* Onboarding window */
 
 .onboarding {

@@ -10,6 +10,7 @@
 //! | `CF_HDROP` | `public.file-url`, one item per file, as on macOS |
 //! | `ExcludeClipboardContentFromMonitorProcessing`, or `CanIncludeInClipboardHistory` set to 0 | `org.nspasteboard.ConcealedType` |
 //! | `Clipboard Viewer Ignore` | `org.nspasteboard.TransientType` |
+//! | `CanUploadToCloudClipboard` set to 0 | `in.devanshuverma.kopi.local-only`: never synced |
 //!
 //! Other registered formats keep their names, so Kopi's own source marker is
 //! `org.nspasteboard.source` on Windows too. Writing turns each name back into its format.
@@ -54,6 +55,7 @@ const DROPEFFECT_COPY: u32 = 1;
 /// Windows' privacy signals, and what they're reported as.
 const EXCLUDE: &str = "ExcludeClipboardContentFromMonitorProcessing";
 const HISTORY: &str = "CanIncludeInClipboardHistory";
+const CLOUD: &str = "CanUploadToCloudClipboard";
 const VIEWER_IGNORE: &str = "Clipboard Viewer Ignore";
 const CONCEALED: &str = "org.nspasteboard.ConcealedType";
 const TRANSIENT: &str = "org.nspasteboard.TransientType";
@@ -114,6 +116,7 @@ impl Pasteboard for WinPasteboard {
                         EXCLUDE => CONCEALED.to_owned(),
                         VIEWER_IGNORE => TRANSIENT.to_owned(),
                         HISTORY if dword(f) == Some(0) => CONCEALED.to_owned(),
+                        CLOUD if dword(f) == Some(0) => uti::LOCAL_ONLY.to_owned(),
                         _ => name,
                     },
                     None => continue,

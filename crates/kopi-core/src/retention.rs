@@ -109,5 +109,7 @@ impl Drop for Retention {
 
 fn apply(store: &Store) -> StorageResult<Vec<i64>> {
     let limits = store.retention_limits()?;
-    store.apply_retention(&limits, now_ms())
+    let now = now_ms();
+    store.prune_tombstones(now)?;
+    store.apply_retention(&limits, now)
 }

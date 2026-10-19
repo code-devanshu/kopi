@@ -82,6 +82,8 @@ pub struct Capture {
     pub source: Option<AppRef>,
     /// Only formats from [`uti::CAPTURE`].
     pub formats: Vec<RawFormat>,
+    /// The copy asked not to leave this computer ([`uti::LOCAL_ONLY`]), so it never syncs.
+    pub local_only: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -340,6 +342,7 @@ impl Poller {
                 change_count: count,
                 source: observed.source,
                 formats,
+                local_only: observed.types.contains(uti::LOCAL_ONLY),
             })),
             Err(error) => self.missed(count, error, emit),
         }

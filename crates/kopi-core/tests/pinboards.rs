@@ -28,6 +28,7 @@ fn add(store: &Store, text: &str) -> i64 {
             format: "public.utf8-plain-text".into(),
             data: text.as_bytes().to_vec(),
         }],
+        local_only: false,
     };
     store.upsert_clip(clip).unwrap().id
 }

@@ -41,6 +41,7 @@ impl Fixture {
                 format: "public.utf8-plain-text".into(),
                 data: text.as_bytes().to_vec(),
             }],
+            local_only: false,
         };
         self.store.upsert_clip_at(clip, NOW - ago).unwrap().id
     }

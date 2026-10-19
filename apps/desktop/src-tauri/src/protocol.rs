@@ -94,6 +94,7 @@ mod tests {
                 format: format.into(),
                 data: payload.to_vec(),
             }],
+            local_only: false,
         }
     }
 

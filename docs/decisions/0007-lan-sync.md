@@ -1,6 +1,6 @@
 # 0007. Sync directly over the local network
 
-- **Status:** Accepted
+- **Status:** Accepted. Built in 0.1.0-alpha.8.
 - **Date:** 2026-10-20
 - **Partly supersedes:** [ADR 0005](0005-local-first-sync-later.md), on when sync comes and how it travels
 
@@ -13,7 +13,7 @@ The biggest choice is how clips travel. Clipboard history is about the most sens
 ## Decision
 
 - **Transport: the local network only.** Computers find each other with mDNS (`_kopi._tcp`) and connect directly over TCP. There's no server, relay or account. Both computers must be on the same network at the same time, and a computer that was away catches up when it's back.
-- **Pairing:** a 6-digit code shown on one computer and typed on the other, through SPAKE2. Paired computers share the group, so a new one pairs with any member once.
+- **Pairing:** a 6-digit code shown on one computer and typed on the other, through SPAKE2, whose key goes into a Noise `XXpsk3` handshake. Paired computers share the group, so a new one pairs with any member once.
 - **Encryption:** every session is `Noise_XX_25519_ChaChaPoly_BLAKE2s`, with each computer's static key pinned at pairing. Keys never leave the computer.
 - **Data model:** state-based CRDTs. Last-writer-wins by hybrid logical clock, clips identified by `content_hash`, tombstones for deletes and Clear history, kept for 90 days. Each computer tracks changes with a local counter and remembers how far it got from each peer.
 - **Scope:** history (text, rich text, links, code, colors, images), pins and pinboards. File clips, local-only clips, settings and excluded apps don't sync. Limits stay per computer.
@@ -36,6 +36,6 @@ The biggest choice is how clips travel. Clipboard history is about the most sens
 
 - **Good:** no server, account, cost or third party. Clips never leave the user's network. Deletes reach every computer. A Mac and a Windows PC can share history.
 - **Bad:** no sync away from home or across networks that isolate devices, such as guest Wi-Fi and many offices.
-- **Bad:** macOS asks for the Local Network permission, and Windows Defender Firewall asks to allow Kopi, which needs an administrator on a standard account. Spike 0004 checks both, and whether the macOS grant survives updates with the self-signed certificate.
+- **Bad:** macOS asks for the Local Network permission, and Windows Defender Firewall asks to allow Kopi, which needs an administrator on a standard account. The planned spike on both was skipped to ship sooner: whether the macOS grant survives updates with the self-signed certificate is checked by the first update after 0.1.0-alpha.8, and Settings shows a denied permission with a button to fix it.
 - **Bad:** schema migration `0004` adds change tracking to every write, whether sync is on or not.
 - **Commitment:** received data is untrusted input, and is validated as strictly as a local capture.
