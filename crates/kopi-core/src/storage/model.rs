@@ -130,6 +130,8 @@ pub struct NewClip {
     pub metadata: Option<serde_json::Value>,
     pub platform: Platform,
     pub formats: Vec<NewFormat>,
+    /// Never synced to other computers: Windows marked it `CanUploadToCloudClipboard` = 0.
+    pub local_only: bool,
 }
 
 /// What [`Store::upsert_clip`](super::Store::upsert_clip) did.
@@ -157,6 +159,8 @@ pub struct Clip {
     pub use_count: i64,
     pub pinned: bool,
     pub metadata: Option<serde_json::Value>,
+    /// The name of the paired computer it was last copied on. None for this computer.
+    pub copied_on: Option<String>,
 }
 
 /// A stored format, with its data loaded from the row or from the blob file.

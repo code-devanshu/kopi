@@ -48,6 +48,7 @@ impl Fixture {
                     data: data.to_vec(),
                 })
                 .collect(),
+            local_only: false,
         };
         save(&self.store, &self.filter, capture).unwrap()
     }

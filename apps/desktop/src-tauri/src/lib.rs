@@ -10,6 +10,7 @@ mod onboarding;
 mod panel;
 mod protocol;
 mod settings_window;
+mod sync;
 mod tray;
 mod updates;
 
@@ -64,6 +65,15 @@ pub fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::pinboards::pinboard_add_clips,
             commands::pinboards::pinboard_remove_clips,
             commands::pinboards::clip_pinboards,
+            commands::sync::sync_status,
+            commands::sync::set_sync_enabled,
+            commands::sync::set_sync_device_name,
+            commands::sync::set_sync_kinds,
+            commands::sync::remove_sync_device,
+            commands::sync::start_pairing,
+            commands::sync::stop_pairing,
+            commands::sync::pair_with,
+            commands::sync::open_local_network_settings,
         ])
         .events(tauri_specta::collect_events![
             events::ClipAdded,
@@ -74,6 +84,9 @@ pub fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             events::PanelShown,
             events::PanelHidden,
             events::ThemeChanged,
+            events::SyncChanged,
+            events::SyncPaired,
+            events::SyncPairingFailed,
         ])
 }
 
@@ -154,6 +167,8 @@ pub fn run() {
             commands::paste::manage_engine(app.handle());
             hotkeys::register(app.handle(), &store);
             capture::start(app.handle(), Arc::clone(&store))?;
+            // Only if the user turned it on. Otherwise no socket is opened.
+            sync::start_if_enabled(app.handle(), &store);
             tray::create(app.handle())?;
             updates::start(app.handle());
             onboarding::open_on_first_run(app.handle(), &store);

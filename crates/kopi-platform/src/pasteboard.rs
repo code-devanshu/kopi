@@ -138,4 +138,8 @@ pub mod uti {
     /// Holds the bundle ID of the app that wrote the pasteboard (nspasteboard.org). Kopi sets
     /// it to its own bundle ID when it pastes, which is how the watcher spots its own writes.
     pub const SOURCE: &str = "org.nspasteboard.source";
+
+    /// Marks a copy that asked not to leave the computer: on Windows,
+    /// `CanUploadToCloudClipboard` set to 0. Kopi never syncs it.
+    pub const LOCAL_ONLY: &str = "in.devanshuverma.kopi.local-only";
 }

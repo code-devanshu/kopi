@@ -205,7 +205,7 @@ Password managers mark their copies with formats from Microsoft's [Cloud Clipboa
 | --- | --- | --- |
 | `ExcludeClipboardContentFromMonitorProcessing` | Any data in this format: exclude from history and cloud sync | **Never read or store** |
 | `CanIncludeInClipboardHistory` | `DWORD` 0 = keep out of history, 1 = explicitly allowed | **Skip when 0** |
-| `CanUploadToCloudClipboard` | `DWORD` 0 = don't sync to other devices | Store locally. Respect it when sync exists. |
+| `CanUploadToCloudClipboard` | `DWORD` 0 = don't sync to other devices | Store locally, as `local_only`, and never sync it |
 
 Check these with `IsClipboardFormatAvailable` before reading any content.
 

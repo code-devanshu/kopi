@@ -9,7 +9,7 @@ Related docs:
 - [PLATFORM_NOTES.md](PLATFORM_NOTES.md): macOS, Windows and Tauri research, with sources
 - [PRIVACY_DESIGN.md](PRIVACY_DESIGN.md): what Kopi never stores, and the user controls
 - [MVP_SCOPE.md](MVP_SCOPE.md): what's in the macOS alpha, and what isn't
-- [SYNC_DESIGN.md](SYNC_DESIGN.md): how sync between computers on the local network will work
+- [SYNC_DESIGN.md](SYNC_DESIGN.md): how sync between computers on the local network works
 - [decisions/](decisions/): Architecture Decision Records (ADRs)
 
 ## Goals
@@ -101,7 +101,8 @@ The Rust code is a Cargo workspace, so the core can be built and tested without 
 | Crate | Depends on Tauri? | Contents |
 | --- | --- | --- |
 | `crates/kopi-platform` | No | The OS traits, plus one implementation each for macOS and Windows |
-| `crates/kopi-core` | No | Watcher loop, privacy filter, classifier, storage, search, paste engine, settings, retention |
+| `crates/kopi-core` | No | Watcher loop, privacy filter, classifier, storage, search, paste engine, settings, retention, and sync's change tracking and merge |
+| `crates/kopi-sync` | No | Sync over the local network: discovery, pairing, Noise sessions and the wire protocol ([SYNC_DESIGN.md](SYNC_DESIGN.md)) |
 | `apps/desktop/src-tauri` | Yes | App shell: commands, events, windows, tray, hotkeys, permissions UI glue |
 
 ### Platform layer (`kopi-platform`)
@@ -268,8 +269,9 @@ kopi/
 │   │   ├── src/
 │   │   ├── migrations/        # 0001_init.sql, ...
 │   │   └── tests/
-│   └── kopi-platform/
-│       └── src/{lib.rs, macos/, windows/}
+│   ├── kopi-platform/
+│   │   └── src/{lib.rs, macos/, windows/}
+│   └── kopi-sync/             # discovery, pairing, sessions, protocol
 └── packages/                  # Shared JS packages (none yet)
 ```
 

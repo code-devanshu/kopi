@@ -1,16 +1,18 @@
-import { Clock, Settings2, ShieldCheck, type LucideIcon } from "lucide-react";
+import { Clock, RefreshCw, Settings2, ShieldCheck, type LucideIcon } from "lucide-react";
 import { useState } from "react";
 import { useThemeSetting } from "../../features/settings/theme";
 import { CaptureSection } from "./CaptureSection";
 import { GeneralSection } from "./GeneralSection";
 import { HistorySection } from "./HistorySection";
+import { SyncSection } from "./SyncSection";
 
-type Page = "general" | "capture" | "history";
+type Page = "general" | "capture" | "history" | "sync";
 
 const PAGES: { id: Page; label: string; icon: LucideIcon }[] = [
   { id: "general", label: "General", icon: Settings2 },
   { id: "capture", label: "Capture", icon: ShieldCheck },
   { id: "history", label: "History", icon: Clock },
+  { id: "sync", label: "Sync", icon: RefreshCw },
 ];
 
 /** The page on show, remembered while the window is open. */
@@ -49,6 +51,7 @@ export function Settings() {
         {page === "general" && <GeneralSection />}
         {page === "capture" && <CaptureSection />}
         {page === "history" && <HistorySection />}
+        {page === "sync" && <SyncSection />}
       </main>
     </div>
   );

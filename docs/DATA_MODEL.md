@@ -320,6 +320,6 @@ A thumbnail (PNG, longest edge 320 px) is generated off the main thread after in
 
 Very large images (over `limits.max_clip_bytes`) are skipped, not downscaled. A clipboard manager that silently changes images would be surprising.
 
-## Sync later
+## Sync
 
-Nothing in the alpha syncs. A few choices keep sync possible without a schema rewrite: UUIDv7 `uuid` on synced entities, content hashes for dedupe across devices, and `updated_at` on pinboards. Tombstones and per-device clocks come with migration `0004`, in [SYNC_DESIGN.md](SYNC_DESIGN.md#schema-changes).
+Migration `0004` adds sync's change tracking: an HLC and a `sync_seq` on every synced row, `copied_on` and `local_only` on clips, and the `tombstones`, `clear_ranges` and `sync_devices` tables. They're filled whether sync is on or not. Clips are matched across computers by content hash. See [SYNC_DESIGN.md](SYNC_DESIGN.md#schema-changes).

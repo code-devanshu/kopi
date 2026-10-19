@@ -16,6 +16,12 @@ const CAPTURE_KINDS: &str = "capture.kinds";
 const THEME: &str = "appearance.theme";
 const ONBOARDED: &str = "onboarding.done";
 const AUTO_UPDATE: &str = "updates.automatic";
+const SYNC_ENABLED: &str = "sync.enabled";
+const SYNC_KINDS: &str = "sync.kinds";
+const SYNC_DEVICE_NAME: &str = "sync.device_name";
+
+/// The kinds that can sync. File clips are paths, which mean nothing on another computer.
+pub const SYNCABLE_KINDS: KindSet = KindSet::ALL.without(ClipKind::File);
 
 /// The app's color scheme.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -110,6 +116,54 @@ impl Store {
     pub fn set_auto_update(&self, enabled: bool) -> StorageResult<()> {
         self.set_settings(&[(AUTO_UPDATE, Value::from(enabled))])
     }
+
+    /// Whether sync with the user's other computers is on. Off by default.
+    pub fn sync_enabled(&self) -> StorageResult<bool> {
+        Ok(self
+            .setting(SYNC_ENABLED)?
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false))
+    }
+
+    pub fn set_sync_enabled(&self, enabled: bool) -> StorageResult<()> {
+        self.set_settings(&[(SYNC_ENABLED, Value::from(enabled))])
+    }
+
+    /// The kinds to send to and take from other computers. Every kind but files by default.
+    pub fn sync_kinds(&self) -> StorageResult<KindSet> {
+        let Some(Value::Array(names)) = self.setting(SYNC_KINDS)? else {
+            return Ok(SYNCABLE_KINDS);
+        };
+        Ok(names
+            .iter()
+            .filter_map(|name| ClipKind::from_str(name.as_str()?).ok())
+            .filter(|kind| SYNCABLE_KINDS.contains(*kind))
+            .collect())
+    }
+
+    /// The name the user gave this computer for sync, if they changed it.
+    pub fn sync_device_name(&self) -> StorageResult<Option<String>> {
+        Ok(self
+            .setting(SYNC_DEVICE_NAME)?
+            .and_then(|v| v.as_str().map(str::to_owned))
+            .filter(|s| !s.trim().is_empty()))
+    }
+
+    /// Saves this computer's name, trimmed. Fails if it's empty or too long.
+    pub fn set_sync_device_name(&self, name: &str) -> StorageResult<String> {
+        let name = crate::storage::sync::check_device_name(name)?;
+        self.set_settings(&[(SYNC_DEVICE_NAME, Value::from(name.as_str()))])?;
+        Ok(name)
+    }
+
+    pub fn set_sync_kinds(&self, kinds: KindSet) -> StorageResult<()> {
+        let names = kinds
+            .iter()
+            .filter(|kind| SYNCABLE_KINDS.contains(*kind))
+            .map(|k| Value::from(k.as_str()))
+            .collect();
+        self.set_settings(&[(SYNC_KINDS, Value::Array(names))])
+    }
 }
 
 #[cfg(test)]
@@ -130,6 +184,8 @@ mod tests {
         assert_eq!(store.theme().unwrap(), Theme::System);
         assert!(!store.onboarded().unwrap());
         assert!(store.auto_update().unwrap());
+        assert!(!store.sync_enabled().unwrap());
+        assert_eq!(store.sync_kinds().unwrap(), SYNCABLE_KINDS);
     }
 
     #[test]
@@ -156,6 +212,17 @@ mod tests {
 
         store.set_auto_update(false).unwrap();
         assert!(!store.auto_update().unwrap());
+
+        store.set_sync_enabled(true).unwrap();
+        assert!(store.sync_enabled().unwrap());
+        // Files never sync, even if asked.
+        store
+            .set_sync_kinds(KindSet::NONE.with(ClipKind::Text).with(ClipKind::File))
+            .unwrap();
+        assert_eq!(
+            store.sync_kinds().unwrap(),
+            KindSet::NONE.with(ClipKind::Text)
+        );
     }
 
     #[test]

@@ -61,3 +61,24 @@ pub struct PanelHidden;
 pub struct ThemeChanged {
     pub theme: Theme,
 }
+
+/// Something Settings → Sync shows changed: sync was turned on or off, a computer connected,
+/// was paired or removed, the pairing code changed, or a problem appeared.
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[tauri_specta(event_name = "sync:changed")]
+pub struct SyncChanged;
+
+/// Pairing finished, on either computer.
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[tauri_specta(event_name = "sync:paired")]
+pub struct SyncPaired {
+    /// The other computer's name.
+    pub name: String,
+}
+
+/// A pairing attempt failed, such as with a wrong code.
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[tauri_specta(event_name = "sync:pairing-failed")]
+pub struct SyncPairingFailed {
+    pub reason: String,
+}

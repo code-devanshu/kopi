@@ -10,7 +10,9 @@ use std::path::{Path, PathBuf};
 use rusqlite::{Connection, TransactionBehavior, params};
 use serde_json::Value;
 
-use super::{KEPT, Removed, StorageError, StorageResult, Store, blobs, delete_in, thumbs};
+use super::{
+    KEPT, Removed, StorageError, StorageResult, Store, blobs, delete_in, next_seq, now_ms, thumbs,
+};
 
 /// The default for [`Limits::max_total_bytes`]: 2 GiB.
 pub const DEFAULT_MAX_TOTAL_BYTES: u64 = 2 * 1024 * 1024 * 1024;
@@ -19,7 +21,10 @@ const MAX_ITEMS: &str = "history.max_items";
 const MAX_AGE_DAYS: &str = "history.max_age_days";
 const MAX_TOTAL_BYTES: &str = "history.max_total_bytes";
 
-const DAY_MS: i64 = 24 * 60 * 60 * 1000;
+pub(crate) const DAY_MS: i64 = 24 * 60 * 60 * 1000;
+
+/// How long deletes are remembered for sync.
+pub const TOMBSTONE_DAYS: u32 = 90;
 
 /// How much history to keep. `None` is unlimited.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -171,28 +176,42 @@ impl Store {
     /// Deletes the clips last used at or after `since` (Unix milliseconds), or every clip when
     /// it's none. With `keep_kept`, pinned clips and those on a pinboard stay. Then compacts
     /// the database, so the deleted content doesn't linger on disk. Returns the ids removed.
+    ///
+    /// It leaves a range tombstone, so the other computers clear the same clips.
     pub fn clear_history(&self, since: Option<i64>, keep_kept: bool) -> StorageResult<Vec<i64>> {
+        let now = now_ms();
         let mut conn = self.writer();
         let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
-        let kept = if keep_kept {
-            format!("NOT {KEPT}")
-        } else {
-            "1".to_owned()
-        };
-        let ids = ids(
-            &tx,
-            &format!(
-                "SELECT c.id FROM clips c WHERE (?1 IS NULL OR c.last_used_at >= ?1) AND {kept}"
-            ),
-            params![since],
-        )?;
-        let removed = delete_in(&tx, ids)?;
+        let hlc = self.clock.tick(now);
+        tx.prepare_cached(
+            "INSERT INTO clear_ranges (from_ms, to_ms, include_kept, hlc, sync_seq)
+             VALUES (?1, ?2, ?3, ?4, ?5)",
+        )?
+        .execute(params![since, i64::MAX, !keep_kept, hlc, next_seq(&tx)?])?;
+        // As a range from another computer is applied: removed clips get tombstones, and kept
+        // ones a new HLC, so every computer ends up with the same. Its window has no end: the
+        // HLC already leaves out what's used after it, and a clock ahead of this one doesn't.
+        let mut removed = Removed::default();
+        self.settle_range(&tx, hlc, since, i64::MAX, &mut removed)?;
         tx.commit()?;
         let ids = self.remove_files(conn, removed)?;
+        self.changed();
         if !ids.is_empty() {
             self.compact()?;
         }
         Ok(ids)
+    }
+
+    /// Drops tombstones and cleared ranges older than [`TOMBSTONE_DAYS`]. A computer that
+    /// hasn't synced for that long could miss those deletes.
+    pub fn prune_tombstones(&self, now: i64) -> StorageResult<()> {
+        let cutoff = super::hlc::from_ms(now - i64::from(TOMBSTONE_DAYS) * DAY_MS);
+        let conn = self.writer();
+        conn.prepare_cached("DELETE FROM tombstones WHERE hlc < ?1")?
+            .execute([cutoff])?;
+        conn.prepare_cached("DELETE FROM clear_ranges WHERE hlc < ?1")?
+            .execute([cutoff])?;
+        Ok(())
     }
 
     /// Rebuilds the database without its free pages, then empties the WAL file. `secure_delete`

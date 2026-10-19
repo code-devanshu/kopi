@@ -16,6 +16,8 @@
 //   ?shortcut=taken makes recording a shortcut fail, as when another app holds it
 //   ?page=history   opens Settings on that page
 //   ?step=done      opens onboarding on that step
+//   ?sync           starts with sync on and two paired computers. ?sync=denied adds the
+//                   Local Network problem. Pairing works with the code 482913.
 // Open /settings.html for the Settings window, and /onboarding.html for onboarding.
 // In the console, kopiDev.copy("text") adds a clip as a copy would.
 import { emit } from "@tauri-apps/api/event";
@@ -34,6 +36,7 @@ import type {
   SearchQuery,
   Settings,
   SourceApp,
+  SyncStatus,
   Theme,
 } from "../lib/ipc";
 
@@ -96,6 +99,7 @@ function clip(kind: ClipKind, text: string | null, metadata: ClipMetadata | null
     sizeBytes: (text?.length ?? 1_500_000) * (kind === "rich_text" ? 6 : 1),
     pinned: id % 11 === 0,
     metadata,
+    copiedOn: id % 5 === 0 ? "Windows PC" : null,
   };
 }
 
@@ -212,6 +216,42 @@ function clearHistory(range: ClearRange, keepPinned: boolean): number {
   clips = clips.filter((c) => !ids.includes(c.id));
   if (ids.length) void emit("clip:removed", { ids });
   return ids.length;
+}
+
+const syncParam = params.get("sync");
+const sync: SyncStatus = {
+  enabled: syncParam !== null,
+  deviceName: "MacBook Air",
+  kinds: ["text", "rich_text", "link", "code", "color", "image"],
+  devices:
+    syncParam === null
+      ? []
+      : [
+          {
+            id: "pc",
+            name: "Windows PC",
+            os: "windows",
+            connected: true,
+            needsUpdate: false,
+            lastSeenAt: now,
+            stale: false,
+          },
+          {
+            id: "mini",
+            name: "Mac mini",
+            os: "macos",
+            connected: false,
+            needsUpdate: false,
+            lastSeenAt: now - 2 * 3_600_000,
+            stale: false,
+          },
+        ],
+  problem: syncParam === "denied" ? "localNetworkDenied" : null,
+  pairing: null,
+};
+
+function syncChanged() {
+  void emit("sync:changed", null);
 }
 
 function sourceApps(): SourceApp[] {
@@ -373,6 +413,54 @@ mockIPC(
       case "finish_onboarding":
         console.info(`kopi: finish_onboarding${a.openPanel ? ", then open the panel" : ""}`);
         if (a.openPanel) location.assign("/");
+        return null;
+      case "sync_status":
+        return structuredClone(sync);
+      case "set_sync_enabled":
+        sync.enabled = a.enabled as boolean;
+        syncChanged();
+        return null;
+      case "set_sync_device_name":
+        sync.deviceName = (a.name as string).trim() || sync.deviceName;
+        syncChanged();
+        return sync.deviceName;
+      case "set_sync_kinds":
+        sync.kinds = a.kinds as ClipKind[];
+        return null;
+      case "remove_sync_device":
+        sync.devices = sync.devices.filter((d) => d.id !== a.id);
+        syncChanged();
+        return null;
+      case "start_pairing":
+        sync.pairing = { code: "731406", expiresAt: Date.now() + 300_000, nearby: [] };
+        syncChanged();
+        // Another computer opens its sheet a moment later.
+        setTimeout(() => {
+          sync.pairing?.nearby.push({ id: "laptop", name: "Work laptop" });
+          syncChanged();
+        }, 1500);
+        return null;
+      case "stop_pairing":
+        sync.pairing = null;
+        syncChanged();
+        return null;
+      case "pair_with":
+        if (a.code !== "482913") {
+          throw "That code didn't match. Check the code on the other computer, which has a new one now.";
+        }
+        sync.devices.push({
+          id: "laptop",
+          name: "Work laptop",
+          os: "windows",
+          connected: true,
+          needsUpdate: false,
+          lastSeenAt: Date.now(),
+          stale: false,
+        });
+        syncChanged();
+        return "Work laptop";
+      case "open_local_network_settings":
+        console.info("kopi: open Local Network settings");
         return null;
       case "open_privacy_design":
         window.open("https://github.com/code-devanshu/kopi/blob/main/docs/PRIVACY_DESIGN.md", "_blank");

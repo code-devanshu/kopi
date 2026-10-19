@@ -6,7 +6,9 @@
 
 use rusqlite::{OptionalExtension, TransactionBehavior, params};
 
-use super::{Pinboard, StorageError, StorageResult, Store, now_ms};
+use super::{
+    Pinboard, StorageError, StorageResult, Store, Tombstone, next_seq, now_ms, put_tombstone,
+};
 
 /// The longest pinboard name, in characters.
 pub const MAX_PINBOARD_NAME_CHARS: usize = 64;
@@ -32,11 +34,25 @@ fn pinboard(row: &rusqlite::Row<'_>) -> rusqlite::Result<Pinboard> {
 impl Store {
     /// Pins or unpins a clip. Returns `false` if there's no such clip.
     pub fn set_pinned(&self, clip_id: i64, pinned: bool) -> StorageResult<bool> {
-        let changed = self
-            .writer()
-            .prepare_cached("UPDATE clips SET pinned = ?2 WHERE id = ?1")?
-            .execute(params![clip_id, pinned])?;
-        Ok(changed > 0)
+        let mut conn = self.writer();
+        let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let changed = tx
+            .prepare_cached(
+                "UPDATE clips SET pinned = ?2, pinned_hlc = ?3, sync_seq = ?4 WHERE id = ?1",
+            )?
+            .execute(params![
+                clip_id,
+                pinned,
+                self.clock.tick(now_ms()),
+                next_seq(&tx)?
+            ])?;
+        if changed == 0 {
+            return Ok(false);
+        }
+        tx.commit()?;
+        drop(conn);
+        self.changed();
+        Ok(true)
     }
 
     /// Every pinboard, in the user's order, with how many clips each holds.
@@ -44,7 +60,8 @@ impl Store {
         self.with_reader(|conn| {
             let boards = conn
                 .prepare_cached(&format!(
-                    "SELECT {PINBOARD_COLUMNS} FROM pinboards b ORDER BY b.position, b.id"
+                    "SELECT {PINBOARD_COLUMNS} FROM pinboards b
+                     ORDER BY b.position, b.updated_hlc DESC, b.id"
                 ))?
                 .query_map([], pinboard)?
                 .collect::<Result<_, _>>()?;
@@ -70,17 +87,30 @@ impl Store {
         let name = check_name(name)?;
         let color = check_color(color)?;
         let now = now_ms();
-        let id: i64 = self
-            .writer()
+        let mut conn = self.writer();
+        let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let id: i64 = tx
             .prepare_cached(
-                "INSERT INTO pinboards (uuid, name, color, position, created_at, updated_at)
-                 VALUES (?1, ?2, ?3, (SELECT coalesce(max(position) + 1, 0) FROM pinboards), ?4, ?4)
+                "INSERT INTO pinboards (uuid, name, color, position, created_at, updated_at,
+                                        updated_hlc, sync_seq)
+                 VALUES (?1, ?2, ?3, (SELECT coalesce(max(position) + 1, 0) FROM pinboards), ?4, ?4,
+                         ?5, ?6)
                  RETURNING id",
             )?
             .query_row(
-                params![uuid::Uuid::now_v7().to_string(), name, color, now],
+                params![
+                    uuid::Uuid::now_v7().to_string(),
+                    name,
+                    color,
+                    now,
+                    self.clock.tick(now),
+                    next_seq(&tx)?
+                ],
                 |row| row.get(0),
             )?;
+        tx.commit()?;
+        drop(conn);
+        self.changed();
         self.pinboard(id)?
             .ok_or_else(|| StorageError::Corrupt(format!("pinboard {id} vanished")))
     }
@@ -88,22 +118,46 @@ impl Store {
     /// Renames a pinboard. Returns `false` if there's no such pinboard.
     pub fn rename_pinboard(&self, id: i64, name: &str) -> StorageResult<bool> {
         let name = check_name(name)?;
-        let changed = self
-            .writer()
-            .prepare_cached("UPDATE pinboards SET name = ?2, updated_at = ?3 WHERE id = ?1")?
-            .execute(params![id, name, now_ms()])?;
-        Ok(changed > 0)
+        self.update_pinboard(id, "name", &name)
     }
 
     /// Sets a pinboard's color, `#RRGGBB`, or clears it. Returns `false` if there's no such
     /// pinboard.
     pub fn recolor_pinboard(&self, id: i64, color: Option<&str>) -> StorageResult<bool> {
         let color = check_color(color)?;
-        let changed = self
-            .writer()
-            .prepare_cached("UPDATE pinboards SET color = ?2, updated_at = ?3 WHERE id = ?1")?
-            .execute(params![id, color, now_ms()])?;
-        Ok(changed > 0)
+        self.update_pinboard(id, "color", &color)
+    }
+
+    /// Sets one column of a pinboard, as a change to sync.
+    fn update_pinboard(
+        &self,
+        id: i64,
+        column: &str,
+        value: &dyn rusqlite::ToSql,
+    ) -> StorageResult<bool> {
+        let now = now_ms();
+        let mut conn = self.writer();
+        let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let changed = tx
+            .prepare_cached(&format!(
+                "UPDATE pinboards SET {column} = ?2, updated_at = ?3, updated_hlc = ?4,
+                                      sync_seq = ?5
+                 WHERE id = ?1"
+            ))?
+            .execute(params![
+                id,
+                value,
+                now,
+                self.clock.tick(now),
+                next_seq(&tx)?
+            ])?;
+        if changed == 0 {
+            return Ok(false);
+        }
+        tx.commit()?;
+        drop(conn);
+        self.changed();
+        Ok(true)
     }
 
     /// Puts the pinboards in `ids` first, in that order. Any left out keep their order after
@@ -121,28 +175,55 @@ impl Store {
                 order.push(id);
             }
         }
+        let mut moved = 0;
         {
             let now = now_ms();
             let mut update = tx.prepare_cached(
-                "UPDATE pinboards SET position = ?2, updated_at = ?3
+                "UPDATE pinboards SET position = ?2, updated_at = ?3, updated_hlc = ?4,
+                                      sync_seq = ?5
                  WHERE id = ?1 AND position IS NOT ?2",
             )?;
+            let mut current_position =
+                tx.prepare_cached("SELECT position FROM pinboards WHERE id = ?1")?;
             for (position, id) in order.iter().enumerate() {
-                update.execute(params![id, position as i64, now])?;
+                let old: i64 = current_position.query_row([id], |row| row.get(0))?;
+                if old == position as i64 {
+                    continue;
+                }
+                moved += update.execute(params![
+                    id,
+                    position as i64,
+                    now,
+                    self.clock.tick(now),
+                    next_seq(&tx)?
+                ])?;
             }
         }
         tx.commit()?;
+        drop(conn);
+        if moved > 0 {
+            self.changed();
+        }
         Ok(())
     }
 
     /// Deletes a pinboard. Its clips stay in the history. Returns `false` if there's no such
     /// pinboard.
     pub fn delete_pinboard(&self, id: i64) -> StorageResult<bool> {
-        let changed = self
-            .writer()
-            .prepare_cached("DELETE FROM pinboards WHERE id = ?1")?
-            .execute([id])?;
-        Ok(changed > 0)
+        let mut conn = self.writer();
+        let tx = conn.transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let uuid: Option<String> = tx
+            .prepare_cached("DELETE FROM pinboards WHERE id = ?1 RETURNING uuid")?
+            .query_row([id], |row| row.get(0))
+            .optional()?;
+        let Some(uuid) = uuid else {
+            return Ok(false);
+        };
+        put_tombstone(&tx, Tombstone::PINBOARD, &uuid, self.clock.tick(now_ms()))?;
+        tx.commit()?;
+        drop(conn);
+        self.changed();
+        Ok(true)
     }
 
     /// Puts clips at the top of a pinboard, the first of `clip_ids` topmost. Clips already on it
@@ -163,20 +244,31 @@ impl Store {
             // The board lists by ascending position, so each new clip goes one above the top.
             // Adding the last one first leaves `clip_ids` in order.
             let mut insert = tx.prepare_cached(
-                "INSERT OR IGNORE INTO pinboard_items (pinboard_id, clip_id, position, added_at)
+                "INSERT OR IGNORE INTO pinboard_items (pinboard_id, clip_id, position, added_at,
+                                                       hlc, sync_seq)
                  SELECT ?1, c.id,
                         (SELECT coalesce(min(position) - 1, 0) FROM pinboard_items WHERE pinboard_id = ?1),
-                        ?3
+                        ?3, ?4, ?5
                  FROM clips c WHERE c.id = ?2",
             )?;
             for &clip_id in clip_ids.iter().rev() {
-                added += insert.execute(params![id, clip_id, now])?;
+                added += insert.execute(params![
+                    id,
+                    clip_id,
+                    now,
+                    self.clock.tick(now),
+                    next_seq(&tx)?
+                ])?;
             }
         }
         if added > 0 {
             touch(&tx, id, now)?;
         }
         tx.commit()?;
+        drop(conn);
+        if added > 0 {
+            self.changed();
+        }
         Ok(Some(added))
     }
 
@@ -187,16 +279,30 @@ impl Store {
         let mut removed = 0;
         {
             let mut delete = tx.prepare_cached(
-                "DELETE FROM pinboard_items WHERE pinboard_id = ?1 AND clip_id = ?2",
+                "DELETE FROM pinboard_items WHERE pinboard_id = ?1 AND clip_id = ?2
+                 RETURNING (SELECT uuid FROM pinboards WHERE id = ?1),
+                           (SELECT content_hash FROM clips WHERE id = ?2)",
             )?;
+            let hlc = self.clock.tick(now_ms());
             for &clip_id in clip_ids {
-                removed += delete.execute(params![id, clip_id])?;
+                let keys: Option<(String, String)> = delete
+                    .query_row(params![id, clip_id], |row| Ok((row.get(0)?, row.get(1)?)))
+                    .optional()?;
+                if let Some((board, clip)) = keys {
+                    let key = Tombstone::item_key(&board, &clip);
+                    put_tombstone(&tx, Tombstone::PINBOARD_ITEM, &key, hlc)?;
+                    removed += 1;
+                }
             }
         }
         if removed > 0 {
             touch(&tx, id, now_ms())?;
         }
         tx.commit()?;
+        drop(conn);
+        if removed > 0 {
+            self.changed();
+        }
         Ok(removed)
     }
 
@@ -231,7 +337,8 @@ impl Store {
 pub const KEPT: &str =
     "(c.pinned = 1 OR EXISTS (SELECT 1 FROM pinboard_items k WHERE k.clip_id = c.id))";
 
-/// Marks a pinboard changed, for sync.
+/// Marks a pinboard's contents changed. Items sync on their own, so this isn't a change to
+/// the pinboard's row.
 fn touch(conn: &rusqlite::Connection, id: i64, now: i64) -> rusqlite::Result<()> {
     conn.prepare_cached("UPDATE pinboards SET updated_at = ?2 WHERE id = ?1")?
         .execute(params![id, now])?;
@@ -239,7 +346,7 @@ fn touch(conn: &rusqlite::Connection, id: i64, now: i64) -> rusqlite::Result<()>
 }
 
 /// A trimmed name of 1 to [`MAX_PINBOARD_NAME_CHARS`] characters, without control characters.
-fn check_name(name: &str) -> StorageResult<String> {
+pub(crate) fn check_name(name: &str) -> StorageResult<String> {
     let name: String = name.trim().chars().filter(|c| !c.is_control()).collect();
     match name.chars().count() {
         0 => Err(StorageError::Invalid("a pinboard needs a name".into())),
@@ -251,7 +358,7 @@ fn check_name(name: &str) -> StorageResult<String> {
 }
 
 /// `#RRGGBB` in capitals, or none.
-fn check_color(color: Option<&str>) -> StorageResult<Option<String>> {
+pub(crate) fn check_color(color: Option<&str>) -> StorageResult<Option<String>> {
     let Some(color) = color else {
         return Ok(None);
     };
