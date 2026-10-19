@@ -23,7 +23,7 @@ export function SiteFooter() {
           <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
             An open-source clipboard manager. The alpha is out for macOS and Windows.
           </p>
-          <div className="mt-5 flex gap-2">
+          <div className="mt-5 flex flex-wrap items-center gap-3">
             <a
               href={siteConfig.links.github}
               data-track="github_click"
@@ -34,6 +34,19 @@ export function SiteFooter() {
               className="inline-flex size-9 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:text-foreground"
             >
               <GitHubIcon className="size-4" />
+            </a>
+            {/* TryMacApps lists Kopi for free while this badge is on the homepage. Their checker
+                looks for this exact link and image, so keep it a plain <img>. The badge is dark gray
+                and they have no dark version, so it's inverted in dark mode. */}
+            <a href="https://www.trymacapps.com" target="_blank" rel="noopener">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="https://www.trymacapps.com/badge.png"
+                alt="Featured on TryMacApps"
+                width="200"
+                height="67"
+                className="dark:invert"
+              />
             </a>
           </div>
         </div>
