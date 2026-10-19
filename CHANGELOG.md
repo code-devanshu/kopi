@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.1.0-alpha.8] - 2026-10-20
+
+Testers on an earlier alpha get this release as an update.
+
 ### Added
 
 - **Sync between your computers.** Settings → Sync syncs your history, pins and pinboards between your Macs and Windows PCs, in any mix, directly over your local network. Clips go straight from one computer to the other, end-to-end encrypted, and never through a server. It's off until you turn it on.
@@ -18,6 +22,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ### Changed
 
 - On Windows, copies an app marks as not for other devices (`CanUploadToCloudClipboard`) are kept in your history but never synced.
+- The website and the README say sync is here, over your local network, instead of coming after 1.0.
 
 ## [0.1.0-alpha.7] - 2026-10-19
 
@@ -115,7 +120,8 @@ The first macOS alpha.
 - Release workflow: a version tag builds a universal macOS `.dmg` and attaches it to a draft GitHub Release. Releases are signed with a self-signed certificate, so testers keep their permissions across updates, and aren't notarized ([ADR 0006](docs/decisions/0006-macos-distribution-without-notarization.md)). Install steps for testers are in `docs/INSTALL_ALPHA.md`.
 - Automatic updates on macOS with the Tauri updater: Kopi checks GitHub a little after launch and every 6 hours, installs updates in the background and offers Restart to Update in the menu bar, with Check for Updates… there too and an **Update automatically** switch in Settings. Updates aren't quarantined, so Gatekeeper only blocks the first install. Publishing a release offers it to the app.
 
-[Unreleased]: https://github.com/code-devanshu/kopi/compare/v0.1.0-alpha.7...HEAD
+[Unreleased]: https://github.com/code-devanshu/kopi/compare/v0.1.0-alpha.8...HEAD
+[0.1.0-alpha.8]: https://github.com/code-devanshu/kopi/compare/v0.1.0-alpha.7...v0.1.0-alpha.8
 [0.1.0-alpha.7]: https://github.com/code-devanshu/kopi/compare/v0.1.0-alpha.6...v0.1.0-alpha.7
 [0.1.0-alpha.6]: https://github.com/code-devanshu/kopi/compare/v0.1.0-alpha.5...v0.1.0-alpha.6
 [0.1.0-alpha.5]: https://github.com/code-devanshu/kopi/compare/v0.1.0-alpha.4...v0.1.0-alpha.5

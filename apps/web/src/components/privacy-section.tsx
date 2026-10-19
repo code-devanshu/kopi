@@ -12,7 +12,7 @@ const principles = [
   {
     icon: KeyRound,
     title: "End-to-end encrypted sync",
-    description: "Sync, coming after 1.0, will be optional. Clips will be encrypted on your device with keys only you hold, so whatever relays them can't read them.",
+    description: "Sync is optional and off until you turn it on. Clips go straight between your computers on your network, encrypted with keys that never leave them, and never through a server.",
   },
   {
     icon: EyeOff,

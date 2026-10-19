@@ -79,15 +79,16 @@ A stable release on macOS and Windows that anyone can download for free.
 - ⏳ User docs and FAQ
 - ⏳ Security review of local storage
 
-## 7. Encrypted sync ⏳
+## 7. Encrypted sync 🔨
 
-Optional sync between your Mac and Windows computers.
+Optional sync between your Mac and Windows computers, directly over your local network, in the alpha since 0.1.0-alpha.8.
 
-- ⏳ Choose the sync protocol and encryption scheme, reviewed in the open
-- ⏳ End-to-end encryption, so clips are encrypted before they leave your device
-- ⏳ Device pairing
-- ⏳ Conflict handling and sync for pinboards
-- ⏳ Decide whether the sync relay can be self-hosted
+- ✅ The protocol and encryption, designed in the open ([docs/SYNC_DESIGN.md](docs/SYNC_DESIGN.md), [ADR 0007](docs/decisions/0007-lan-sync.md))
+- ✅ End-to-end encryption, with keys that never leave your computers
+- ✅ Pairing with a code
+- ✅ Conflict handling, deletes, and sync for pins and pinboards
+- 🔨 Testing on real networks, Mac and Windows, with testers
+- ⏳ Sync away from home, through a relay that can't read your clips, in its own design
 
 ---
 

@@ -34,12 +34,12 @@ const faqs: Array<{ question: string; answer: ReactNode }> = [
   {
     question: "Which platforms will it support?",
     answer:
-      "macOS and Windows, both in alpha now. They're the focus for 1.0, and encrypted sync between them follows after 1.0. If you'd like to see another platform, start a discussion on GitHub.",
+      "macOS and Windows, both in alpha now, with optional encrypted sync between them over your local network. They're the focus for 1.0. If you'd like to see another platform, start a discussion on GitHub.",
   },
   {
     question: "Is my data private?",
     answer:
-      "Your history is stored locally on your computer. Sync, coming after 1.0, will be optional, and when it's on, clips will be end-to-end encrypted before they leave your device. Kopi skips copies from password managers and content marked as sensitive, and because the code is open, anyone can verify how it all works.",
+      "Your history is stored locally on your computer. Sync is optional and off until you turn it on. When it's on, clips go straight between your computers on your local network, end-to-end encrypted, and never through a server. Kopi skips copies from password managers and content marked as sensitive, and because the code is open, anyone can verify how it all works.",
   },
   {
     question: "How can I contribute?",

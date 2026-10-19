@@ -79,8 +79,7 @@ Kopi lives in the menu bar on a Mac and in the notification area on Windows. Pre
 - **Private by default:** history stays on your computer, works offline and needs no account. Copies from password managers and content marked as concealed are skipped, and you can exclude any app.
 - **History limits** by count, age and size. Pinned clips are kept.
 - **Updates itself** from this repository's releases, with a switch to turn that off.
-
-Planned: optional end-to-end encrypted sync between your computers.
+- **Sync** between your Macs and PCs, straight over your local network and end-to-end encrypted, with no server. Off until you turn it on.
 
 ## Why Kopi
 
@@ -98,7 +97,7 @@ Planned: optional end-to-end encrypted sync between your computers.
 | Windows alpha | 🔨 Out now, improving |
 | Private beta | Planned |
 | v1.0 public launch | Planned |
-| Encrypted sync | Planned |
+| Encrypted sync | 🔨 Out now, over the local network |
 
 See [ROADMAP.md](ROADMAP.md) for what's in each phase, and [CHANGELOG.md](CHANGELOG.md) for what changed in each release. The technical design is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 

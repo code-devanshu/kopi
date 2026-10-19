@@ -42,7 +42,7 @@ const features: Feature[] = [
   },
   {
     title: "Mac ↔ Windows sync",
-    description: "Coming after 1.0. Copy on one computer and paste on the other, end-to-end encrypted and entirely optional.",
+    description: "Copy on one computer and paste on the other, over your local network, end-to-end encrypted and entirely optional.",
     icon: RefreshCw,
     Illustration: SyncIllustration,
   },
