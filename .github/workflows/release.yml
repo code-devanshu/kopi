@@ -18,6 +18,11 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  # Cargo downloads crates during the build, and its default 3 retries don't outlast a short
+  # network blip on the runner.
+  CARGO_NET_RETRY: 10
+
 jobs:
   version:
     name: Check the version
@@ -60,7 +65,9 @@ jobs:
   macos:
     name: Build universal .dmg
     needs: version
-    runs-on: macos-latest
+    # A fixed image, so a new macOS or Xcode reaches releases only when this changes. Keep it
+    # the same as the desktop job in ci.yml, which checks the build first.
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v5
 
