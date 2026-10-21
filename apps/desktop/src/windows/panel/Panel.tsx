@@ -86,6 +86,8 @@ export function Panel() {
   // Per content hash, how many times its thumbnail was written. Rows load it again on a bump.
   const [thumbnails, setThumbnails] = useState<ReadonlyMap<string, number>>(new Map());
   const [notice, setNotice] = useState<Notice | null>(null);
+  /** Sync is on with another computer, so deleting a snippet deletes it there too. */
+  const [syncing, setSyncing] = useState(false);
   // A plain holder, not a ref: the Paster made during the first render closes over it.
   const [flashTimer] = useState<{ current?: ReturnType<typeof setTimeout> }>(() => ({}));
   const [paster] = useState(
@@ -139,9 +141,15 @@ export function Panel() {
 
   useEffect(() => {
     const loadApps = () => unwrap(commands.sourceApps()).then(setApps, () => {});
+    const loadSync = () =>
+      unwrap(commands.syncStatus()).then(
+        (s) => setSyncing(s.enabled && s.devices.length > 0),
+        () => {},
+      );
     void history.reset();
     loadApps();
     void loadBoards();
+    void loadSync();
 
     const shown = () => {
       paster.reset();
@@ -184,6 +192,7 @@ export function Panel() {
         void loadBoards();
       }),
       events.snippetsChanged.listen(changed),
+      events.syncChanged.listen(() => void loadSync()),
       events.thumbnailReady.listen(({ payload: { contentHash } }) =>
         setThumbnails((m) => new Map(m).set(contentHash, (m.get(contentHash) ?? 0) + 1)),
       ),
@@ -521,17 +530,15 @@ export function Panel() {
   /** ⌘⌫ on a snippet asks first. */
   function confirmDeleteSnippet(snippet: Snippet) {
     const { x, y } = rowPoint(`snippet-${snippet.id}`);
-    setMenu({
-      label: `Delete ${snippet.name}`,
-      x,
-      y,
-      initialActive: 1,
-      entries: [
-        { type: "heading", label: `Delete “${snippet.name}”?` },
-        { type: "item", label: "Delete", shortcut: "↩", danger: true, run: () => deleteSnippet(snippet) },
-        { type: "item", label: "Cancel", shortcut: "esc", run: () => {} },
-      ],
-    });
+    const entries: MenuEntry[] = [{ type: "heading", label: `Delete “${snippet.name}”?` }];
+    if (syncing) entries.push({ type: "heading", label: "This removes it from your other computers too." });
+    // Delete is highlighted, so Return deletes.
+    const initialActive = entries.length;
+    entries.push(
+      { type: "item", label: "Delete", shortcut: "↩", danger: true, run: () => deleteSnippet(snippet) },
+      { type: "item", label: "Cancel", shortcut: "esc", run: () => {} },
+    );
+    setMenu({ label: `Delete ${snippet.name}`, x, y, initialActive, entries });
   }
 
   /** ⌘K: the selected row's menu, under it. */

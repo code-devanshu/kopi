@@ -26,6 +26,8 @@ pub struct SyncStatus {
     pub device_name: String,
     /// The kinds sent and taken. Never files.
     pub kinds: Vec<ClipKind>,
+    /// Whether snippets are taken from the other computers.
+    pub snippets: bool,
     /// The other computers in the group, by name.
     pub devices: Vec<SyncDevice>,
     pub problem: Option<SyncProblem>,
@@ -89,10 +91,11 @@ pub async fn sync_status(
         .await;
     let data_dir = app.path().app_local_data_dir().map_err(|e| e.to_string())?;
     let store = Arc::clone(&store);
-    let (enabled, kinds, devices, device_name, self_id) = blocking(move || {
+    let (enabled, kinds, snippets, devices, device_name, self_id) = blocking(move || {
         Ok((
             store.sync_enabled()?,
             store.sync_kinds()?,
+            store.sync_snippets()?,
             store.sync_devices()?,
             sync::device_name(&store),
             Identity::existing(&data_dir).map(|identity| identity.device_id),
@@ -125,6 +128,7 @@ pub async fn sync_status(
         enabled,
         device_name,
         kinds: kinds.iter().map(Into::into).collect(),
+        snippets,
         devices,
         problem: status.problem.map(|p| match p {
             Problem::LocalNetworkDenied => SyncProblem::LocalNetworkDenied,
@@ -196,6 +200,24 @@ pub async fn set_sync_kinds(
     let kinds: KindSet = kinds.into_iter().map(storage::ClipKind::from).collect();
     let store = Arc::clone(&store);
     blocking(move || store.set_sync_kinds(kinds)).await?;
+    let _ = SyncChanged.emit(&app);
+    Ok(())
+}
+
+/// Whether to take snippets from the other computers. Sessions start again, since each one
+/// says at its start whether to send them, and ticking it fetches the ones missed meanwhile.
+#[tauri::command]
+#[specta::specta]
+pub async fn set_sync_snippets(
+    app: AppHandle,
+    store: State<'_, Arc<Store>>,
+    on: bool,
+) -> Result<(), String> {
+    let store = Arc::clone(&store);
+    blocking(move || store.set_sync_snippets(on)).await?;
+    app.state::<SyncState>()
+        .with(async |service| service.reconnect())
+        .await;
     let _ = SyncChanged.emit(&app);
     Ok(())
 }

@@ -14,6 +14,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   - ⌘N makes a new snippet and ⌘E edits the selected one. Changes save as you type.
   - Save any text clip as a snippet from its menu, or by dragging it onto the Snippets tab.
   - A pasted snippet isn't added to your history.
+  - Snippets sync between your computers, with an option in Settings → Sync → What to sync. A computer that updates gets every snippet the others have, including ones made before it updated.
 
 ## [0.1.0-alpha.8] - 2026-10-20
 

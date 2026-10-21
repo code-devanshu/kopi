@@ -416,6 +416,25 @@ impl SyncService {
             self.inner.status_changed();
         }
     }
+
+    /// Ends every session, to be dialed again in a moment. A session's hello says what this
+    /// computer takes, so a change to that needs new sessions.
+    pub fn reconnect(&self) {
+        let entries: Vec<SessionEntry> = self
+            .inner
+            .lock()
+            .sessions
+            .drain()
+            .map(|(_, entry)| entry)
+            .collect();
+        if entries.is_empty() {
+            return;
+        }
+        for entry in entries {
+            let _ = entry.stop.send(true);
+        }
+        self.inner.status_changed();
+    }
 }
 
 impl Inner {

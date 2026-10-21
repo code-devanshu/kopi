@@ -1,4 +1,4 @@
-import { Laptop, Monitor } from "lucide-react";
+import { Laptop, Monitor, TextQuote } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { FormError, Group, Row, Switch } from "../../components/Form";
 import { KindIcon } from "../../components/KindIcon";
@@ -80,6 +80,16 @@ export function SyncSection() {
     });
   }
 
+  function toggleSnippets(on: boolean) {
+    if (!status) return;
+    const was = status;
+    setStatus({ ...status, snippets: on });
+    unwrap(commands.setSyncSnippets(on)).catch((e) => {
+      setStatus(was);
+      setError(`Couldn't change what syncs. ${e}`);
+    });
+  }
+
   function remove(device: SyncDevice) {
     setRemoving(null);
     unwrap(commands.removeSyncDevice(device.id)).then(
@@ -96,7 +106,7 @@ export function SyncSection() {
       <Group footer="Over your local network only. Clips go straight between your computers, encrypted, and never through a server.">
         <Row
           label="Sync with your other computers"
-          description="History, pins and pinboards, on every Mac and Windows PC you pair."
+          description="History, pins, pinboards and snippets, on every Mac and Windows PC you pair."
           htmlFor="sync-on"
         >
           <Switch id="sync-on" checked={on} disabled={status === null || switching} onChange={(next) => void toggle(next)} />
@@ -202,7 +212,7 @@ export function SyncSection() {
 
           <Group
             title="What to sync"
-            footer="File clips stay on the computer they were copied on: a file's path means nothing on another computer."
+            footer="File clips stay on the computer they were copied on: a file's path means nothing on another computer. Ticking Snippets again brings the ones made elsewhere meanwhile."
           >
             <div className="kind-grid">
               {SYNC_KINDS.map((kind) => (
@@ -216,6 +226,15 @@ export function SyncSection() {
                   {KIND_LABELS[kind]}
                 </label>
               ))}
+              <label className="kind-option">
+                <input
+                  type="checkbox"
+                  checked={status.snippets}
+                  onChange={(e) => toggleSnippets(e.target.checked)}
+                />
+                <TextQuote size={15} strokeWidth={1.75} aria-hidden="true" />
+                Snippets
+              </label>
               <label className="kind-option disabled">
                 <input type="checkbox" checked={false} disabled />
                 <KindIcon kind="file" />

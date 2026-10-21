@@ -280,6 +280,7 @@ const sync: SyncStatus = {
   enabled: syncParam !== null,
   deviceName: "MacBook Air",
   kinds: ["text", "rich_text", "link", "code", "color", "image"],
+  snippets: true,
   devices:
     syncParam === null
       ? []
@@ -527,6 +528,9 @@ mockIPC(
         sync.deviceName = (a.name as string).trim() || sync.deviceName;
         syncChanged();
         return sync.deviceName;
+      case "set_sync_snippets":
+        sync.snippets = a.on as boolean;
+        return null;
       case "set_sync_kinds":
         sync.kinds = a.kinds as ClipKind[];
         return null;
