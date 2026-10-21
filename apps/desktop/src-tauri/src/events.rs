@@ -37,6 +37,11 @@ pub struct ClipsRemoved {
 #[tauri_specta(event_name = "pinboards:changed")]
 pub struct PinboardsChanged;
 
+/// Snippets were added, changed, reordered or deleted. The panel loads them again.
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[tauri_specta(event_name = "snippets:changed")]
+pub struct SnippetsChanged;
+
 /// An image clip's thumbnail was written, so `kopi://…/thumb/<hash>` now loads.
 #[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
 #[serde(rename_all = "camelCase")]

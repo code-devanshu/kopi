@@ -326,4 +326,4 @@ Migration `0004` adds sync's change tracking: an HLC and a `sync_seq` on every s
 
 ## Snippets
 
-Migration `0005` is planned to add a `snippets` table: text the user writes, with a name, an optional keyword and placeholders, identified by `uuid`. Snippets aren't clips, so dedupe, limits and Clear history don't apply to them. See [SNIPPETS_DESIGN.md](SNIPPETS_DESIGN.md#data-model).
+Migration `0005` adds the `snippets` table: text the user writes, with a name, an optional keyword and placeholders, identified by `uuid`. Snippets aren't clips, so dedupe, limits and Clear history don't apply to them, and they're not in the search index: the panel's search reads them all and matches in Rust. The migration also rebuilds `tombstones` to allow the entity `snippet`, and adds `sync_devices.snippets_seq`. See [SNIPPETS_DESIGN.md](SNIPPETS_DESIGN.md#data-model).

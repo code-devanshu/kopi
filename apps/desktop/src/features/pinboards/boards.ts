@@ -19,9 +19,9 @@ export function nextColor(boards: Pinboard[]): string {
   return COLORS[boards.length % COLORS.length].hex;
 }
 
-/** History, Pinned, then each pinboard, as ⌘[ and ⌘] step through them. */
+/** History, Pinned, Snippets, then each pinboard, as ⌘[ and ⌘] step through them. */
 export function views(boards: Pinboard[]): View[] {
-  return ["history", "pinned", ...boards.map((b) => b.id)];
+  return ["history", "pinned", "snippets", ...boards.map((b) => b.id)];
 }
 
 /** The view `by` steps from `view`, wrapping around. An unknown view starts from History. */

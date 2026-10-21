@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
-import type { SearchHit, SearchPage, SearchQuery } from "../../lib/ipc";
-import { History, MAX_PAGE, PAGE, REFRESH_DELAY_MS } from "./history";
+import type { SearchHit, SearchPage, SearchQuery, Snippet } from "../../lib/ipc";
+import { History, MAX_PAGE, PAGE, REFRESH_DELAY_MS, rowAt, rowId } from "./history";
 
 function hit(id: number): SearchHit {
   return {
@@ -266,4 +266,109 @@ test("subscribers hear every change until they unsubscribe", async () => {
   stop();
   history.setText("b");
   expect(heard).toHaveBeenCalledTimes(2);
+});
+
+function snippet(id: number, keyword: string | null = null): Snippet {
+  return {
+    id,
+    name: `Snippet ${id}`,
+    keyword,
+    body: "",
+    createdAt: 0,
+    updatedAt: 0,
+    lastUsedAt: null,
+    useCount: 0,
+  };
+}
+
+/** A history whose snippets are `snippets`, answering at once. */
+function withSnippets(ids: number[], snippets: Snippet[]) {
+  const backend = new Backend(ids);
+  const asked: string[] = [];
+  const history = new History(backend.search, {
+    all: async (text) => {
+      asked.push(`all:${text}`);
+      return snippets.filter((s) => !text || s.name.includes(text) || s.keyword === text);
+    },
+    keyword: async (text) => {
+      asked.push(`keyword:${text}`);
+      return snippets.filter((s) => s.keyword === text.trim());
+    },
+  });
+  return { backend, history, asked, state: () => history.getSnapshot() };
+}
+
+test("the Snippets view lists snippets and no clips", async () => {
+  const { backend, history, asked, state } = withSnippets([3, 2, 1], [snippet(10, "sig"), snippet(11)]);
+  history.setView("snippets");
+  await backend.answer();
+  expect(backend.calls).toEqual([]);
+  expect(asked).toEqual(["all:"]);
+  expect(state()).toMatchObject({ hits: [], hasMore: false, selected: 0, loaded: true });
+  expect(state().snippets.map((s) => s.id)).toEqual([10, 11]);
+  expect(history.selectedSnippet?.id).toBe(10);
+  expect(history.selectedHit).toBeUndefined();
+  history.move(5);
+  expect(history.selectedSnippet?.id).toBe(11);
+
+  history.setText("11");
+  await backend.answer();
+  expect(state().snippets.map((s) => s.id)).toEqual([11]);
+});
+
+test("an exact keyword puts its snippet above the clips in History", async () => {
+  const { backend, history, asked, state } = withSnippets([3, 2, 1], [snippet(10, "sig")]);
+  history.reset();
+  await backend.answer();
+  // No text, no lookup.
+  expect(asked).toEqual([]);
+  expect(state().snippets).toEqual([]);
+
+  history.setText("sig");
+  await backend.answer();
+  expect(asked).toEqual(["keyword:sig"]);
+  expect(state().snippets.map((s) => s.id)).toEqual([10]);
+  expect(history.selectedSnippet?.id).toBe(10);
+  history.move(1);
+  expect(history.selectedHit?.id).toBe(3);
+  expect(rowAt(state(), 3)?.hit?.id).toBe(1);
+  expect(rowAt(state(), 4)).toBeUndefined();
+  expect(rowId(rowAt(state(), 0)!)).toBe("snippet-10");
+  expect(rowId(rowAt(state(), 1)!)).toBe("clip-3");
+
+  // Keywords are for History only, without filters.
+  history.setKind("code");
+  await backend.answer();
+  expect(state().snippets).toEqual([]);
+  history.setKind(null);
+  history.setView("pinned");
+  await backend.answer();
+  expect(state().snippets).toEqual([]);
+  expect(asked).toEqual(["keyword:sig", "keyword:sig"]);
+});
+
+test("a refresh keeps the selected snippet", async () => {
+  const snippets = [snippet(10), snippet(11), snippet(12)];
+  const { backend, history, state } = withSnippets([], snippets);
+  history.setView("snippets");
+  await backend.answer();
+  history.select(2);
+  // Another snippet goes on top.
+  snippets.unshift(snippet(13));
+  history.refresh();
+  await backend.answer();
+  expect(state().snippets.map((s) => s.id)).toEqual([13, 10, 11, 12]);
+  expect(history.selectedSnippet?.id).toBe(12);
+});
+
+test("a failed keyword lookup leaves History working", async () => {
+  const backend = new Backend([2, 1]);
+  const history = new History(backend.search, {
+    all: () => Promise.reject("no"),
+    keyword: () => Promise.reject("no"),
+  });
+  history.setText("x");
+  await backend.answer();
+  expect(history.getSnapshot()).toMatchObject({ error: null, snippets: [] });
+  expect(history.selectedHit?.id).toBe(2);
 });

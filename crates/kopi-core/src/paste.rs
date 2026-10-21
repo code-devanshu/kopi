@@ -8,10 +8,15 @@
 //!    stays on the clipboard for the user to paste, and the system is asked for the permission,
 //!    once per run.
 //!
+//! A snippet pastes the same way, as plain text the panel filled in. It isn't a clip, so
+//! nothing moves to the top, and the marked write keeps it out of the history.
+//!
 //! Formats are macOS names (UTIs) on every OS. The Windows clipboard translates them.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, PoisonError};
+use std::thread;
+use std::time::Duration;
 
 use kopi_platform::{
     KeyError, KeySender, Pasteboard, PasteboardError, Permission, Permissions, RawFormat, uti,
@@ -39,10 +44,20 @@ pub enum Pasted {
     Copied,
 }
 
+/// After this many characters past `{cursor}`, the cursor stays at the end: posting that many
+/// arrow keys is slow, and the user sees it.
+pub const MAX_CURSOR_MOVE: usize = 1000;
+
+/// How long the app gets to take the paste before the arrow keys arrive. Some apps, such as
+/// Electron ones, read the clipboard a moment after ⌘V.
+const PASTE_SETTLE: Duration = Duration::from_millis(60);
+
 #[derive(Debug, Error)]
 pub enum PasteError {
     #[error("no clip {0}")]
     NotFound(i64),
+    #[error("no snippet {0}")]
+    NoSnippet(i64),
     #[error(transparent)]
     Storage(#[from] StorageError),
     #[error(transparent)]
@@ -81,10 +96,7 @@ impl PasteEngine {
     pub fn copy(&self, store: &Store, id: i64, content: Content) -> Result<(), PasteError> {
         let clip = store.get_clip(id)?.ok_or(PasteError::NotFound(id))?;
         let formats = clipboard_formats(&clip, &store.clip_formats(id)?, content);
-        self.pasteboard
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .write(&formats, Some(&self.own_bundle_id))?;
+        self.write(&formats)?;
         store.mark_used(id, now_ms())?;
         Ok(())
     }
@@ -100,6 +112,50 @@ impl PasteEngine {
         hide: impl FnOnce(),
     ) -> Result<Pasted, PasteError> {
         self.copy(store, id, content)?;
+        self.post_paste(hide, 0)
+    }
+
+    /// Puts snippet `id`'s filled-in `text` on the clipboard as plain text, and counts the use.
+    pub fn copy_snippet(&self, store: &Store, id: i64, text: &str) -> Result<(), PasteError> {
+        if store.snippet(id)?.is_none() {
+            return Err(PasteError::NoSnippet(id));
+        }
+        self.write(&[text_format(text.as_bytes().to_vec())])?;
+        store.mark_snippet_used(id, now_ms())?;
+        Ok(())
+    }
+
+    /// Copies a snippet's filled-in `text`, then pastes it as [`paste`](Self::paste) does a
+    /// clip. `cursor_back` is how many characters the cursor moves left after the paste, for
+    /// `{cursor}`. Past [`MAX_CURSOR_MOVE`] it stays at the end.
+    pub fn paste_snippet(
+        &self,
+        store: &Store,
+        id: i64,
+        text: &str,
+        cursor_back: usize,
+        hide: impl FnOnce(),
+    ) -> Result<Pasted, PasteError> {
+        self.copy_snippet(store, id, text)?;
+        let cursor_back = if cursor_back > MAX_CURSOR_MOVE {
+            0
+        } else {
+            cursor_back
+        };
+        self.post_paste(hide, cursor_back)
+    }
+
+    fn write(&self, formats: &[RawFormat]) -> Result<(), PasteError> {
+        self.pasteboard
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .write(formats, Some(&self.own_bundle_id))?;
+        Ok(())
+    }
+
+    /// Hides the panel and posts the paste shortcut, then `cursor_back` Left arrows. Without
+    /// the Accessibility permission, asks for it once per run and leaves the panel up.
+    fn post_paste(&self, hide: impl FnOnce(), cursor_back: usize) -> Result<Pasted, PasteError> {
         // Posted keys are dropped without the permission, and nothing reports it.
         if !self.permissions.is_granted(Permission::Accessibility) {
             if !self.asked.swap(true, Ordering::SeqCst) {
@@ -110,8 +166,28 @@ impl PasteEngine {
         // The panel is key while it shows, so the shortcut would go to it.
         hide();
         self.keys.send_paste()?;
+        if cursor_back > 0 {
+            thread::sleep(PASTE_SETTLE);
+            self.keys.send_left(cursor_back)?;
+        }
         Ok(Pasted::Pasted)
     }
+}
+
+/// The full text of the newest clip with text, for a snippet's `{clipboard}`: what ⌥Return
+/// would paste. None when the history has no text.
+pub fn newest_text(store: &Store) -> Result<Option<String>, PasteError> {
+    let Some(id) = store.newest_text_clip()? else {
+        return Ok(None);
+    };
+    let Some(clip) = store.get_clip(id)? else {
+        return Ok(None);
+    };
+    let formats = clipboard_formats(&clip, &store.clip_formats(id)?, Content::PlainText);
+    Ok(formats
+        .into_iter()
+        .find(|f| f.format == uti::PLAIN_TEXT)
+        .map(|f| String::from_utf8_lossy(&f.data).into_owned()))
 }
 
 /// The formats to write for `clip`, by pasteboard item, without the source marker.
@@ -203,6 +279,7 @@ mod tests {
     struct Log {
         writes: Vec<(Vec<RawFormat>, Option<String>)>,
         events: Vec<&'static str>,
+        lefts: Vec<usize>,
         granted: bool,
     }
 
@@ -249,6 +326,12 @@ mod tests {
     impl KeySender for Fake {
         fn send_paste(&self) -> Result<(), KeyError> {
             self.log().events.push("send_paste");
+            Ok(())
+        }
+        fn send_left(&self, count: usize) -> Result<(), KeyError> {
+            let mut log = self.log();
+            log.events.push("send_left");
+            log.lefts.push(count);
             Ok(())
         }
     }
@@ -449,6 +532,109 @@ mod tests {
         let id = save(&h.store, vec![raw(0, uti::PLAIN_TEXT, b"Hello")]);
         h.engine.copy(&h.store, id, Content::PlainText).unwrap();
         assert_eq!(h.fake.log().events, ["write"]);
+    }
+
+    fn new_snippet(store: &Store) -> i64 {
+        store
+            .create_snippet(crate::storage::SnippetEdit {
+                name: "Greeting",
+                keyword: Some("hi"),
+                body: "Hi {input:Name},{cursor}",
+            })
+            .unwrap()
+            .id
+    }
+
+    #[test]
+    fn a_snippet_pastes_its_text_marked_then_moves_the_cursor() {
+        let h = harness(true);
+        let id = new_snippet(&h.store);
+        let fake = h.fake.clone();
+        let outcome = h
+            .engine
+            .paste_snippet(&h.store, id, "<b></b>", 4, || {
+                fake.log().events.push("hide")
+            })
+            .unwrap();
+        assert_eq!(outcome, Pasted::Pasted);
+        let log = h.fake.log();
+        assert_eq!(log.events, ["write", "hide", "send_paste", "send_left"]);
+        assert_eq!(log.lefts, [4]);
+        assert_eq!(log.writes[0].0, [text_format(b"<b></b>".to_vec())]);
+        assert_eq!(log.writes[0].1.as_deref(), Some(KOPI));
+        drop(log);
+        let snippet = h.store.snippet(id).unwrap().unwrap();
+        assert_eq!(snippet.use_count, 1);
+        assert!(snippet.last_used_at.is_some());
+        // Not a clip.
+        assert_eq!(h.store.newest_text_clip().unwrap(), None);
+    }
+
+    #[test]
+    fn a_snippet_without_cursor_or_past_the_limit_leaves_the_cursor_at_the_end() {
+        let h = harness(true);
+        let id = new_snippet(&h.store);
+        for back in [0, MAX_CURSOR_MOVE + 1] {
+            h.engine
+                .paste_snippet(&h.store, id, "text", back, || {})
+                .unwrap();
+        }
+        h.engine
+            .paste_snippet(&h.store, id, "text", MAX_CURSOR_MOVE, || {})
+            .unwrap();
+        assert_eq!(h.fake.log().lefts, [MAX_CURSOR_MOVE]);
+    }
+
+    #[test]
+    fn a_snippet_without_accessibility_is_only_copied() {
+        let h = harness(false);
+        let id = new_snippet(&h.store);
+        let outcome = h
+            .engine
+            .paste_snippet(&h.store, id, "Hi", 1, || panic!("hid the panel"))
+            .unwrap();
+        assert_eq!(outcome, Pasted::Copied);
+        assert_eq!(h.fake.log().events, ["write", "request"]);
+    }
+
+    #[test]
+    fn a_deleted_snippet_writes_nothing() {
+        let h = harness(true);
+        let err = h
+            .engine
+            .paste_snippet(&h.store, 42, "Hi", 0, || {})
+            .unwrap_err();
+        assert!(matches!(err, PasteError::NoSnippet(42)));
+        assert!(h.fake.log().events.is_empty());
+    }
+
+    #[test]
+    fn newest_text_is_the_newest_clip_with_text_in_full() {
+        let h = harness(true);
+        assert_eq!(newest_text(&h.store).unwrap(), None);
+        let long = "b".repeat(MAX_TEXT_INDEX_BYTES + 10);
+        let text = save(&h.store, vec![raw(0, uti::PLAIN_TEXT, long.as_bytes())]);
+        let mut png = Vec::new();
+        image::RgbaImage::new(2, 2)
+            .write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png)
+            .unwrap();
+        let image = save(&h.store, vec![raw(0, uti::PNG, &png)]);
+        h.store.mark_used(text, 2_000).unwrap();
+        h.store.mark_used(image, 3_000).unwrap();
+        // The image is newer, but has no text.
+        assert_eq!(newest_text(&h.store).unwrap(), Some(long));
+        let link = save(
+            &h.store,
+            vec![
+                raw(0, uti::URL, b"https://example.com/"),
+                raw(0, uti::PLAIN_TEXT, b"Example Domain"),
+            ],
+        );
+        h.store.mark_used(link, 4_000).unwrap();
+        assert_eq!(
+            newest_text(&h.store).unwrap().as_deref(),
+            Some("https://example.com/")
+        );
     }
 
     #[test]

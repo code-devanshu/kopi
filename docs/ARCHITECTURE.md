@@ -10,7 +10,7 @@ Related docs:
 - [PRIVACY_DESIGN.md](PRIVACY_DESIGN.md): what Kopi never stores, and the user controls
 - [MVP_SCOPE.md](MVP_SCOPE.md): what's in the macOS alpha, and what isn't
 - [SYNC_DESIGN.md](SYNC_DESIGN.md): how sync between computers on the local network works
-- [SNIPPETS_DESIGN.md](SNIPPETS_DESIGN.md): snippets with placeholders (proposed)
+- [SNIPPETS_DESIGN.md](SNIPPETS_DESIGN.md): snippets with placeholders
 - [decisions/](decisions/): Architecture Decision Records (ADRs)
 
 ## Goals
@@ -122,7 +122,8 @@ trait Pasteboard {
 }
 trait ForegroundApp { fn current(&self) -> Option<AppRef>; fn running(&self, bundle_id: &str) -> Option<AppRef>; }
 trait UserIdle      { fn idle_time(&self) -> Option<Duration>; }  // slows polling when idle
-trait KeySender     { fn send_paste(&self) -> Result<()>; }        // Cmd+V or Ctrl+V
+trait KeySender     { fn send_paste(&self) -> Result<()>;          // Cmd+V or Ctrl+V
+                      fn send_left(&self, count: usize) -> Result<()>; } // a snippet's {cursor}
 trait Permissions   { fn is_granted(&self, p: Permission) -> bool; fn request(&self, p: Permission); fn open_settings(&self, p: Permission); }
 ```
 
@@ -137,9 +138,9 @@ On Windows, change notifications are pushed (`WM_CLIPBOARDUPDATE`). On macOS the
 | `watcher` | Runs on its own thread. Detects clipboard changes, ignores changes Kopi made itself, records the source app, and passes the change to the privacy filter. Polling interval and backoff live here (macOS: 250 ms while active, 500 ms after 60 s of no input, so capture always stays within the alpha's 0.5 s target; to be tuned in the spike). |
 | `privacy` | Two stages. Before any read, it decides from the format list and source app alone: concealed, transient and auto-generated markers, the Windows exclusion formats, excluded apps, paused state, and kinds turned off that the format list already rules out. After the read, in memory, it drops content over the size limit or of a kind turned off that only the content reveals (link, code, color). See [PRIVACY_DESIGN.md](PRIVACY_DESIGN.md). |
 | `classifier` | Turns raw formats into a clip: picks the kind (`text`, `rich_text`, `link`, `image`, `file`, `color`, `code`), extracts the plain text, computes the content hash and metadata. `save` then runs the privacy filter's second stage and upserts the clip. See [DATA_MODEL.md](DATA_MODEL.md). |
-| `storage` | Owns the SQLite connection pool (WAL mode, one writer thread), migrations, the content-addressed blob store and thumbnail generation. Upserts by content hash so repeated copies move to the top. |
+| `storage` | Owns the SQLite connection pool (WAL mode, one writer thread), migrations, the content-addressed blob store and thumbnail generation. Upserts by content hash so repeated copies move to the top. Also keeps snippets, which aren't clips. |
 | `search` | Builds FTS5 queries from the search box (with a `LIKE` fallback for 1–2 character words), applies filters (kind, source app, pinboard), ranks the newest matches by length and recency, pages results and returns snippets. See [DATA_MODEL.md](DATA_MODEL.md#full-text-search-fts5). |
-| `paste` | Writes a clip back to the clipboard (all stored formats, or plain text only), returns focus to the target app and sends the paste keystroke through `KeySender`. Falls back to "copied, press ⌘V" when paste permission is missing. |
+| `paste` | Writes a clip back to the clipboard (all stored formats, or plain text only), returns focus to the target app and sends the paste keystroke through `KeySender`. Falls back to "copied, press ⌘V" when paste permission is missing. Pastes a snippet the same way, as the plain text the panel filled in, then moves the cursor back for `{cursor}`. |
 | `settings` | Typed settings with defaults, stored in the `settings` table: the shortcut, the kinds to capture, the theme and whether onboarding is done. The history limits are with `retention`. The app shell applies a change where it's used: the shortcut plugin, the privacy filter, the windows. |
 | `retention` | Applies history limits (count, age, total size) on its own thread, never touches pinned or pinboard clips, and sweeps orphaned blob and thumbnail files at startup. The queries live in `storage`. |
 

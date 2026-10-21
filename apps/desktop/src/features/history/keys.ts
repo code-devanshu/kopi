@@ -18,7 +18,12 @@ export type Action =
   | { type: "pin" }
   /** ⌘K: the selected clip's menu. */
   | { type: "menu" }
-  /** ⌘[ and ⌘]: the previous or next view, from History through Pinned to each pinboard. */
+  /** ⌘N: a new snippet. */
+  | { type: "newSnippet" }
+  /** ⌘E: edits the selected snippet. */
+  | { type: "edit" }
+  /** ⌘[ and ⌘]: the previous or next view, from History through Pinned and Snippets to each
+   * pinboard. */
   | { type: "view"; by: 1 | -1 }
   | { type: "togglePreview" }
   /** ⌘,: Settings, as in every Mac app. */
@@ -78,6 +83,8 @@ export function actionFor(e: Key, typing: boolean, windows = IS_WINDOWS): Action
     if (alt) return null;
     if (e.code === "KeyP") return { type: "pin" };
     if (e.code === "KeyK") return { type: "menu" };
+    if (e.code === "KeyN") return { type: "newSnippet" };
+    if (e.code === "KeyE") return { type: "edit" };
     if (e.code === "BracketLeft") return { type: "view", by: -1 };
     if (e.code === "BracketRight") return { type: "view", by: 1 };
     if (e.code === "Comma") return { type: "settings" };

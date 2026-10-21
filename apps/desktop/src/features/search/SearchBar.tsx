@@ -11,6 +11,9 @@ type Props = {
   apps: SourceApp[];
   listId: string;
   activeId: string | undefined;
+  /** The kind and app filters. Snippets have neither. */
+  filters: boolean;
+  placeholder: string;
   onText: (text: string) => void;
   onKind: (kind: ClipKind | null) => void;
   onApp: (appId: string | null) => void;
@@ -24,6 +27,8 @@ export function SearchBar({
   apps,
   listId,
   activeId,
+  filters,
+  placeholder,
   onText,
   onKind,
   onApp,
@@ -42,11 +47,11 @@ export function SearchBar({
         className="search-input"
         type="text"
         role="combobox"
-        aria-label="Search clips"
+        aria-label={placeholder}
         aria-expanded="true"
         aria-controls={listId}
         aria-activedescendant={activeId}
-        placeholder="Search clips"
+        placeholder={placeholder}
         value={text}
         onChange={(e) => onText(e.target.value)}
         autoFocus
@@ -55,36 +60,40 @@ export function SearchBar({
         autoCapitalize="off"
         autoComplete="off"
       />
-      <Filter
-        label="Kind"
-        value={kind ?? ""}
-        onChange={(v) => {
-          onKind((v || null) as ClipKind | null);
-          refocus();
-        }}
-      >
-        <option value="">All kinds</option>
-        {KINDS.map((k) => (
-          <option key={k} value={k}>
-            {KIND_LABELS[k]}
-          </option>
-        ))}
-      </Filter>
-      <Filter
-        label="App"
-        value={appId ?? ""}
-        onChange={(v) => {
-          onApp(v || null);
-          refocus();
-        }}
-      >
-        <option value="">All apps</option>
-        {listed.map((app) => (
-          <option key={app.id} value={app.id}>
-            {app.name ?? app.id}
-          </option>
-        ))}
-      </Filter>
+      {filters && (
+        <>
+          <Filter
+            label="Kind"
+            value={kind ?? ""}
+            onChange={(v) => {
+              onKind((v || null) as ClipKind | null);
+              refocus();
+            }}
+          >
+            <option value="">All kinds</option>
+            {KINDS.map((k) => (
+              <option key={k} value={k}>
+                {KIND_LABELS[k]}
+              </option>
+            ))}
+          </Filter>
+          <Filter
+            label="App"
+            value={appId ?? ""}
+            onChange={(v) => {
+              onApp(v || null);
+              refocus();
+            }}
+          >
+            <option value="">All apps</option>
+            {listed.map((app) => (
+              <option key={app.id} value={app.id}>
+                {app.name ?? app.id}
+              </option>
+            ))}
+          </Filter>
+        </>
+      )}
     </div>
   );
 }

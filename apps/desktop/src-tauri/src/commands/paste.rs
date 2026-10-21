@@ -1,4 +1,5 @@
-//! `paste_clip` and `copy_clip`: Return, ⌥Return, ⌘1–9 and ⌘C in the panel.
+//! `paste_clip` and `copy_clip`: Return, ⌥Return, ⌘1–9 and ⌘C in the panel. And the same
+//! for snippets, whose text the panel fills in first.
 
 use std::sync::Arc;
 
@@ -9,7 +10,8 @@ use specta::Type;
 use tauri::{AppHandle, Manager, State};
 use tauri_specta::Event;
 
-use super::clips::ClipId;
+use super::clips::{ClipId, blocking};
+use super::snippets::{self, SnippetId};
 use crate::events::ClipUpdated;
 use crate::panel;
 
@@ -61,6 +63,73 @@ pub async fn copy_clip(
     run(move || engine.copy(&store, id.0, content(plain))).await?;
     let _ = ClipUpdated { id: id.0 }.emit(&app);
     Ok(())
+}
+
+/// Pastes a snippet's filled-in `text` into the app in front as plain text, then moves the
+/// cursor `cursor_back` characters left, for `{cursor}`. Without Accessibility it only copies.
+#[tauri::command]
+#[specta::specta]
+pub async fn paste_snippet(
+    app: AppHandle,
+    store: State<'_, Arc<Store>>,
+    id: SnippetId,
+    text: String,
+    cursor_back: u32,
+) -> Result<PasteOutcome, String> {
+    let engine = engine(&app)?;
+    let store = Arc::clone(&store);
+    let handle = app.clone();
+    let pasted = run(move || {
+        engine.paste_snippet(&store, id.0, &text, cursor_back as usize, || {
+            panel::hide_now(&handle)
+        })
+    })
+    .await
+    .map_err(gone)?;
+    Ok(match pasted {
+        Pasted::Pasted => PasteOutcome::Pasted,
+        Pasted::Copied => PasteOutcome::Copied,
+    })
+}
+
+/// Puts a snippet's filled-in `text` on the clipboard without pasting it.
+#[tauri::command]
+#[specta::specta]
+pub async fn copy_snippet(
+    app: AppHandle,
+    store: State<'_, Arc<Store>>,
+    id: SnippetId,
+    text: String,
+) -> Result<(), String> {
+    let engine = engine(&app)?;
+    let store = Arc::clone(&store);
+    run(move || engine.copy_snippet(&store, id.0, &text))
+        .await
+        .map_err(gone)
+}
+
+/// The newest text in the history, in full, for `{clipboard}`. Never the live clipboard, so
+/// it can't be something Kopi chose not to keep.
+#[tauri::command]
+#[specta::specta]
+pub async fn clipboard_text(store: State<'_, Arc<Store>>) -> Result<Option<String>, String> {
+    let store = Arc::clone(&store);
+    blocking(move || {
+        kopi_core::paste::newest_text(&store).map_err(|e| match e {
+            kopi_core::paste::PasteError::Storage(e) => e,
+            other => kopi_core::storage::StorageError::Corrupt(other.to_string()),
+        })
+    })
+    .await
+}
+
+/// "no snippet 4" reads as the deleted snippet it is.
+fn gone(error: String) -> String {
+    if error.starts_with("no snippet") {
+        snippets::GONE.to_owned()
+    } else {
+        error
+    }
 }
 
 /// Sets up the paste engine.

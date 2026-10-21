@@ -20,6 +20,11 @@ impl KeySender for MacKeySender {
         // at any moment, so V is looked up for each paste.
         on_main(|| post_command(v_key_code())).ok_or(KeyError::MainThreadBusy)?
     }
+
+    fn send_left(&self, count: usize) -> Result<(), KeyError> {
+        // Arrow keys are the same on every layout, so no main-thread lookup is needed.
+        post_keys(LEFT_ARROW, FLAG_ARROW, count)
+    }
 }
 
 /// `AXIsProcessTrusted` and its prompt, and the pasteboard's `accessBehavior`.
@@ -88,8 +93,14 @@ const SESSION_EVENT_TAP: u32 = 1;
 const PERMIT_MOUSE_AND_SYSTEM_EVENTS: u32 = 0x1 | 0x4;
 /// `kCGEventSuppressionStateSuppressionInterval`
 const SUPPRESSION_INTERVAL: u32 = 0;
+/// `NX_NUMERICPADMASK | NX_SECONDARYFNMASK`: the flags macOS sets on a real arrow key. Setting
+/// only these also clears whatever the user is holding, so ⇧ doesn't turn the moves into a
+/// selection.
+const FLAG_ARROW: u64 = 0x0020_0000 | 0x0080_0000;
 /// V on an ANSI keyboard, and on every Latin layout with ⌘ held.
 const ANSI_V: u16 = 9;
+/// `kVK_LeftArrow`
+const LEFT_ARROW: u16 = 0x7B;
 /// `cmdKey >> 8`, the modifier state `UCKeyTranslate` takes.
 const UC_COMMAND: u32 = 1;
 /// `kUCKeyActionDown`
@@ -100,6 +111,11 @@ const UC_NO_DEAD_KEYS: u32 = 1;
 /// Posts V down and up with only ⌘ in the flags. Setting the flags replaces whatever the user
 /// is still holding, such as ⇧⌘ from a hotkey.
 fn post_command(key: u16) -> Result<(), KeyError> {
+    post_keys(key, FLAG_COMMAND | FLAG_LEFT_COMMAND, 1)
+}
+
+/// Posts `key` down and up `count` times with exactly `flags`.
+fn post_keys(key: u16, flags: u64, count: usize) -> Result<(), KeyError> {
     // SAFETY: CoreGraphics calls on objects created here and released before returning.
     unsafe {
         let source = CGEventSourceCreate(COMBINED_SESSION_STATE);
@@ -112,15 +128,17 @@ fn post_command(key: u16) -> Result<(), KeyError> {
             );
         }
         let mut result = Ok(());
-        for down in [true, false] {
-            let event = CGEventCreateKeyboardEvent(source, key, down);
-            if event.is_null() {
-                result = Err(KeyError::EventFailed);
-                break;
+        'presses: for _ in 0..count {
+            for down in [true, false] {
+                let event = CGEventCreateKeyboardEvent(source, key, down);
+                if event.is_null() {
+                    result = Err(KeyError::EventFailed);
+                    break 'presses;
+                }
+                CGEventSetFlags(event, flags);
+                CGEventPost(SESSION_EVENT_TAP, event);
+                CFRelease(event);
             }
-            CGEventSetFlags(event, FLAG_COMMAND | FLAG_LEFT_COMMAND);
-            CGEventPost(SESSION_EVENT_TAP, event);
-            CFRelease(event);
         }
         if !source.is_null() {
             CFRelease(source);

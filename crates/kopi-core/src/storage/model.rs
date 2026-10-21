@@ -198,3 +198,24 @@ pub struct ExcludedApp {
     pub is_default: bool,
     pub created_at: i64,
 }
+
+/// A row of `snippets`: text the user wrote, pasted from the panel with its placeholders
+/// filled in.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Snippet {
+    pub id: i64,
+    pub uuid: String,
+    pub name: String,
+    /// A short code that finds it first in the panel's search, such as `sig`.
+    pub keyword: Option<String>,
+    /// The text as typed, placeholders and all.
+    pub body: String,
+    /// Its place in the Snippets tab, lowest first. Can be negative.
+    pub position: i64,
+    pub created_at: i64,
+    pub updated_at: i64,
+    /// When it was last pasted or copied on this computer.
+    pub last_used_at: Option<i64>,
+    /// How many times it was pasted or copied on this computer.
+    pub use_count: i64,
+}

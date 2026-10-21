@@ -28,6 +28,8 @@ type Props = {
   x: number;
   y: number;
   entries: MenuEntry[];
+  /** The entry that's active when it opens, so Return picks it. None by default. */
+  initialActive?: number;
   onClose: () => void;
 };
 
@@ -38,10 +40,10 @@ const MARGIN = 6;
  * A menu that takes focus while open, so arrow keys, Return and Esc work in it. Clicking
  * outside closes it. The caller puts focus back where it was in `onClose`.
  */
-export function Menu({ label, x, y, entries, onClose }: Props) {
+export function Menu({ label, x, y, entries, initialActive = -1, onClose }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ left: x, top: y });
-  const [active, setActive] = useState(-1);
+  const [active, setActive] = useState(initialActive);
   const [confirming, setConfirming] = useState(-1);
   const items = entries.flatMap((e, i) => (e.type === "item" && !e.disabled ? [i] : []));
   const checks = entries.some((e) => e.type === "item" && e.checked !== undefined);
