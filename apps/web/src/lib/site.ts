@@ -3,7 +3,7 @@ export const siteConfig = {
   name: "Kopi",
   tagline: "Everything you copy, on every computer.",
   description:
-    "Kopi is an open-source clipboard manager for macOS and Windows. Unlimited history, instant search and pinboards, kept on your computer. The alpha is free to download.",
+    "Kopi is an open-source clipboard manager for macOS and Windows. Unlimited history, instant search, pinboards and snippets, kept on your computer. The alpha is free to download.",
   url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://kopi.devanshuverma.in",
   // /install.sh redirects to scripts/install.sh on main, in next.config.ts.
   installCommand: "curl -fsSL https://kopi.devanshuverma.in/install.sh | bash",

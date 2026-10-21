@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.1.0-alpha.9] - 2026-10-21
+
+Testers on an earlier alpha get this release as an update.
+
 ### Added
 
 - **Snippets.** Text you paste often, such as a reply, an address or a signature, written once in the new Snippets tab and pasted with Return like a clip.
@@ -15,6 +19,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   - Save any text clip as a snippet from its menu, or by dragging it onto the Snippets tab.
   - A pasted snippet isn't added to your history.
   - Snippets sync between your computers, with an option in Settings → Sync → What to sync. A computer that updates gets every snippet the others have, including ones made before it updated.
+
+### Changed
+
+- The website shows snippets, in a feature of their own and in the examples for writers. The "Snippets" pinboard in the developer example is now "Commands".
 
 ## [0.1.0-alpha.8] - 2026-10-20
 
@@ -130,7 +138,8 @@ The first macOS alpha.
 - Release workflow: a version tag builds a universal macOS `.dmg` and attaches it to a draft GitHub Release. Releases are signed with a self-signed certificate, so testers keep their permissions across updates, and aren't notarized ([ADR 0006](docs/decisions/0006-macos-distribution-without-notarization.md)). Install steps for testers are in `docs/INSTALL_ALPHA.md`.
 - Automatic updates on macOS with the Tauri updater: Kopi checks GitHub a little after launch and every 6 hours, installs updates in the background and offers Restart to Update in the menu bar, with Check for Updates… there too and an **Update automatically** switch in Settings. Updates aren't quarantined, so Gatekeeper only blocks the first install. Publishing a release offers it to the app.
 
-[Unreleased]: https://github.com/code-devanshu/kopi/compare/v0.1.0-alpha.8...HEAD
+[Unreleased]: https://github.com/code-devanshu/kopi/compare/v0.1.0-alpha.9...HEAD
+[0.1.0-alpha.9]: https://github.com/code-devanshu/kopi/compare/v0.1.0-alpha.8...v0.1.0-alpha.9
 [0.1.0-alpha.8]: https://github.com/code-devanshu/kopi/compare/v0.1.0-alpha.7...v0.1.0-alpha.8
 [0.1.0-alpha.7]: https://github.com/code-devanshu/kopi/compare/v0.1.0-alpha.6...v0.1.0-alpha.7
 [0.1.0-alpha.6]: https://github.com/code-devanshu/kopi/compare/v0.1.0-alpha.5...v0.1.0-alpha.6
