@@ -10,6 +10,7 @@ Related docs:
 - [PRIVACY_DESIGN.md](PRIVACY_DESIGN.md): what Kopi never stores, and the user controls
 - [MVP_SCOPE.md](MVP_SCOPE.md): what's in the macOS alpha, and what isn't
 - [SYNC_DESIGN.md](SYNC_DESIGN.md): how sync between computers on the local network works
+- [SNIPPETS_DESIGN.md](SNIPPETS_DESIGN.md): snippets with placeholders (proposed)
 - [decisions/](decisions/): Architecture Decision Records (ADRs)
 
 ## Goals
