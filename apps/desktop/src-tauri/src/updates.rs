@@ -1,10 +1,12 @@
 //! Updates, through the Tauri updater. Kopi checks a little after launch and then every few
 //! hours, unless the user turned that off, and when they choose Check for Updates… in the menu
-//! bar. An update downloads, is checked against the updater key and replaces Kopi.app. It runs
-//! the next time Kopi starts, and the menu bar offers to restart now. See docs/RELEASING.md.
+//! bar. An update downloads and is checked against the updater key, and the menu bar offers
+//! Restart to Update, which installs it. See docs/RELEASING.md.
 //!
-//! On Windows the installer has to run while Kopi isn't, so installing quits Kopi. There an
-//! update only downloads by itself, and Restart to Update installs it.
+//! On macOS installing replaces Kopi.app. Kopi waits for Restart to Update or Quit to do that,
+//! because macOS stops trusting a Kopi whose app was replaced under it: Accessibility reads as
+//! off, and pasting only copies, until it restarts. On Windows the installer has to run while
+//! Kopi isn't, so installing quits Kopi, and only Restart to Update installs.
 
 use std::cmp::Ordering;
 use std::sync::{Arc, Mutex};
@@ -33,21 +35,20 @@ enum State {
     Busy {
         manual: bool,
     },
-    /// An update is installed and runs at the next launch. Holds its name.
-    Installed(String),
+    /// An update is downloaded and waits for Restart to Update. Holds its name.
+    Ready(String),
 }
 
 struct Updates(Mutex<State>);
 
 /// The downloaded update that Restart to Update installs.
-#[cfg(target_os = "windows")]
 struct Downloaded(Mutex<Option<(tauri_plugin_updater::Update, Vec<u8>)>>);
 
 /// What a check found.
 enum Found {
     Nothing,
-    /// A newer release, installed. Holds its name.
-    Installed(String),
+    /// A newer release, downloaded. Holds its name.
+    Ready(String),
     /// A newer release that a development build doesn't install.
     Skipped(String),
 }
@@ -55,7 +56,6 @@ enum Found {
 /// Starts the automatic checks. Development builds don't check by themselves.
 pub fn start(app: &AppHandle) {
     app.manage(Updates(Mutex::new(State::Idle)));
-    #[cfg(target_os = "windows")]
     app.manage(Downloaded(Mutex::new(None)));
     if cfg!(debug_assertions) {
         return;
@@ -86,7 +86,7 @@ fn automatic(app: &AppHandle) -> bool {
     app.state::<Arc<Store>>().auto_update().unwrap_or(true)
 }
 
-/// Checks for an update and installs it. A manual check shows what it found. Safe to call
+/// Checks for an update and downloads it. A manual check shows what it found. Safe to call
 /// while another check runs: a manual one then shows that check's result.
 pub async fn check(app: &AppHandle, manual: bool) {
     {
@@ -98,7 +98,7 @@ pub async fn check(app: &AppHandle, manual: bool) {
                 }
                 return;
             }
-            State::Installed(name) => {
+            State::Ready(name) => {
                 if manual {
                     offer_restart(app, name);
                 }
@@ -109,20 +109,20 @@ pub async fn check(app: &AppHandle, manual: bool) {
     }
 
     crate::tray::show_update_status(app, Some("Checking for Updates…"));
-    let result = install_newer(app).await;
+    let result = download_newer(app).await;
     crate::tray::show_update_status(app, None);
 
     let manual = {
         let mut state = lock(app);
         let manual = matches!(*state, State::Busy { manual: true });
         *state = match &result {
-            Ok(Found::Installed(name)) => State::Installed(name.clone()),
+            Ok(Found::Ready(name)) => State::Ready(name.clone()),
             _ => State::Idle,
         };
         manual
     };
     match result {
-        Ok(Found::Installed(name)) => {
+        Ok(Found::Ready(name)) => {
             crate::tray::show_restart(app);
             if manual {
                 offer_restart(app, &name);
@@ -156,38 +156,57 @@ pub async fn check(app: &AppHandle, manual: bool) {
     }
 }
 
-/// Restarts into the installed update. On Windows, quits and runs the installer, which opens
-/// Kopi again once it's done.
+/// Installs the downloaded update and restarts into it. On Windows, quits and runs the
+/// installer, which opens Kopi again once it's done.
 pub fn restart(app: &AppHandle) {
-    #[cfg(target_os = "windows")]
-    {
-        let downloaded = app
-            .state::<Downloaded>()
-            .0
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .take();
-        if let Some((update, bytes)) = downloaded {
-            // Returns only if the installer didn't start.
-            if let Err(error) = update.install(bytes) {
-                eprintln!("kopi: couldn't run the update: {error}");
-                alert::message(
-                    app,
-                    Kind::Error,
-                    "Couldn't update Kopi",
-                    &format!("{error}\n\nDownload Kopi again from GitHub to update."),
-                );
-            }
-            return;
-        }
+    if let Err(error) = install(app) {
+        eprintln!("kopi: couldn't install the update: {error}");
+        alert::message(
+            app,
+            Kind::Error,
+            "Couldn't update Kopi",
+            &format!("{error}\n\nDownload Kopi again from GitHub to update."),
+        );
+        return;
     }
-    // Through the event loop, so the single-instance lock is released before the new Kopi
-    // starts. Otherwise the new one would find it and quit.
+    // On Windows the installer has quit Kopi by now. Through the event loop, so the
+    // single-instance lock is released before the new Kopi starts. Otherwise the new one would
+    // find it and quit.
     app.request_restart();
 }
 
-/// Finds a newer release and installs it.
-async fn install_newer(app: &AppHandle) -> Result<Found, tauri_plugin_updater::Error> {
+/// Installs the downloaded update before Kopi quits, so it runs the next time Kopi opens. Only
+/// on macOS: on Windows the installer would open Kopi again.
+pub fn install_before_quit(app: &AppHandle) {
+    if cfg!(target_os = "windows") {
+        return;
+    }
+    if let Err(error) = install(app) {
+        eprintln!("kopi: couldn't install the update: {error}");
+    }
+}
+
+/// Installs the downloaded update, if there is one. On Windows, quits Kopi when the installer
+/// starts. If it fails, the next check downloads the update again.
+fn install(app: &AppHandle) -> Result<(), tauri_plugin_updater::Error> {
+    let downloaded = app
+        .state::<Downloaded>()
+        .0
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .take();
+    let Some((update, bytes)) = downloaded else {
+        return Ok(());
+    };
+    let installed = update.install(bytes);
+    if installed.is_err() {
+        *lock(app) = State::Idle;
+    }
+    installed
+}
+
+/// Finds a newer release and downloads it.
+async fn download_newer(app: &AppHandle) -> Result<Found, tauri_plugin_updater::Error> {
     // Every alpha build of a version has that version, so the updater can't compare them
     // itself. Kopi compares versions, then build numbers.
     let updater = app
@@ -213,7 +232,7 @@ async fn install_newer(app: &AppHandle) -> Result<Found, tauri_plugin_updater::E
         .and_then(|n| n.as_str())
         .unwrap_or(&update.version)
         .to_owned();
-    // The updater replaces the folder above Contents/MacOS. A development build isn't in an
+    // Installing replaces the folder above Contents/MacOS. A development build isn't in an
     // app bundle, so that would be its target folder.
     if cfg!(debug_assertions) {
         return Ok(Found::Skipped(name));
@@ -233,21 +252,12 @@ async fn install_newer(app: &AppHandle) -> Result<Found, tauri_plugin_updater::E
             crate::tray::show_update_status(app, Some(&format!("Downloading Update… {percent}%")));
         }
     };
-    #[cfg(not(target_os = "windows"))]
-    update
-        .download_and_install(progress, || {
-            crate::tray::show_update_status(app, Some("Installing Update…"));
-        })
-        .await?;
-    #[cfg(target_os = "windows")]
-    {
-        let bytes = update.download(progress, || {}).await?;
-        *app.state::<Downloaded>()
-            .0
-            .lock()
-            .unwrap_or_else(|e| e.into_inner()) = Some((update, bytes));
-    }
-    Ok(Found::Installed(name))
+    let bytes = update.download(progress, || {}).await?;
+    *app.state::<Downloaded>()
+        .0
+        .lock()
+        .unwrap_or_else(|e| e.into_inner()) = Some((update, bytes));
+    Ok(Found::Ready(name))
 }
 
 /// Whether the offered release is newer: a greater version, or the same version with a
@@ -301,7 +311,7 @@ fn offer_restart(app: &AppHandle, name: &str) {
             )
         } else {
             format!(
-                "Kopi {name} is installed. Restart Kopi now to use it, or it starts the next time you open Kopi."
+                "Kopi {name} is downloaded. Restart Kopi now to install it, or it installs when you quit Kopi."
             )
         },
         "Restart Now",

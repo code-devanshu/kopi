@@ -79,7 +79,7 @@ Press **⇧⌘V** in any app to open Kopi. You can choose another shortcut in th
 
 ## Updating
 
-Kopi checks for updates every few hours and installs them in the background. When one is ready, **Restart to Update** appears at the top of Kopi's menu bar menu. If you don't restart, the update runs the next time Kopi starts. Choose **Check for Updates…** in the menu bar to check now.
+Kopi checks for updates every few hours and downloads them in the background. When one is ready, **Restart to Update** appears at the top of Kopi's menu bar menu. If you don't restart, choosing **Quit** installs the update, and it runs the next time you open Kopi. Choose **Check for Updates…** in the menu bar to check now.
 
 To stop Kopi checking by itself, turn off **Update automatically** in Settings. **Check for Updates…** still works. Updates come from this project's GitHub releases, and Kopi sends nothing about you or your clips to check for them.
 

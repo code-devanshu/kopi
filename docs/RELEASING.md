@@ -15,7 +15,7 @@ The [Release workflow](../.github/workflows/release.yml) builds a universal macO
 
 4. Wait for the workflow. It creates a **draft** release with the `.dmg`, its `.sha256`, the macOS update (`.app.tar.gz` and its `.sig`), the Windows installer (`_x64-setup.exe`, its `.sha256` and its `.sig`), `latest.json`, a note on opening it the first time and notes generated from the merged PRs.
 5. Read the draft, download the `.dmg` and the `.exe`, and try them on a Mac and on Windows. Then publish the release.
-6. Publishing runs the Updater workflow, which offers the release to everyone's Kopi. Check that it passed. Within a few hours, Kopi installs the update in the background, or straight away from **Check for Updates…**.
+6. Publishing runs the Updater workflow, which offers the release to everyone's Kopi. Check that it passed. Within a few hours, Kopi downloads the update in the background and offers **Restart to Update**, or straight away from **Check for Updates…**.
 
 ## Tags and versions
 
@@ -111,9 +111,11 @@ To sign a local build the same way, import `kopi-signing.p12` into your login ke
 
 ## Updates
 
-Kopi updates itself with the [Tauri updater](https://v2.tauri.app/plugin/updater/). It checks 30 seconds after launch and then every 6 hours, unless the user turns off **Update automatically** in Settings, and whenever they choose **Check for Updates…** in the menu bar. It downloads the update, checks its signature, replaces Kopi.app and offers **Restart to Update**. If the user waits, the update runs the next time Kopi starts. Development builds only check from the menu, and don't install what they find.
+Kopi updates itself with the [Tauri updater](https://v2.tauri.app/plugin/updater/). It checks 30 seconds after launch and then every 6 hours, unless the user turns off **Update automatically** in Settings, and whenever they choose **Check for Updates…** in the menu bar. It downloads the update, checks its signature and offers **Restart to Update**, which installs it and restarts Kopi. Development builds only check from the menu, and don't install what they find.
 
-On Windows the installer can't run while Kopi does, and installing quits Kopi. So there Kopi only downloads the update by itself, and **Restart to Update** quits Kopi and runs the installer, which opens Kopi again. The update is the installer itself, signed with the same updater key.
+On macOS installing replaces Kopi.app. Kopi doesn't do that while it keeps running: macOS stops trusting a Kopi whose app was replaced under it, so Accessibility reads as off and pasting only copies until Kopi restarts. If the user waits, **Quit** installs the update, and it runs the next time Kopi opens. If Kopi stops any other way, the next check downloads the update again.
+
+On Windows the installer can't run while Kopi does, and installing quits Kopi. So there **Restart to Update** quits Kopi and runs the installer, which opens Kopi again, and **Quit** doesn't install. The update is the installer itself, signed with the same updater key.
 
 - **Where the app looks:** `latest.json` on the [`updater` release](https://github.com/code-devanshu/kopi/releases/tag/updater), set in `tauri.conf.json`. It's a fixed address because GitHub's `releases/latest` skips prereleases, and every alpha is one. The release is a prerelease that's never marked latest, so it doesn't show as the newest Kopi.
 - **What moves it:** publishing a release. The Updater workflow copies that release's `latest.json` to the `updater` release. To offer a release again, run **Actions → Updater → Run workflow** with its tag.

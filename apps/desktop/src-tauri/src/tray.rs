@@ -15,7 +15,7 @@ const CLEAR_HOUR: &str = "clear-hour";
 const CLEAR_DAY: &str = "clear-day";
 const QUIT: &str = "quit";
 
-/// The menu, kept so an installed update can add Restart to Update.
+/// The menu, kept so a downloaded update can add Restart to Update.
 struct TrayMenu(Menu<Wry>);
 
 pub fn create(app: &AppHandle) -> tauri::Result<()> {
@@ -82,7 +82,10 @@ pub fn create(app: &AppHandle) -> tauri::Result<()> {
             RESTART => crate::updates::restart(app),
             CLEAR_HOUR => clear_recent(app, ClearRange::LastHour),
             CLEAR_DAY => clear_recent(app, ClearRange::LastDay),
-            QUIT => app.exit(0),
+            QUIT => {
+                crate::updates::install_before_quit(app);
+                app.exit(0);
+            }
             _ => {}
         })
         .build(app)?;
@@ -90,7 +93,7 @@ pub fn create(app: &AppHandle) -> tauri::Result<()> {
     Ok(())
 }
 
-/// Adds Restart to Update to the top of the menu, once an update is installed.
+/// Adds Restart to Update to the top of the menu, once an update is downloaded.
 pub fn show_restart(app: &AppHandle) {
     let menu = &app.state::<TrayMenu>().0;
     if menu.get(RESTART).is_some() {
