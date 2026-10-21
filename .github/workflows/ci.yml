@@ -12,6 +12,10 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  # Cargo's default 3 retries don't outlast a short network blip on the runner.
+  CARGO_NET_RETRY: 10
+
 jobs:
   # Each job below runs only when something it checks changed, so a docs-only change doesn't
   # build the app on three systems. A change to this file or to the shared package files runs
@@ -70,7 +74,8 @@ jobs:
     name: Check and build desktop app on macOS
     needs: changes
     if: needs.changes.outputs.desktop == 'true'
-    runs-on: macos-latest
+    # The image release.yml builds on, so this checks the build that ships.
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v5
 
