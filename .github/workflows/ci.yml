@@ -13,8 +13,41 @@ permissions:
   contents: read
 
 jobs:
+  # Each job below runs only when something it checks changed, so a docs-only change doesn't
+  # build the app on three systems. A change to this file or to the shared package files runs
+  # them all, and so does anything this can't work out.
+  changes:
+    name: Find what changed
+    runs-on: ubuntu-latest
+    outputs:
+      web: ${{ steps.filter.outputs.web }}
+      desktop: ${{ steps.filter.outputs.desktop }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - id: filter
+        env:
+          # The PR's base, or main before the push.
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if ! files=$(git diff --name-only "$BASE...HEAD" 2>/dev/null); then
+            echo "Couldn't diff against $BASE, so everything runs."
+            echo "web=true" >> "$GITHUB_OUTPUT"
+            echo "desktop=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          printf 'Changed:\n%s\n' "$files"
+          shared='^(package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|\.github/workflows/ci\.yml)$'
+          matches() { grep -qE "$1|$shared" <<< "$files" && echo true || echo false; }
+          echo "web=$(matches '^apps/web/')" >> "$GITHUB_OUTPUT"
+          echo "desktop=$(matches '^(apps/desktop/|crates/|Cargo\.(toml|lock)$|rust-toolchain)')" >> "$GITHUB_OUTPUT"
+
   web:
     name: Lint and build website
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -35,6 +68,8 @@ jobs:
 
   desktop:
     name: Check and build desktop app on macOS
+    needs: changes
+    if: needs.changes.outputs.desktop == 'true'
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v5
@@ -73,6 +108,8 @@ jobs:
 
   desktop-windows:
     name: Check and build desktop app on Windows
+    needs: changes
+    if: needs.changes.outputs.desktop == 'true'
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v5
