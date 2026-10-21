@@ -43,7 +43,7 @@ export function SectionHeader({
         align === "center" ? "mx-auto text-center" : "text-left",
       )}
     >
-      <h2 id={id} className="text-3xl font-semibold sm:text-4xl">
+      <h2 id={id} className="text-3xl leading-[1.08] font-semibold tracking-[-0.03em] sm:text-5xl">
         {title}
       </h2>
       {description ? (

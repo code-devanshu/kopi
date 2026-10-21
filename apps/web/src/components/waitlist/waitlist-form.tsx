@@ -171,7 +171,7 @@ export function WaitlistForm() {
               <legend className="mb-1.5 text-sm font-medium">
                 I want to <span className="font-normal text-muted-foreground">(pick any)</span>
               </legend>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <div className="grid grid-cols-2 gap-2">
                 {intentOptions.map((option) => (
                   <ChoiceChip key={option.value} type="checkbox" value={option.value} {...register("intents")}>
                     {option.label}

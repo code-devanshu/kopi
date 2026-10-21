@@ -1,4 +1,8 @@
-import { EyeOff, FileCode2, HardDrive, KeyRound, ShieldCheck } from "lucide-react";
+import { EyeOff, FileCode2, HardDrive, KeyRound } from "lucide-react";
+
+import captureDark from "@/assets/screens/capture-dark.png";
+import captureLight from "@/assets/screens/capture-light.png";
+import { AppShot, WindowFrame } from "@/components/ui/app-shot";
 
 import { Reveal } from "@/components/ui/reveal";
 import { Section, SectionHeader } from "@/components/ui/section";
@@ -26,38 +30,6 @@ const principles = [
   },
 ];
 
-function SkippedClipMock() {
-  return (
-    <div aria-hidden="true" className="rounded-2xl border border-border bg-surface p-5 shadow-lifted">
-      <div className="flex items-center gap-2 text-sm font-medium">
-        <ShieldCheck className="size-4 text-success" />
-        Privacy log
-      </div>
-      <ul className="mt-4 space-y-2.5 text-xs">
-        <li className="flex items-center justify-between gap-3 rounded-lg bg-surface-muted px-3 py-2.5">
-          <span className="flex items-center gap-2">
-            <span className="font-mono tracking-widest">••••••••••</span>
-            <span className="text-muted-foreground">Password manager</span>
-          </span>
-          <span className="rounded-full border border-border px-2 py-0.5 text-muted-foreground">Skipped</span>
-        </li>
-        <li className="flex items-center justify-between gap-3 rounded-lg bg-surface-muted px-3 py-2.5">
-          <span className="flex items-center gap-2">
-            <span className="font-mono tracking-widest">•••• 4821</span>
-            <span className="text-muted-foreground">Marked concealed</span>
-          </span>
-          <span className="rounded-full border border-border px-2 py-0.5 text-muted-foreground">Skipped</span>
-        </li>
-        <li className="flex items-center justify-between gap-3 rounded-lg bg-surface-muted px-3 py-2.5">
-          <span className="truncate">Quarterly plan (final).pdf</span>
-          <span className="rounded-full bg-accent-soft px-2 py-0.5 font-medium text-accent-text">Saved locally</span>
-        </li>
-      </ul>
-      <p className="mt-4 text-xs text-muted-foreground">Stored on this computer · Never sent anywhere</p>
-    </div>
-  );
-}
-
 export function PrivacySection() {
   return (
     <Section id="privacy" labelledBy="privacy-title">
@@ -79,7 +51,14 @@ export function PrivacySection() {
           </ul>
         </div>
         <Reveal delay={0.1}>
-          <SkippedClipMock />
+          <WindowFrame title="Kopi Settings" className="mx-auto max-w-lg">
+            <AppShot
+              light={captureLight}
+              dark={captureDark}
+              alt="Kopi's Capture settings: the kinds of clips to keep, and excluded apps, with 1Password, Keychain Access and Passwords built in."
+              sizes="(min-width: 1024px) 512px, calc(100vw - 2rem)"
+            />
+          </WindowFrame>
         </Reveal>
       </div>
     </Section>

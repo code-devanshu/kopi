@@ -1,7 +1,7 @@
 // TODO: Replace the placeholder links below.
 export const siteConfig = {
   name: "Kopi",
-  tagline: "Everything you copy, on every computer.",
+  tagline: "Your clipboard, with a memory.",
   description:
     "Kopi is an open-source clipboard manager for macOS and Windows. Unlimited history, instant search, pinboards and snippets, kept on your computer. The alpha is free to download.",
   url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://kopi.devanshuverma.in",
@@ -23,6 +23,7 @@ export const siteConfig = {
 
 export const navLinks = [
   { href: "#features", label: "Features" },
+  { href: "#sync", label: "Sync" },
   { href: "#privacy", label: "Privacy" },
   { href: "#open-source", label: "Open Source" },
   { href: "#faq", label: "FAQ" },

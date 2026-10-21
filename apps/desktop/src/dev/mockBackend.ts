@@ -19,6 +19,8 @@
 //   ?step=done      opens onboarding on that step
 //   ?sync           starts with sync on and two paired computers. ?sync=denied adds the
 //                   Local Network problem. Pairing works with the code 482913.
+//   ?tab=Snippets   opens that tab of the panel: Pinned, Snippets or a pinboard's name
+//   ?shot           leaves the page behind the panel transparent, for the website's screenshots
 // Open /settings.html for the Settings window, and /onboarding.html for onboarding.
 // In the console, kopiDev.copy("text") adds a clip as a copy would.
 import { emit } from "@tauri-apps/api/event";
@@ -106,6 +108,28 @@ function clip(kind: ClipKind, text: string | null, metadata: ClipMetadata | null
   };
 }
 
+// The long tail reads like real copies, so screenshots of a search look real too.
+const PEOPLE = ["Priya", "Sam", "Lena", "Marco", "Aiko", "Tom"];
+const CLIENTS = ["Northwind", "Acme Studio", "Blue Fern", "Halcyon Labs", "Oakline"];
+function tail(i: number): string {
+  // Each of the five kinds of note comes round every fifth clip, so these count rounds.
+  const round = Math.floor(i / 5);
+  const person = PEOPLE[round % PEOPLE.length];
+  const client = CLIENTS[round % CLIENTS.length];
+  switch (i % 5) {
+    case 0:
+      return `Meeting with ${client} moved to ${9 + (i % 8)}:30, link in the invite`;
+    case 1:
+      return `Invoice INV-${2300 + i} for ${client}, due in ${[7, 14, 30][round % 3]} days`;
+    case 2:
+      return `${12 + (i % 80)} Harbour Street, Unit ${1 + (i % 9)}, Bristol BS1 ${4 + (i % 5)}QA`;
+    case 3:
+      return `Draft: thanks ${person}, I'll send the revised plan by Friday`;
+    default:
+      return `Re: ${client} launch. Sounds good, ${person}, let's go with option B`;
+  }
+}
+
 if (!params.has("empty")) {
   // The samples first, then a long tail of notes so paging and scrolling can be tried.
   SAMPLES.forEach(([kind, text, metadata, app], i) => {
@@ -113,7 +137,7 @@ if (!params.has("empty")) {
   });
   for (let i = 0; i < 400; i++) {
     const [, app] = APPS[i % APPS.length];
-    clips.push(clip("text", `Note ${i + 1}: ${["meeting", "invoice", "address", "draft", "reply"][i % 5]} ${i * 37}`, null, app, (i + 20) * 5 * 3_600_000));
+    clips.push(clip("text", tail(i), null, app, (i + 20) * 5 * 3_600_000));
   }
 }
 
@@ -591,7 +615,7 @@ const theme = params.get("theme");
 if (theme) document.documentElement.dataset.theme = theme;
 
 // A dark page behind the transparent panel, as on a desktop.
-if (!/\/(settings|onboarding)\.html$/.test(location.pathname)) {
+if (!/\/(settings|onboarding)\.html$/.test(location.pathname) && !params.has("shot")) {
   document.documentElement.style.background = "#7a6a5c";
   document.body.style.padding = "0";
 }
@@ -615,6 +639,8 @@ setTimeout(() => {
     setValue.call(input, q);
     input.dispatchEvent(new Event("input", { bubbles: true }));
   }
+  const tab = params.get("tab");
+  if (tab) document.querySelector<HTMLButtonElement>(`.tab[title="${CSS.escape(tab)}"]`)?.click();
   const select = Number(params.get("select") ?? 0);
   for (let i = 0; i < select; i++) {
     input?.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));

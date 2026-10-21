@@ -29,13 +29,13 @@ export function InstallCommand() {
   }
 
   return (
-    <details className="group max-w-xl">
+    <details className="group mx-auto max-w-xl">
       <summary className="inline-flex cursor-pointer list-none items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground [&::-webkit-details-marker]:hidden">
         <ChevronRight className="size-4 transition-transform group-open:rotate-90" aria-hidden="true" />
         Or install on a Mac from Terminal
       </summary>
       <p className="mt-2 text-sm text-muted-foreground">macOS won&apos;t block Kopi installed this way.</p>
-      <div className="mt-2 flex items-center gap-2 rounded-xl border border-border bg-surface py-1.5 pr-1.5 pl-4 shadow-soft">
+      <div className="mt-2 flex items-center gap-2 rounded-xl text-left border border-border bg-surface py-1.5 pr-1.5 pl-4 shadow-soft">
         {/* Copying the command by hand counts too, not only the button. */}
         <code
           onCopy={() => trackEvent("install_command_copy", { location: "hero", method: "manual" })}
