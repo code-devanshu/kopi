@@ -323,3 +323,7 @@ Very large images (over `limits.max_clip_bytes`) are skipped, not downscaled. A 
 ## Sync
 
 Migration `0004` adds sync's change tracking: an HLC and a `sync_seq` on every synced row, `copied_on` and `local_only` on clips, and the `tombstones`, `clear_ranges` and `sync_devices` tables. They're filled whether sync is on or not. Clips are matched across computers by content hash. See [SYNC_DESIGN.md](SYNC_DESIGN.md#schema-changes).
+
+## Snippets
+
+Migration `0005` is planned to add a `snippets` table: text the user writes, with a name, an optional keyword and placeholders, identified by `uuid`. Snippets aren't clips, so dedupe, limits and Clear history don't apply to them. See [SNIPPETS_DESIGN.md](SNIPPETS_DESIGN.md#data-model).
