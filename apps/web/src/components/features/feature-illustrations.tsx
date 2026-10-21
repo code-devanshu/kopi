@@ -81,7 +81,7 @@ export function PinboardIllustration() {
     <Frame frameRef={ref}>
       <div className="flex gap-1.5 border-b border-border px-3 pt-3 pb-2 text-[11px]">
         <span className="rounded-full bg-accent px-2 py-0.5 font-medium text-accent-foreground">Replies</span>
-        <span className="rounded-full bg-surface px-2 py-0.5">Snippets</span>
+        <span className="rounded-full bg-surface px-2 py-0.5">Links</span>
         <span className="rounded-full bg-surface px-2 py-0.5">Colors</span>
       </div>
       <div className="grid grid-cols-2 gap-2 p-3">
@@ -141,27 +141,33 @@ export function SyncIllustration() {
   );
 }
 
-export function PlainTextIllustration() {
+export function SnippetsIllustration() {
   const { ref, active } = useLoop();
   const loop = { duration: 4, times: [0, 0.4, 0.5, 0.9, 1], repeat: Infinity };
   return (
     <Frame frameRef={ref}>
-      <div className="grid h-full place-items-center">
-        <div className="relative h-8 w-40">
-          <motion.p
-            className="absolute inset-0 text-center font-serif text-lg font-bold text-accent-text italic underline decoration-wavy underline-offset-4"
-            animate={active ? { opacity: [1, 1, 0, 0, 1] } : { opacity: 0 }}
-            transition={loop}
-          >
-            Fancy text
-          </motion.p>
-          <motion.p
-            className="absolute inset-0 text-center font-mono text-sm leading-8"
-            animate={active ? { opacity: [0, 0, 1, 1, 0] } : { opacity: 1 }}
-            transition={loop}
-          >
-            Fancy text
-          </motion.p>
+      <div className="grid h-full place-items-center px-3">
+        <div className="w-full max-w-52 rounded-lg bg-surface p-2.5 shadow-soft">
+          <p className="flex items-center gap-1.5 text-[11px] font-medium">
+            Quick reply
+            <span className="rounded bg-surface-muted px-1 font-mono text-[10px] text-muted-foreground">ty</span>
+          </p>
+          <div className="relative mt-1.5 h-5 text-[11px]">
+            <motion.p
+              className="absolute inset-0 leading-5"
+              animate={active ? { opacity: [1, 1, 0, 0, 1] } : { opacity: 1 }}
+              transition={loop}
+            >
+              Thanks, <span className="rounded bg-accent-soft px-1 font-mono text-[10px] text-accent-text">{"{input:Name}"}</span>!
+            </motion.p>
+            <motion.p
+              className="absolute inset-0 leading-5"
+              animate={active ? { opacity: [0, 0, 1, 1, 0] } : { opacity: 0 }}
+              transition={loop}
+            >
+              Thanks, <span className="font-medium text-accent-text">Priya</span>!
+            </motion.p>
+          </div>
         </div>
       </div>
     </Frame>

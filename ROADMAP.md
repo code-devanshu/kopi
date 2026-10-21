@@ -41,6 +41,7 @@ Usable builds for early testers on macOS, out now on [GitHub Releases](https://g
 - ✅ Full-text search with kind and source-app filters
 - ✅ Global hotkey, keyboard navigation and paste into the active app
 - ✅ Pins and pinboards
+- ✅ Snippets with placeholders, in 0.1.0-alpha.9 ([docs/SNIPPETS_DESIGN.md](docs/SNIPPETS_DESIGN.md))
 - ✅ Skip copies from password managers and content marked as concealed, plus excluded apps
 - ✅ Settings, onboarding, menu bar icon and launch at login
 - ✅ Signed releases and automatic updates, without paying for notarization ([ADR 0006](docs/decisions/0006-macos-distribution-without-notarization.md))
@@ -86,7 +87,7 @@ Optional sync between your Mac and Windows computers, directly over your local n
 - ✅ The protocol and encryption, designed in the open ([docs/SYNC_DESIGN.md](docs/SYNC_DESIGN.md), [ADR 0007](docs/decisions/0007-lan-sync.md))
 - ✅ End-to-end encryption, with keys that never leave your computers
 - ✅ Pairing with a code
-- ✅ Conflict handling, deletes, and sync for pins and pinboards
+- ✅ Conflict handling, deletes, and sync for pins, pinboards and snippets
 - 🔨 Testing on real networks, Mac and Windows, with testers
 - ⏳ Sync away from home, through a relay that can't read your clips, in its own design
 

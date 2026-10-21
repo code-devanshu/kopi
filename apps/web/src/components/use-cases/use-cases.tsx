@@ -27,7 +27,7 @@ const useCases: UseCase[] = [
     icon: Code2,
     title: "Commands, tokens and snippets, without the scrollback",
     description: "Stop digging through terminal history or chat threads for the command you ran yesterday.",
-    points: ["Code keeps its formatting", "Pin the snippets you type every day", "Same history on your Mac laptop and Windows desktop"],
+    points: ["Code keeps its formatting", "Pin the commands you run every day", "Same history on your Mac laptop and Windows desktop"],
     Mock: DeveloperMock,
   },
   {
@@ -45,7 +45,7 @@ const useCases: UseCase[] = [
     icon: PenLine,
     title: "Your best lines, ready when you are",
     description: "Keep bios, replies and quotes close, and paste them clean into any editor.",
-    points: ["Paste as plain text by default if you like", "Pinboards for replies and bios", "Search across everything you've copied"],
+    points: ["Paste as plain text by default if you like", "Snippets for replies, with the name filled in", "Search across everything you've copied"],
     Mock: WriterMock,
   },
   {

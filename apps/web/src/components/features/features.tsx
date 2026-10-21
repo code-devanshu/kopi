@@ -1,15 +1,15 @@
 "use client";
 
 import { motion } from "motion/react";
-import { History, Keyboard, Pin, RefreshCw, Search, Type } from "lucide-react";
+import { History, Keyboard, Pin, RefreshCw, Search, TextQuote } from "lucide-react";
 import type { ComponentType, SVGProps } from "react";
 
 import {
   HistoryIllustration,
   KeyboardIllustration,
   PinboardIllustration,
-  PlainTextIllustration,
   SearchIllustration,
+  SnippetsIllustration,
   SyncIllustration,
 } from "@/components/features/feature-illustrations";
 import { Section, SectionHeader } from "@/components/ui/section";
@@ -36,7 +36,7 @@ const features: Feature[] = [
   },
   {
     title: "Pinboards",
-    description: "Keep the replies, addresses and snippets you reuse in boards that stay put, one shortcut away.",
+    description: "Keep the links, replies and colors you reuse in boards that stay put, one shortcut away.",
     icon: Pin,
     Illustration: PinboardIllustration,
   },
@@ -47,14 +47,14 @@ const features: Feature[] = [
     Illustration: SyncIllustration,
   },
   {
-    title: "Paste as plain text",
-    description: "Drop the fonts, colors and stray formatting so whatever you paste matches where it lands.",
-    icon: Type,
-    Illustration: PlainTextIllustration,
+    title: "Snippets",
+    description: "Write a reply or a signature once, then paste it with the date, your last copy or a name filled in.",
+    icon: TextQuote,
+    Illustration: SnippetsIllustration,
   },
   {
     title: "Keyboard-first",
-    description: "Open Kopi, search, pick and paste without reaching for the mouse. Every shortcut can be changed.",
+    description: "Open Kopi, search and paste without reaching for the mouse, as plain text if you like. Every shortcut can be changed.",
     icon: Keyboard,
     Illustration: KeyboardIllustration,
   },
