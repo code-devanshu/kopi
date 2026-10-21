@@ -1,8 +1,10 @@
 //! Merging changes between stores, without a network: what `kopi-sync` does over a session.
 
 use kopi_core::classifier::content_hash;
-use kopi_core::storage::sync::Changes;
-use kopi_core::storage::{ClipKind, NewClip, NewFormat, Platform, StorageResult, Store};
+use kopi_core::storage::sync::{Changes, Device};
+use kopi_core::storage::{
+    ClipKind, NewClip, NewFormat, Platform, SnippetEdit, StorageResult, Store,
+};
 
 const PLAIN: &str = "public.utf8-plain-text";
 
@@ -36,8 +38,39 @@ impl Node {
             .unwrap()
     }
 
-    /// Clips, pinboards and pinboard items, in a form that should match across computers.
-    fn state(&self) -> (Vec<String>, Vec<String>, Vec<String>) {
+    fn snippet(&self, name: &str, body: &str) -> i64 {
+        self.store
+            .create_snippet(SnippetEdit {
+                name,
+                keyword: None,
+                body,
+            })
+            .unwrap()
+            .id
+    }
+
+    /// The snippet with this name, if there's one.
+    fn snippet_named(&self, name: &str) -> Option<kopi_core::storage::Snippet> {
+        self.store
+            .snippets()
+            .unwrap()
+            .into_iter()
+            .find(|s| s.name == name)
+    }
+
+    /// What this computer has from `from`.
+    fn device(&self, from: &Node) -> Device {
+        self.store
+            .sync_devices()
+            .unwrap()
+            .into_iter()
+            .find(|d| d.device_id == from.id)
+            .unwrap()
+    }
+
+    /// Clips, pinboards, pinboard items and snippets, in a form that should match across
+    /// computers.
+    fn state(&self) -> State {
         self.store
             .with_reader(|conn| {
                 let rows = |sql: &str| -> StorageResult<Vec<String>> {
@@ -55,11 +88,16 @@ impl Node {
                     rows("SELECT b.uuid || ' ' || c.content_hash || ' ' || i.position
                           FROM pinboard_items i JOIN pinboards b ON b.id = i.pinboard_id
                           JOIN clips c ON c.id = i.clip_id ORDER BY 1")?,
+                    rows("SELECT uuid || ' ' || name || ' ' || coalesce(keyword, '-') || ' '
+                                 || position || ' ' || created_at || ' ' || body
+                          FROM snippets ORDER BY uuid")?,
                 ))
             })
             .unwrap()
     }
 }
+
+type State = (Vec<String>, Vec<String>, Vec<String>, Vec<String>);
 
 /// A made-up 32-byte public key, different for each device.
 fn key(id: &str) -> Vec<u8> {
@@ -105,23 +143,37 @@ fn group(nodes: &[&Node]) {
 /// Sends everything `from` has that `to` hasn't applied, as a session's catch-up does.
 /// Returns how many batches it took.
 fn sync(from: &Node, to: &Node) -> usize {
+    // As in a session: whether `to` asks for snippets is set by its hello.
+    let snippets = to.store.sync_snippets().unwrap();
     let mut batches = 0;
+    let device = to.device(from);
+    if snippets {
+        let mut after = device.snippets_seq;
+        while after < device.received_seq {
+            let changes = from
+                .store
+                .snippets_between(after, device.received_seq)
+                .unwrap();
+            assert!(changes.max_seq > after, "snippets never caught up");
+            after = changes.max_seq;
+            to.store
+                .apply_changes(&from.id, &to.id, changes, true)
+                .unwrap();
+            batches += 1;
+        }
+    }
     loop {
-        let after = to
-            .store
-            .sync_devices()
-            .unwrap()
-            .into_iter()
-            .find(|d| d.device_id == from.id)
-            .map_or(0, |d| d.received_seq);
+        let after = to.device(from).received_seq;
         let changes = from
             .store
-            .changes_since(after, to.store.sync_kinds().unwrap(), &from.id)
+            .changes_since(after, to.store.sync_kinds().unwrap(), snippets, &from.id)
             .unwrap();
         if changes.max_seq == after {
             return batches;
         }
-        to.store.apply_changes(&from.id, &to.id, changes).unwrap();
+        to.store
+            .apply_changes(&from.id, &to.id, changes, snippets)
+            .unwrap();
         batches += 1;
         assert!(batches < 1000, "sync never settled");
     }
@@ -421,7 +473,7 @@ fn local_only_files_and_unwanted_kinds_stay_put() {
         .unwrap();
     a.copy("fine");
     settle(&[&a, &b]);
-    let (clips, _, _) = b.state();
+    let (clips, _, _, _) = b.state();
     assert_eq!(clips.len(), 1, "only the plain text clip: {clips:?}");
     assert!(b.id_of("fine").is_some());
 }
@@ -433,11 +485,11 @@ fn forged_hashes_and_strangers_data_are_refused() {
     a.copy("real");
     let mut changes = a
         .store
-        .changes_since(0, b.store.sync_kinds().unwrap(), &a.id)
+        .changes_since(0, b.store.sync_kinds().unwrap(), true, &a.id)
         .unwrap();
     let clip = changes.clips.first_mut().unwrap();
     clip.formats[0].data = b"swapped".to_vec();
-    let applied = b.store.apply_changes(&a.id, &b.id, changes).unwrap();
+    let applied = b.store.apply_changes(&a.id, &b.id, changes, true).unwrap();
     assert_eq!(applied.rejected, 1);
     assert!(
         b.store
@@ -458,7 +510,7 @@ fn forged_hashes_and_strangers_data_are_refused() {
         removed: false,
         updated_hlc: i64::MAX / 2,
     });
-    b.store.apply_changes(&a.id, &b.id, changes).unwrap();
+    b.store.apply_changes(&a.id, &b.id, changes, true).unwrap();
     let a_on_b = b
         .store
         .sync_devices()
@@ -503,6 +555,271 @@ fn group_changes_spread() {
 }
 
 #[test]
+fn snippets_sync_and_the_latest_edit_wins() {
+    let (a, b, c) = (Node::new("a"), Node::new("b"), Node::new("c"));
+    group(&[&a, &b, &c]);
+    let sig = a
+        .store
+        .create_snippet(SnippetEdit {
+            name: "Signature",
+            keyword: Some("sig"),
+            body: "Thanks,\n{input:Name}",
+        })
+        .unwrap();
+    a.snippet("Address", "1 Infinite Loop");
+    settle(&[&a, &b, &c]);
+    let on_b = b.snippet_named("Signature").expect("synced");
+    assert_eq!(on_b.uuid, sig.uuid);
+    assert_eq!(on_b.keyword.as_deref(), Some("sig"));
+    assert_eq!(on_b.body, "Thanks,\n{input:Name}");
+    assert_eq!(on_b.created_at, sig.created_at);
+    assert_eq!(a.state(), b.state());
+
+    // Use stays on the computer it was used on.
+    b.store.mark_snippet_used(on_b.id, 5_000).unwrap();
+    settle(&[&a, &b, &c]);
+    assert_eq!(a.snippet_named("Signature").unwrap().use_count, 0);
+    assert_eq!(b.snippet_named("Signature").unwrap().use_count, 1);
+
+    // Edited on A and C while apart: C's edit is later, so it wins everywhere.
+    let edit = |node: &Node, body: &str| {
+        let id = node.snippet_named("Signature").unwrap().id;
+        node.store
+            .update_snippet(
+                id,
+                SnippetEdit {
+                    name: "Signature",
+                    keyword: Some("sig"),
+                    body,
+                },
+            )
+            .unwrap();
+    };
+    edit(&a, "from a");
+    edit(&c, "from c");
+    settle(&[&a, &b, &c]);
+    assert_eq!(b.snippet_named("Signature").unwrap().body, "from c");
+    assert_eq!(a.state(), b.state());
+    assert_eq!(a.state(), c.state());
+    assert_eq!(
+        b.snippet_named("Signature").unwrap().use_count,
+        1,
+        "an edit from elsewhere keeps the use count"
+    );
+
+    // Moving one moves it everywhere.
+    let address = a.snippet_named("Address").unwrap().id;
+    a.store.reorder_snippets(&[address]).unwrap();
+    settle(&[&a, &b, &c]);
+    let order = |n: &Node| -> Vec<String> {
+        n.store
+            .snippets()
+            .unwrap()
+            .into_iter()
+            .map(|s| s.name)
+            .collect()
+    };
+    assert_eq!(order(&b), ["Address", "Signature"]);
+    assert_eq!(order(&c), order(&a));
+}
+
+#[test]
+fn a_deleted_snippet_stays_deleted_unless_edited_after() {
+    let (a, b, c) = (Node::new("a"), Node::new("b"), Node::new("c"));
+    group(&[&a, &b, &c]);
+    a.snippet("Old", "gone soon");
+    a.snippet("Kept", "edited after");
+    settle(&[&a, &b, &c]);
+
+    // Deleted on B. C is away, then syncs only with A.
+    let old = b.snippet_named("Old").unwrap().id;
+    b.store.delete_snippet(old).unwrap();
+    sync(&b, &a);
+    assert!(a.snippet_named("Old").is_none());
+    sync(&c, &a);
+    assert!(
+        a.snippet_named("Old").is_none(),
+        "C's copy must not bring it back"
+    );
+    settle(&[&a, &b, &c]);
+    assert!(c.snippet_named("Old").is_none());
+
+    // Deleted on B, then edited on A before A hears of it: the later edit keeps it.
+    let kept = b.snippet_named("Kept").unwrap().id;
+    b.store.delete_snippet(kept).unwrap();
+    // A later millisecond, so the edit's HLC is after the delete's.
+    std::thread::sleep(std::time::Duration::from_millis(3));
+    let on_a = a.snippet_named("Kept").unwrap().id;
+    a.store
+        .update_snippet(
+            on_a,
+            SnippetEdit {
+                name: "Kept",
+                keyword: None,
+                body: "still wanted",
+            },
+        )
+        .unwrap();
+    settle(&[&a, &b, &c]);
+    assert_eq!(b.snippet_named("Kept").unwrap().body, "still wanted");
+    assert_eq!(a.state(), b.state());
+    assert_eq!(a.state(), c.state());
+}
+
+#[test]
+fn snippets_unticked_are_fetched_once_ticked() {
+    let (a, b) = (Node::new("a"), Node::new("b"));
+    group(&[&a, &b]);
+    b.store.set_sync_snippets(false).unwrap();
+    a.snippet("Before", "made before");
+    a.copy("a clip");
+    b.snippet("From b", "b still sends its own");
+    settle(&[&a, &b]);
+    assert!(b.id_of("a clip").is_some());
+    assert!(
+        b.store.snippets().unwrap().len() == 1,
+        "B doesn't take snippets"
+    );
+    assert!(a.snippet_named("From b").is_some());
+    let device = b.device(&a);
+    assert!(device.received_seq > 0);
+    assert_eq!(device.snippets_seq, 0);
+
+    // Deleted while B wasn't taking snippets: the delete is fetched too.
+    a.snippet("Deleted while away", "");
+    settle(&[&a, &b]);
+    let id = a.snippet_named("Deleted while away").unwrap().id;
+    a.store.delete_snippet(id).unwrap();
+    a.snippet("After", "made after");
+    settle(&[&a, &b]);
+    assert!(b.snippet_named("After").is_none());
+
+    b.store.set_sync_snippets(true).unwrap();
+    settle(&[&a, &b]);
+    assert!(b.snippet_named("Before").is_some());
+    assert!(b.snippet_named("After").is_some());
+    assert!(b.snippet_named("Deleted while away").is_none());
+    assert_eq!(a.state(), b.state());
+    let device = b.device(&a);
+    assert_eq!(device.snippets_seq, device.received_seq);
+}
+
+#[test]
+fn catching_up_on_many_snippets_takes_several_batches() {
+    let (a, b) = (Node::new("a"), Node::new("b"));
+    group(&[&a, &b]);
+    b.store.set_sync_snippets(false).unwrap();
+    for i in 0..300 {
+        a.snippet(&format!("Snippet {i}"), "");
+        if i % 3 == 0 {
+            a.copy(&format!("clip {i}"));
+        }
+    }
+    let deleted = a.snippet_named("Snippet 7").unwrap().id;
+    a.store.delete_snippet(deleted).unwrap();
+    // Without snippets, B's cursor stops at the last change it takes, so end with one.
+    a.copy("last");
+    settle(&[&a, &b]);
+    let upto = b.device(&a).received_seq;
+    let first = a.store.snippets_between(0, upto).unwrap();
+    assert_eq!(first.len(), kopi_core::storage::sync::MAX_BATCH_ROWS);
+    assert!(first.clips.is_empty());
+    assert!(first.max_seq < upto);
+    let rest = a.store.snippets_between(first.max_seq, upto).unwrap();
+    assert_eq!(rest.max_seq, upto);
+    // 299 snippets and a delete.
+    assert_eq!(first.len() + rest.len(), 300);
+    assert_eq!(rest.tombstones.len(), 1);
+
+    b.store.set_sync_snippets(true).unwrap();
+    assert_eq!(sync(&a, &b), 2);
+    assert_eq!(b.store.snippets().unwrap().len(), 299);
+    assert_eq!(a.state(), b.state());
+}
+
+#[test]
+fn a_batch_of_snippets_not_asked_for_is_skipped() {
+    let (a, b) = (Node::new("a"), Node::new("b"));
+    group(&[&a, &b]);
+    a.snippet("Sig", "Thanks");
+    let changes = a
+        .store
+        .changes_since(0, b.store.sync_kinds().unwrap(), true, &a.id)
+        .unwrap();
+    assert_eq!(changes.snippets.len(), 1);
+    let max = changes.max_seq;
+    // As in a session that started before Snippets was ticked.
+    b.store
+        .apply_changes(&a.id, &b.id, changes.clone(), false)
+        .unwrap();
+    assert!(b.store.snippets().unwrap().is_empty());
+    assert_eq!(b.device(&a).snippets_seq, 0);
+    // Asked for, but unticked since.
+    b.store.set_sync_snippets(false).unwrap();
+    b.store.apply_changes(&a.id, &b.id, changes, true).unwrap();
+    assert!(b.store.snippets().unwrap().is_empty());
+    assert_eq!(b.device(&a).snippets_seq, 0);
+    assert_eq!(b.device(&a).received_seq, max);
+    // A computer that doesn't ask gets none.
+    let unasked = a
+        .store
+        .changes_since(0, b.store.sync_kinds().unwrap(), false, &a.id)
+        .unwrap();
+    assert!(unasked.snippets.is_empty());
+}
+
+#[test]
+fn bad_snippets_are_refused() {
+    let (a, b) = (Node::new("a"), Node::new("b"));
+    group(&[&a, &b]);
+    let good = kopi_core::storage::sync::SyncSnippet {
+        uuid: "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b".into(),
+        name: "Fine".into(),
+        keyword: Some("ok".into()),
+        body: "body".into(),
+        position: 0,
+        created_at: 1,
+        updated_hlc: 1 << 20,
+    };
+    let bad = [
+        kopi_core::storage::sync::SyncSnippet {
+            uuid: "not/a uuid".into(),
+            ..good.clone()
+        },
+        kopi_core::storage::sync::SyncSnippet {
+            name: " ".into(),
+            ..good.clone()
+        },
+        kopi_core::storage::sync::SyncSnippet {
+            name: "n".repeat(65),
+            ..good.clone()
+        },
+        kopi_core::storage::sync::SyncSnippet {
+            keyword: Some("two words".into()),
+            ..good.clone()
+        },
+        kopi_core::storage::sync::SyncSnippet {
+            body: "b".repeat(64 * 1024 + 1),
+            ..good.clone()
+        },
+    ];
+    let changes = Changes {
+        snippets: bad.into_iter().chain([good.clone()]).collect(),
+        max_seq: 1,
+        ..Changes::default()
+    };
+    b.store.apply_changes(&a.id, &b.id, changes, true).unwrap();
+    let names: Vec<String> = b
+        .store
+        .snippets()
+        .unwrap()
+        .into_iter()
+        .map(|s| s.name)
+        .collect();
+    assert_eq!(names, ["Fine"]);
+}
+
+#[test]
 fn random_changes_in_any_order_converge() {
     for seed in 1..=25 {
         random_run(seed);
@@ -524,7 +841,7 @@ fn random_run(seed: u64) {
     for round in 0..40 {
         let node = &nodes[next(3) as usize];
         let word = words[next(words.len() as u64) as usize];
-        match next(9) {
+        match next(11) {
             0 | 1 => {
                 node.copy(word);
             }
@@ -560,6 +877,33 @@ fn random_run(seed: u64) {
                         node.store
                             .rename_pinboard(board.id, &format!("renamed {round}"))
                             .unwrap();
+                    }
+                }
+            }
+            9 => match node.snippet_named(word) {
+                Some(snippet) => {
+                    let body = format!("{word} {round}");
+                    node.store
+                        .update_snippet(
+                            snippet.id,
+                            SnippetEdit {
+                                name: word,
+                                keyword: (next(2) == 0).then_some(word),
+                                body: &body,
+                            },
+                        )
+                        .unwrap();
+                }
+                None => {
+                    node.snippet(word, word);
+                }
+            },
+            10 => {
+                if let Some(snippet) = node.snippet_named(word) {
+                    if next(2) == 0 {
+                        node.store.delete_snippet(snippet.id).unwrap();
+                    } else {
+                        node.store.reorder_snippets(&[snippet.id]).unwrap();
                     }
                 }
             }
@@ -660,7 +1004,7 @@ fn history_from_before_sync_is_ready_to_send() {
     group(&[&a, &b]);
     settle(&[&a, &b]);
     assert_eq!(a.state(), b.state());
-    let (clips, boards, items) = b.state();
+    let (clips, boards, items, _) = b.state();
     assert_eq!((clips.len(), boards.len(), items.len()), (3, 1, 1));
     // The clock carries on after the newest timestamp.
     let id = a.copy("fourth");

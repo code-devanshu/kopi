@@ -8,7 +8,8 @@
 //! - **Clips** are one per `content_hash`. The latest use wins `last_used_at`, the source app
 //!   and the computer it was copied on. The earliest `created_at` wins. The latest pin or unpin
 //!   wins. `use_count` stays local.
-//! - **Pinboards** and **pinboard items**: the latest change wins the whole row.
+//! - **Pinboards**, **pinboard items** and **snippets**: the latest change wins the whole row.
+//!   A snippet's use count and last use stay local.
 //! - **Tombstones** delete what's older than them, and keep it from coming back.
 //! - **Cleared ranges** delete the clips last used in their window before they were made.
 //! - **Devices**: the latest change wins. A device's public key never changes.
@@ -23,7 +24,8 @@ use kopi_platform::uti;
 use rusqlite::{Connection, OptionalExtension, TransactionBehavior, params};
 use serde::{Deserialize, Serialize};
 
-use super::pinboards::{check_color, check_name};
+use super::pinboards::{check_color, check_label, check_name};
+use super::snippets::{MAX_SNIPPET_NAME_CHARS, check_body, check_keyword};
 use super::{
     Clip, ClipKind, KEPT, MAX_INLINE_BYTES, NewFormat, Platform, Removed, StorageError,
     StorageResult, Store, Tombstone, blobs, delete_in, next_seq, now_ms, put_tombstone,
@@ -62,6 +64,9 @@ pub struct Changes {
     pub clips: Vec<SyncClip>,
     pub pinboards: Vec<SyncPinboard>,
     pub pinboard_items: Vec<SyncPinboardItem>,
+    /// Only for a computer that asked for snippets, since an older Kopi skips them and would
+    /// never get them after it updates. See [`Store::snippets_between`].
+    pub snippets: Vec<SyncSnippet>,
     /// The highest `sync_seq` this batch covers. Rows up to it that aren't in it weren't for
     /// the receiver, such as local-only clips.
     pub max_seq: i64,
@@ -75,6 +80,7 @@ impl Changes {
             && self.clips.is_empty()
             && self.pinboards.is_empty()
             && self.pinboard_items.is_empty()
+            && self.snippets.is_empty()
     }
 
     /// How many rows it holds.
@@ -85,6 +91,7 @@ impl Changes {
             + self.clips.len()
             + self.pinboards.len()
             + self.pinboard_items.len()
+            + self.snippets.len()
     }
 }
 
@@ -142,8 +149,21 @@ pub struct SyncPinboardItem {
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
+pub struct SyncSnippet {
+    pub uuid: String,
+    pub name: String,
+    pub keyword: Option<String>,
+    /// As typed, placeholders and all.
+    pub body: String,
+    pub position: i64,
+    pub created_at: i64,
+    pub updated_hlc: i64,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
 pub struct SyncTombstone {
-    /// `clip`, `pinboard` or `pinboard_item`.
+    /// `clip`, `pinboard`, `pinboard_item` or `snippet`.
     pub entity: String,
     pub key: String,
     pub hlc: i64,
@@ -182,6 +202,9 @@ pub struct Device {
     pub removed: bool,
     /// The highest of its `sync_seq`s applied here.
     pub received_seq: i64,
+    /// How far its snippets are applied here. Behind `received_seq` while this computer
+    /// doesn't take snippets, and from before it could.
+    pub snippets_seq: i64,
     /// When a session with it last ran, in Unix milliseconds.
     pub last_seen_at: Option<i64>,
 }
@@ -196,6 +219,7 @@ pub struct Applied {
     /// Clips deleted by tombstones or cleared ranges.
     pub removed: Vec<i64>,
     pub pinboards_changed: bool,
+    pub snippets_changed: bool,
     pub devices_changed: bool,
     /// Clips dropped: a bad hash, too large, or invalid. Counted for the log.
     pub rejected: usize,
@@ -208,6 +232,7 @@ impl Applied {
             && self.updated.is_empty()
             && self.removed.is_empty()
             && !self.pinboards_changed
+            && !self.snippets_changed
             && !self.devices_changed
     }
 }
@@ -219,6 +244,7 @@ pub(crate) fn last_hlc(conn: &Connection) -> rusqlite::Result<i64> {
                     coalesce((SELECT max(pinned_hlc) FROM clips), 0),
                     coalesce((SELECT max(updated_hlc) FROM pinboards), 0),
                     coalesce((SELECT max(hlc) FROM pinboard_items), 0),
+                    coalesce((SELECT max(updated_hlc) FROM snippets), 0),
                     coalesce((SELECT max(hlc) FROM tombstones), 0),
                     coalesce((SELECT max(hlc) FROM clear_ranges), 0),
                     coalesce((SELECT max(updated_hlc) FROM sync_devices), 0))",
@@ -232,6 +258,7 @@ enum Pending {
     Clip(i64),
     Pinboard(i64),
     Item { pinboard_id: i64, clip_id: i64 },
+    Snippet(i64),
     Tombstone { entity: String, key: String },
     ClearRange(i64),
     Device(String),
@@ -329,7 +356,8 @@ impl Store {
         self.with_reader(|conn| {
             let rows = conn
                 .prepare_cached(
-                    "SELECT device_id, public_key, name, os, removed, received_seq, last_seen_at
+                    "SELECT device_id, public_key, name, os, removed, received_seq, last_seen_at,
+                            snippets_seq
                      FROM sync_devices ORDER BY name COLLATE NOCASE, device_id",
                 )?
                 .query_map([], |row| {
@@ -342,6 +370,7 @@ impl Store {
                             removed: row.get(4)?,
                             received_seq: row.get(5)?,
                             last_seen_at: row.get(6)?,
+                            snippets_seq: row.get(7)?,
                         },
                         row.get::<_, String>(3)?,
                     ))
@@ -477,8 +506,8 @@ impl Store {
     }
 
     /// The next batch of changes with a `sync_seq` above `after`, for a computer that wants
-    /// `kinds`. `self_id` is this computer's device ID. An empty batch with `max_seq` equal to
-    /// `after` means there's nothing more.
+    /// `kinds`, and snippets if `snippets`. `self_id` is this computer's device ID. An empty
+    /// batch with `max_seq` equal to `after` means there's nothing more.
     ///
     /// Local-only clips, file clips and kinds the other computer doesn't want are left out.
     /// A pinboard item comes with its clip and its pinboard, so the receiver can place it.
@@ -486,12 +515,26 @@ impl Store {
         &self,
         after: i64,
         kinds: crate::privacy::KindSet,
+        snippets: bool,
         self_id: &str,
     ) -> StorageResult<Changes> {
         self.with_reader(|conn| {
             // One snapshot for the whole batch.
             conn.execute_batch("BEGIN")?;
-            let result = self.collect_changes(conn, after, kinds, self_id);
+            let result = self.collect_changes(conn, after, kinds, snippets, self_id);
+            let _ = conn.execute_batch("COMMIT");
+            result
+        })
+    }
+
+    /// The next batch of snippets and snippet deletes with a `sync_seq` above `after` and up
+    /// to `upto`, for a computer that has everything up to `upto` but snippets only up to
+    /// `after`: one that didn't take snippets until now. A batch with `max_seq` equal to `upto`
+    /// is the last.
+    pub fn snippets_between(&self, after: i64, upto: i64) -> StorageResult<Changes> {
+        self.with_reader(|conn| {
+            conn.execute_batch("BEGIN")?;
+            let result = collect_snippets(conn, after, upto);
             let _ = conn.execute_batch("COMMIT");
             result
         })
@@ -502,6 +545,7 @@ impl Store {
         conn: &Connection,
         after: i64,
         kinds: crate::privacy::KindSet,
+        snippets: bool,
         self_id: &str,
     ) -> StorageResult<Changes> {
         let limit = MAX_BATCH_ROWS as i64;
@@ -533,9 +577,20 @@ impl Store {
                 })
             },
         )?;
+        if snippets {
+            seqs(
+                "SELECT sync_seq, id FROM snippets WHERE sync_seq > ?1 ORDER BY sync_seq LIMIT ?2",
+                &|row| Ok(Pending::Snippet(row.get(1)?)),
+            )?;
+        }
         seqs(
-            "SELECT sync_seq, entity, key FROM tombstones
-             WHERE sync_seq > ?1 ORDER BY sync_seq LIMIT ?2",
+            if snippets {
+                "SELECT sync_seq, entity, key FROM tombstones
+                 WHERE sync_seq > ?1 ORDER BY sync_seq LIMIT ?2"
+            } else {
+                "SELECT sync_seq, entity, key FROM tombstones
+                 WHERE sync_seq > ?1 AND entity != 'snippet' ORDER BY sync_seq LIMIT ?2"
+            },
             &|row| {
                 Ok(Pending::Tombstone {
                     entity: row.get(1)?,
@@ -584,6 +639,12 @@ impl Store {
                     pinboard_id,
                     clip_id,
                 } => batch.item(pinboard_id, clip_id)?,
+                Pending::Snippet(id) => {
+                    if let Some(snippet) = read_snippet(conn, "id = ?1", id)? {
+                        batch.bytes += snippet.body.len();
+                        changes.snippets.push(snippet);
+                    }
+                }
                 Pending::Tombstone { entity, key } => {
                     let hlc: Option<i64> = conn
                         .prepare_cached(
@@ -797,18 +858,24 @@ impl Store {
 
     /// Merges a batch from the computer `from`, in one transaction, and records that its
     /// changes up to `changes.max_seq` are applied. `self_id` is this computer's device ID.
+    /// `snippets` says this computer asked `from` for snippets in this session.
     ///
     /// Everything is checked as untrusted input. A clip whose hash doesn't match its content,
     /// that's too large, or of a kind this computer doesn't sync, is dropped. So is a clip
     /// copied in an app this computer excludes, when it was copied on the same OS.
+    ///
+    /// Snippets are taken only if they were asked for and Snippets is still ticked in What to
+    /// sync. Only then does `snippets_seq` move, so what's skipped is sent again later.
     pub fn apply_changes(
         &self,
         from: &str,
         self_id: &str,
         changes: Changes,
+        snippets: bool,
     ) -> StorageResult<Applied> {
         let now = now_ms();
         let kinds = self.sync_kinds()?;
+        let snippets = snippets && self.sync_snippets()?;
         let os = local_platform();
         let excluded: HashSet<String> = self
             .excluded_apps(os)?
@@ -844,7 +911,9 @@ impl Store {
             self.apply_clear_range(&tx, range, now, &mut removed)?;
         }
         for tombstone in changes.tombstones {
-            self.apply_tombstone(&tx, tombstone, now, &mut removed, &mut applied)?;
+            if snippets || tombstone.entity != Tombstone::SNIPPET {
+                self.apply_tombstone(&tx, tombstone, now, &mut removed, &mut applied)?;
+            }
         }
         for clip in checked {
             if clip.copied_on != self_id
@@ -876,14 +945,23 @@ impl Store {
                 applied.pinboards_changed = true;
             }
         }
+        if snippets {
+            for snippet in changes.snippets {
+                if self.apply_snippet(&tx, snippet, now)? {
+                    applied.snippets_changed = true;
+                }
+            }
+        }
         for &id in applied.added.iter().chain(&applied.updated) {
             self.settle_clip(&tx, id, &mut removed)?;
         }
         tx.prepare_cached(
-            "UPDATE sync_devices SET received_seq = max(received_seq, ?2), last_seen_at = ?3
+            "UPDATE sync_devices SET received_seq = max(received_seq, ?2), last_seen_at = ?3,
+                                     snippets_seq = CASE WHEN ?4 THEN max(snippets_seq, ?2)
+                                                         ELSE snippets_seq END
              WHERE device_id = ?1",
         )?
-        .execute(params![from, changes.max_seq, now])?;
+        .execute(params![from, changes.max_seq, now, snippets])?;
         tx.commit()?;
 
         // Blobs written for clips that were then skipped, or replaced by newer formats.
@@ -979,6 +1057,7 @@ impl Store {
             Tombstone::CLIP => Tombstone::CLIP,
             Tombstone::PINBOARD => Tombstone::PINBOARD,
             Tombstone::PINBOARD_ITEM => Tombstone::PINBOARD_ITEM,
+            Tombstone::SNIPPET => Tombstone::SNIPPET,
             _ => return Ok(()),
         };
         if tombstone.key.is_empty() || tombstone.key.len() > MAX_KEY_BYTES {
@@ -1012,6 +1091,12 @@ impl Store {
                     .prepare_cached("DELETE FROM pinboards WHERE uuid = ?1 AND updated_hlc <= ?2")?
                     .execute(params![tombstone.key, hlc])?;
                 applied.pinboards_changed |= deleted > 0;
+            }
+            Tombstone::SNIPPET => {
+                let deleted = tx
+                    .prepare_cached("DELETE FROM snippets WHERE uuid = ?1 AND updated_hlc <= ?2")?
+                    .execute(params![tombstone.key, hlc])?;
+                applied.snippets_changed |= deleted > 0;
             }
             _ => {
                 let Some((board, clip)) = tombstone.key.split_once('/') else {
@@ -1432,6 +1517,68 @@ impl Store {
         Ok(true)
     }
 
+    /// Merges a snippet: the latest change wins the whole row, unless it was deleted since.
+    /// Its use count and last use here stay as they are.
+    fn apply_snippet(
+        &self,
+        tx: &Connection,
+        snippet: SyncSnippet,
+        now: i64,
+    ) -> StorageResult<bool> {
+        if !check_id(&snippet.uuid) {
+            return Ok(false);
+        }
+        let (Ok(name), Ok(keyword), Ok(body)) = (
+            check_label(&snippet.name, "snippet", MAX_SNIPPET_NAME_CHARS),
+            check_keyword(snippet.keyword.as_deref()),
+            check_body(&snippet.body),
+        ) else {
+            return Ok(false);
+        };
+        let position = snippet
+            .position
+            .clamp(-i64::from(u32::MAX), i64::from(u32::MAX));
+        let hlc = self.clock.observe(snippet.updated_hlc, now);
+        if tombstone_hlc(tx, Tombstone::SNIPPET, &snippet.uuid)?.is_some_and(|t| t >= hlc) {
+            return Ok(false);
+        }
+        let current = read_snippet(tx, "uuid = ?1", &snippet.uuid)?;
+        let theirs = (hlc, &name, &keyword, &body, position);
+        if let Some(ours) = &current
+            && theirs
+                <= (
+                    ours.updated_hlc,
+                    &ours.name,
+                    &ours.keyword,
+                    &ours.body,
+                    ours.position,
+                )
+        {
+            return Ok(false);
+        }
+        tx.prepare_cached(
+            "INSERT INTO snippets (uuid, name, keyword, body, position, created_at, updated_at,
+                                   updated_hlc, sync_seq)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+             ON CONFLICT (uuid) DO UPDATE SET
+               name = excluded.name, keyword = excluded.keyword, body = excluded.body,
+               position = excluded.position, updated_at = excluded.updated_at,
+               updated_hlc = excluded.updated_hlc, sync_seq = excluded.sync_seq",
+        )?
+        .execute(params![
+            snippet.uuid,
+            name,
+            keyword,
+            body,
+            position,
+            snippet.created_at,
+            now,
+            hlc,
+            next_seq(tx)?
+        ])?;
+        Ok(true)
+    }
+
     fn apply_item(&self, tx: &Connection, item: SyncPinboardItem, now: i64) -> StorageResult<bool> {
         let hlc = self.clock.observe(item.hlc, now);
         let key = Tombstone::item_key(&item.pinboard, &item.clip);
@@ -1560,6 +1707,99 @@ fn read_pinboard(conn: &Connection, id: i64) -> StorageResult<Option<SyncPinboar
             })
         })
         .optional()?)
+}
+
+/// A snippet as it's sent, found by `id = ?1` or `uuid = ?1`.
+fn read_snippet(
+    conn: &Connection,
+    by: &str,
+    key: impl rusqlite::ToSql,
+) -> StorageResult<Option<SyncSnippet>> {
+    Ok(conn
+        .prepare_cached(&format!(
+            "SELECT uuid, name, keyword, body, position, created_at, updated_hlc FROM snippets
+             WHERE {by}"
+        ))?
+        .query_row([key], |row| {
+            Ok(SyncSnippet {
+                uuid: row.get(0)?,
+                name: row.get(1)?,
+                keyword: row.get(2)?,
+                body: row.get(3)?,
+                position: row.get(4)?,
+                created_at: row.get(5)?,
+                updated_hlc: row.get(6)?,
+            })
+        })
+        .optional()?)
+}
+
+/// A row of [`collect_snippets`].
+enum SnippetRow {
+    Snippet(SyncSnippet),
+    Deleted(SyncTombstone),
+}
+
+/// See [`Store::snippets_between`].
+fn collect_snippets(conn: &Connection, after: i64, upto: i64) -> StorageResult<Changes> {
+    let limit = MAX_BATCH_ROWS as i64;
+    let mut rows: Vec<(i64, SnippetRow)> = conn
+        .prepare_cached(
+            "SELECT sync_seq, uuid, name, keyword, body, position, created_at, updated_hlc
+             FROM snippets WHERE sync_seq > ?1 AND sync_seq <= ?2 ORDER BY sync_seq LIMIT ?3",
+        )?
+        .query_map(params![after, upto, limit], |row| {
+            Ok((
+                row.get(0)?,
+                SnippetRow::Snippet(SyncSnippet {
+                    uuid: row.get(1)?,
+                    name: row.get(2)?,
+                    keyword: row.get(3)?,
+                    body: row.get(4)?,
+                    position: row.get(5)?,
+                    created_at: row.get(6)?,
+                    updated_hlc: row.get(7)?,
+                }),
+            ))
+        })?
+        .collect::<Result<_, _>>()?;
+    let deleted = conn
+        .prepare_cached(
+            "SELECT sync_seq, key, hlc FROM tombstones
+             WHERE entity = 'snippet' AND sync_seq > ?1 AND sync_seq <= ?2
+             ORDER BY sync_seq LIMIT ?3",
+        )?
+        .query_map(params![after, upto, limit], |row| {
+            Ok((
+                row.get(0)?,
+                SnippetRow::Deleted(SyncTombstone {
+                    entity: Tombstone::SNIPPET.to_owned(),
+                    key: row.get(1)?,
+                    hlc: row.get(2)?,
+                }),
+            ))
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+    rows.extend(deleted);
+    rows.sort_by_key(|(seq, _)| *seq);
+    // Fewer than a batch means both tables are done up to `upto`.
+    let max_seq = if rows.len() < MAX_BATCH_ROWS {
+        upto
+    } else {
+        rows.truncate(MAX_BATCH_ROWS);
+        rows.last().map_or(upto, |(seq, _)| *seq)
+    };
+    let mut changes = Changes {
+        max_seq,
+        ..Changes::default()
+    };
+    for (_, row) in rows {
+        match row {
+            SnippetRow::Snippet(snippet) => changes.snippets.push(snippet),
+            SnippetRow::Deleted(tombstone) => changes.tombstones.push(tombstone),
+        }
+    }
+    Ok(changes)
 }
 
 fn read_item(

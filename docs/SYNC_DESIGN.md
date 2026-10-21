@@ -3,7 +3,7 @@
 > [!NOTE]
 > **Status: built,** in 0.1.0-alpha.8. This is the design that [ADR 0005](decisions/0005-local-first-sync-later.md) promised to do in the open, and [ADR 0007](decisions/0007-lan-sync.md) records the decision. Where the build differs from the first version of this design, the text says so in [What changed while building it](#what-changed-while-building-it). To comment, open a [discussion](https://github.com/code-devanshu/kopi/discussions) or a pull request against this file.
 
-Kopi syncs history, pins and pinboards between a user's own computers, Mac and Windows in any mix, **directly over the local network**. There's no server, no account and no cloud. Computers find each other with Bonjour (mDNS), are paired once with a code, and talk over a connection that's encrypted end to end and authenticated with keys that never leave them.
+Kopi syncs history, pins, pinboards and snippets between a user's own computers, Mac and Windows in any mix, **directly over the local network**. There's no server, no account and no cloud. Computers find each other with Bonjour (mDNS), are paired once with a code, and talk over a connection that's encrypted end to end and authenticated with keys that never leave them.
 
 Related docs: [DATA_MODEL.md](DATA_MODEL.md), [PRIVACY_DESIGN.md](PRIVACY_DESIGN.md), [PLATFORM_NOTES.md](PLATFORM_NOTES.md).
 
@@ -31,7 +31,7 @@ Related docs: [DATA_MODEL.md](DATA_MODEL.md), [PRIVACY_DESIGN.md](PRIVACY_DESIGN
 - **This computer's name**: defaults to the computer's name, editable. Only paired computers see it.
 - **Computers**: each paired computer with its OS and status: *Connected*, *Last synced 2 hours ago*, or *Not seen for 90 days* (see [Tombstones](#deletes-and-tombstones)). Each has **Remove**.
 - **Add a computer…**: opens the pairing sheet.
-- **What to sync**: a checkbox per kind, all on. File clips are listed, disabled, with "File clips stay on the computer they were copied on."
+- **What to sync**: a checkbox per kind, all on. File clips are listed, disabled, with "File clips stay on the computer they were copied on." Snippets have a checkbox too, also on ([SNIPPETS_DESIGN.md](SNIPPETS_DESIGN.md#sync)).
 
 **Pairing**, done once per computer:
 
@@ -136,6 +136,14 @@ A clip's identity across computers is its **`content_hash`**, not its `uuid`. Tw
 
 Two computers that reorder the same board at once get the later order. When positions tie, the later change goes first.
 
+### Snippets
+
+| Data | Identity | Rule |
+| --- | --- | --- |
+| Snippet (`name`, `keyword`, `body`, `position`) | `uuid` | **Latest wins** for the whole row, by `updated_hlc`. `use_count` and `last_used_at` aren't synced |
+
+Snippets go only to a computer whose `Hello` asks for them, because an older Kopi would skip them and never get them after updating. [SNIPPETS_DESIGN.md](SNIPPETS_DESIGN.md#older-versions) has how a computer catches up on the ones it missed.
+
 ### Deletes and tombstones
 
 Deleting must reach every computer, or a clip deleted on one comes back from another. So an explicit delete leaves a **tombstone**: the clip's `content_hash` (or the pinboard's `uuid`, or the item's key) with the HLC of the delete.
@@ -206,8 +214,8 @@ After the handshake, each side sends CBOR messages:
 
 | Message | Contents |
 | --- | --- |
-| `Hello` | Protocol version, app version, device ID, the highest `sync_seq` received from the other side, and the kinds this side takes |
-| `Changes` | A batch of up to 256 rows: clips with their formats, pinboards, pinboard items, tombstones, range tombstones, group members. Ends with the batch's highest `sync_seq` |
+| `Hello` | Protocol version, app version, device ID, the highest `sync_seq` received from the other side, the kinds this side takes, and how far it has the other's snippets, if it takes them |
+| `Changes` | A batch of up to 256 rows: clips with their formats, pinboards, pinboard items, snippets, tombstones, range tombstones, group members. Ends with the batch's highest `sync_seq` |
 | `Ack` | The `sync_seq` committed, so the sender can show progress |
 | `Ping` | After 30 seconds without another message. A session that's silent for 90 seconds is closed |
 
@@ -215,7 +223,7 @@ Once catch-up is done, each side sends new changes as they're made, in the same 
 
 ## Schema changes
 
-Migration [`0004_sync.sql`](../crates/kopi-core/migrations/0004_sync.sql), as built. In short:
+Migration [`0004_sync.sql`](../crates/kopi-core/migrations/0004_sync.sql), as built, and [`0005_snippets.sql`](../crates/kopi-core/migrations/0005_snippets.sql) for snippets. In short:
 
 - **`clips`** gains `used_hlc`, `pinned_hlc`, `sync_seq`, `copied_on` (the device ID of the computer it was last copied on, `NULL` for this one) and `local_only`.
 - **`pinboards`** gains `updated_hlc` and `sync_seq`, and **`pinboard_items`** gains `hlc` and `sync_seq`.
@@ -224,7 +232,7 @@ Migration [`0004_sync.sql`](../crates/kopi-core/migrations/0004_sync.sql), as bu
 - **`sync_devices`**: device ID, public key, name, OS, `removed`, `updated_hlc`, `sync_seq`, `received_seq` (the highest of its `sync_seq`s applied here) and `last_seen_at`. This computer has a row too, so the group can spread through any member. A device's key never changes; the latest change wins its name and whether it's removed.
 - An index on `sync_seq` for each.
 
-Existing rows get HLCs from their timestamps, and `sync_seq`s in the order they were last used. The counter is `sync.seq` in `settings`, with `sync.enabled`, `sync.kinds` and `sync.device_name`. The HLC isn't stored: at startup it continues from the highest HLC in the database.
+Existing rows get HLCs from their timestamps, and `sync_seq`s in the order they were last used. The counter is `sync.seq` in `settings`, with `sync.enabled`, `sync.kinds` and `sync.device_name`, and later `sync.snippets`. The HLC isn't stored: at startup it continues from the highest HLC in the database.
 
 Removing a pinboard item now writes a tombstone as well as deleting the row. Retention's deletes don't.
 

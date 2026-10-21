@@ -169,6 +169,11 @@ export const commands = {
 	setSyncDeviceName: (name: string) => typedError<string, string>(__TAURI_INVOKE("set_sync_device_name", { name })),
 	/**  The kinds to send and take. Files are never synced. */
 	setSyncKinds: (kinds: ClipKind[]) => typedError<null, string>(__TAURI_INVOKE("set_sync_kinds", { kinds })),
+	/**
+	 *  Whether to take snippets from the other computers. Sessions start again, since each one
+	 *  says at its start whether to send them, and ticking it fetches the ones missed meanwhile.
+	 */
+	setSyncSnippets: (on: boolean) => typedError<null, string>(__TAURI_INVOKE("set_sync_snippets", { on })),
 	/**  Removes a computer from the group, on every computer in it. It keeps what it already has. */
 	removeSyncDevice: (id: string) => typedError<null, string>(__TAURI_INVOKE("remove_sync_device", { id })),
 	/**  Opens pairing: a code to show, and this computer listed to others pairing nearby. */
@@ -496,6 +501,8 @@ export type SyncStatus = {
 	deviceName: string,
 	/**  The kinds sent and taken. Never files. */
 	kinds: ClipKind[],
+	/**  Whether snippets are taken from the other computers. */
+	snippets: boolean,
 	/**  The other computers in the group, by name. */
 	devices: SyncDevice[],
 	problem: SyncProblem | null,

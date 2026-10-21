@@ -4,6 +4,9 @@
 //! after that in batches, and from then on each new change as it happens. Received batches are
 //! applied in one transaction each and acknowledged. A session that's silent for
 //! [`IDLE_TIMEOUT`] ends.
+//!
+//! Snippets go only to a side whose hello asks for them with `snippets_from`. Before its
+//! other changes, it's sent the snippets it doesn't have from before it asked.
 
 use std::sync::Arc;
 use std::time::Duration;
@@ -50,13 +53,14 @@ where
 {
     let store = Arc::clone(&ctx.store);
     let peer = ctx.peer_id.clone();
-    let (received_seq, kinds) = blocking(move || {
-        let received_seq = store
+    let (received_seq, snippets_from, kinds) = blocking(move || {
+        let (received_seq, snippets_seq) = store
             .sync_devices()?
             .into_iter()
             .find(|d| d.device_id == peer)
-            .map_or(0, |d| d.received_seq);
-        Ok((received_seq, store.sync_kinds()?))
+            .map_or((0, 0), |d| (d.received_seq, d.snippets_seq));
+        let snippets_from = store.sync_snippets()?.then_some(snippets_seq);
+        Ok((received_seq, snippets_from, store.sync_kinds()?))
     })
     .await?;
     let hello = Hello {
@@ -65,7 +69,9 @@ where
         device_id: ctx.self_id.clone(),
         received_seq,
         kinds: kinds.iter().map(|k| k.as_str().to_owned()).collect(),
+        snippets_from,
     };
+    let asked_for_snippets = snippets_from.is_some();
     sender
         .send(&protocol::encode(&Message::Hello(hello))?)
         .await?;
@@ -96,6 +102,7 @@ where
         ctx.self_id.clone(),
         theirs.received_seq,
         their_kinds,
+        theirs.snippets_from,
         ctx.changes.clone(),
         out_tx.clone(),
     ));
@@ -116,7 +123,10 @@ where
                 let (peer, me) = (ctx.peer_id.clone(), ctx.self_id.clone());
                 let seq = changes.max_seq;
                 let rows = changes.len();
-                match blocking(move || Ok(store.apply_changes(&peer, &me, changes)?)).await {
+                let applying = blocking(move || {
+                    Ok(store.apply_changes(&peer, &me, changes, asked_for_snippets)?)
+                });
+                match applying.await {
                     Ok(applied) => {
                         if applied.rejected > 0 {
                             log(&format!(
@@ -152,19 +162,40 @@ where
     result
 }
 
-/// Sends everything after `cursor`, then waits for new changes and sends those.
+/// Sends everything after `cursor`, then waits for new changes and sends those. Snippets go
+/// only if `snippets_from` is set, starting with those between it and `cursor`.
 async fn send_changes(
     store: Arc<Store>,
     self_id: String,
     mut cursor: i64,
     kinds: kopi_core::privacy::KindSet,
+    snippets_from: Option<i64>,
     mut changes: watch::Receiver<u64>,
     out: mpsc::Sender<Message>,
 ) {
+    if let Some(mut from) = snippets_from {
+        while from < cursor {
+            let (store2, upto) = (Arc::clone(&store), cursor);
+            let batch = match blocking(move || Ok(store2.snippets_between(from, upto)?)).await {
+                Ok(batch) => batch,
+                Err(e) => {
+                    log(&format!("couldn't read snippets to send: {e}"));
+                    return;
+                }
+            };
+            from = batch.max_seq;
+            // Sent even when empty, so the other side knows it has them all.
+            if out.send(Message::Changes(batch)).await.is_err() {
+                return;
+            }
+        }
+    }
+    let snippets = snippets_from.is_some();
     loop {
         changes.mark_unchanged();
         let (store2, me) = (Arc::clone(&store), self_id.clone());
-        let batch = match blocking(move || Ok(store2.changes_since(cursor, kinds, &me)?)).await {
+        let reading = blocking(move || Ok(store2.changes_since(cursor, kinds, snippets, &me)?));
+        let batch = match reading.await {
             Ok(batch) => batch,
             Err(e) => {
                 log(&format!("couldn't read changes to send: {e}"));
@@ -224,7 +255,7 @@ pub(crate) fn short(device_id: &str) -> &str {
 #[cfg(test)]
 mod tests {
     use kopi_core::classifier::content_hash;
-    use kopi_core::storage::{NewClip, NewFormat, Platform};
+    use kopi_core::storage::{NewClip, NewFormat, Platform, SnippetEdit};
 
     use super::*;
     use crate::noise::{self, Role, SYNC_PARAMS, SYNC_PROLOGUE};
@@ -274,6 +305,10 @@ mod tests {
                 local_only: false,
             })
             .unwrap();
+    }
+
+    fn has_snippet(store: &Store, name: &str) -> bool {
+        store.snippets().unwrap().iter().any(|s| s.name == name)
     }
 
     fn has(store: &Store, text: &str) -> bool {
@@ -367,6 +402,45 @@ mod tests {
             has(&a.store, &format!("b 49 {filler}"))
         })
         .await;
+        let _ = stop_a.send(true);
+        let _ = stop_b.send(true);
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn snippets_go_only_to_a_computer_that_asks() {
+        let (a, b) = (side("a"), side("b"));
+        a.store
+            .pair_device("b", &b.key.public, "b computer", Platform::Windows)
+            .unwrap();
+        b.store
+            .pair_device("a", &a.key.public, "a computer", Platform::MacOs)
+            .unwrap();
+        // B's hello has no snippets_from, as an older Kopi's doesn't.
+        b.store.set_sync_snippets(false).unwrap();
+        let edit = |name| SnippetEdit {
+            name,
+            keyword: None,
+            body: "{date}",
+        };
+        a.store.create_snippet(edit("Before")).unwrap();
+        copy(&a.store, "a clip");
+        let (stop_a, stop_b) = connect(&a, &b).await;
+        eventually("a's clip on b", || has(&b.store, "a clip")).await;
+        copy(&a.store, "live");
+        eventually("a live clip on b", || has(&b.store, "live")).await;
+        assert!(b.store.snippets().unwrap().is_empty());
+        let _ = stop_a.send(true);
+        let _ = stop_b.send(true);
+
+        // Asked for in the next session: the ones from before arrive, then new ones.
+        b.store.set_sync_snippets(true).unwrap();
+        let (stop_a, stop_b) = connect(&a, &b).await;
+        eventually("the snippet from before", || {
+            has_snippet(&b.store, "Before")
+        })
+        .await;
+        a.store.create_snippet(edit("After")).unwrap();
+        eventually("a new snippet", || has_snippet(&b.store, "After")).await;
         let _ = stop_a.send(true);
         let _ = stop_b.send(true);
     }

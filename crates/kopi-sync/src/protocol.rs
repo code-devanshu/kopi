@@ -36,6 +36,10 @@ pub struct Hello {
     pub received_seq: i64,
     /// The kinds this side takes, such as `text` and `image`.
     pub kinds: Vec<String>,
+    /// How far this side has the other's snippets, if it takes them. Missing from an older
+    /// Kopi, which skips snippets, so none are sent to it. The other side first sends the
+    /// snippets between this and `received_seq`, which this side doesn't have yet.
+    pub snippets_from: Option<i64>,
 }
 
 /// What each side tells the other while pairing, once the code is confirmed.
@@ -111,5 +115,7 @@ mod tests {
         };
         assert_eq!(hello.protocol, 2);
         assert_eq!(hello.device_id, "d");
+        // An older Kopi's hello doesn't ask for snippets.
+        assert_eq!(hello.snippets_from, None);
     }
 }

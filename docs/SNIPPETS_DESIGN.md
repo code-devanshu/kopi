@@ -1,7 +1,7 @@
 # Snippets design
 
 > [!NOTE]
-> **Status: built on one computer,** for 0.1.0-alpha.9. Syncing snippets between computers comes next, in the second pull request of [Building it](#building-it). [ADR 0008](decisions/0008-snippets.md) records the decisions, and [What changed while building it](#what-changed-while-building-it) lists where the build differs from this design. To comment, open a [discussion](https://github.com/code-devanshu/kopi/discussions) or a pull request against this file.
+> **Status: built,** for 0.1.0-alpha.9, on one computer and in sync. [ADR 0008](decisions/0008-snippets.md) records the decisions, and [What changed while building it](#what-changed-while-building-it) lists where the build differs from this design. To comment, open a [discussion](https://github.com/code-devanshu/kopi/discussions) or a pull request against this file.
 
 A **snippet** is text the user writes once and pastes often: a reply, an address, a signature, a command. It can hold **placeholders** that are filled in when it's pasted, such as today's date, what's on the clipboard, a value typed just before pasting, or where the cursor should end up. Snippets live in their own tab in the panel, paste with the same keys as clips, and sync between paired computers like pinboards do.
 
@@ -218,6 +218,11 @@ The website's "Snippets" pinboard examples change to show the Snippets tab, and 
 - **`{clipboard}`** takes text, rich text (its plain text), links (the URL), code and colors. Images and files have no text.
 - **Before the arrow keys for `{cursor}`**, Kopi waits 60 ms after the paste, since some apps read the clipboard a moment after ⌘V.
 - **Esc in the editor goes back to the list** instead of hiding the panel, and so does ⌘↩.
+- **Unticking Snippets in What to sync stops this computer taking them.** Its own still go to the computers that take them, as with the kinds of clip.
+- **Ticking or unticking Snippets starts the sessions again**, since a session's `Hello` says whether to send them. Ticking it fetches what was missed once they reconnect, within about 15 seconds.
+- **Snippet deletes go only to computers that take snippets.** One that starts taking them gets the deletes it missed along with the snippets.
+- **The delete confirmation mentions other computers only while sync is on** with at least one paired computer.
+- **An open editor isn't updated** by an edit from another computer. The next change typed is the later edit, so it wins.
 
 ## Open questions
 

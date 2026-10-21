@@ -18,6 +18,7 @@ const ONBOARDED: &str = "onboarding.done";
 const AUTO_UPDATE: &str = "updates.automatic";
 const SYNC_ENABLED: &str = "sync.enabled";
 const SYNC_KINDS: &str = "sync.kinds";
+const SYNC_SNIPPETS: &str = "sync.snippets";
 const SYNC_DEVICE_NAME: &str = "sync.device_name";
 
 /// The kinds that can sync. File clips are paths, which mean nothing on another computer.
@@ -164,6 +165,18 @@ impl Store {
             .collect();
         self.set_settings(&[(SYNC_KINDS, Value::Array(names))])
     }
+
+    /// Whether to send snippets to and take them from other computers. On by default.
+    pub fn sync_snippets(&self) -> StorageResult<bool> {
+        Ok(self
+            .setting(SYNC_SNIPPETS)?
+            .and_then(|v| v.as_bool())
+            .unwrap_or(true))
+    }
+
+    pub fn set_sync_snippets(&self, on: bool) -> StorageResult<()> {
+        self.set_settings(&[(SYNC_SNIPPETS, Value::from(on))])
+    }
 }
 
 #[cfg(test)]
@@ -186,6 +199,7 @@ mod tests {
         assert!(store.auto_update().unwrap());
         assert!(!store.sync_enabled().unwrap());
         assert_eq!(store.sync_kinds().unwrap(), SYNCABLE_KINDS);
+        assert!(store.sync_snippets().unwrap());
     }
 
     #[test]
@@ -223,6 +237,8 @@ mod tests {
             store.sync_kinds().unwrap(),
             KindSet::NONE.with(ClipKind::Text)
         );
+        store.set_sync_snippets(false).unwrap();
+        assert!(!store.sync_snippets().unwrap());
     }
 
     #[test]
@@ -235,6 +251,7 @@ mod tests {
                 (THEME, Value::from("sepia")),
                 (ONBOARDED, Value::from("yes")),
                 (AUTO_UPDATE, Value::from("no")),
+                (SYNC_SNIPPETS, Value::from("off")),
             ])
             .unwrap();
         assert_eq!(store.shortcut().unwrap(), None);
@@ -242,6 +259,7 @@ mod tests {
         assert_eq!(store.theme().unwrap(), Theme::System);
         assert!(!store.onboarded().unwrap());
         assert!(store.auto_update().unwrap());
+        assert!(store.sync_snippets().unwrap());
 
         store
             .set_settings(&[(CAPTURE_KINDS, serde_json::json!(["link", "hologram", 7]))])

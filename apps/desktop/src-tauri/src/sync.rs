@@ -10,8 +10,8 @@ use tauri::{AppHandle, Manager};
 use tauri_specta::Event;
 
 use crate::events::{
-    ClipAdded, ClipUpdated, ClipsRemoved, PinboardsChanged, SyncChanged, SyncPaired,
-    SyncPairingFailed,
+    ClipAdded, ClipUpdated, ClipsRemoved, PinboardsChanged, SnippetsChanged, SyncChanged,
+    SyncPaired, SyncPairingFailed,
 };
 
 /// The running service, if sync is on.
@@ -108,6 +108,9 @@ fn on_event(app: &AppHandle, event: SyncEvent) {
             }
             if applied.pinboards_changed {
                 let _ = PinboardsChanged.emit(app);
+            }
+            if applied.snippets_changed {
+                let _ = SnippetsChanged.emit(app);
             }
             if applied.devices_changed {
                 let _ = SyncChanged.emit(app);

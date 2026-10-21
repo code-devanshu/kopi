@@ -79,6 +79,7 @@ pub fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::sync::set_sync_enabled,
             commands::sync::set_sync_device_name,
             commands::sync::set_sync_kinds,
+            commands::sync::set_sync_snippets,
             commands::sync::remove_sync_device,
             commands::sync::start_pairing,
             commands::sync::stop_pairing,
