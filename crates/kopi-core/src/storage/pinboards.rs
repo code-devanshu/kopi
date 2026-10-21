@@ -347,11 +347,17 @@ fn touch(conn: &rusqlite::Connection, id: i64, now: i64) -> rusqlite::Result<()>
 
 /// A trimmed name of 1 to [`MAX_PINBOARD_NAME_CHARS`] characters, without control characters.
 pub(crate) fn check_name(name: &str) -> StorageResult<String> {
+    check_label(name, "pinboard", MAX_PINBOARD_NAME_CHARS)
+}
+
+/// `name` trimmed and without control characters, if it has 1 to `max` characters. `what` is
+/// the thing it names, for the error.
+pub(crate) fn check_label(name: &str, what: &str, max: usize) -> StorageResult<String> {
     let name: String = name.trim().chars().filter(|c| !c.is_control()).collect();
     match name.chars().count() {
-        0 => Err(StorageError::Invalid("a pinboard needs a name".into())),
-        n if n > MAX_PINBOARD_NAME_CHARS => Err(StorageError::Invalid(format!(
-            "a pinboard name can be at most {MAX_PINBOARD_NAME_CHARS} characters"
+        0 => Err(StorageError::Invalid(format!("a {what} needs a name"))),
+        n if n > max => Err(StorageError::Invalid(format!(
+            "a {what} name can be at most {max} characters"
         ))),
         _ => Ok(name),
     }

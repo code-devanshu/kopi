@@ -7,6 +7,10 @@ pub trait KeySender: Send + Sync {
     /// Posts the shortcut. On macOS, keys posted without [`Permission::Accessibility`] are
     /// dropped and nothing reports it, so check [`Permissions::is_granted`] first.
     fn send_paste(&self) -> Result<(), KeyError>;
+
+    /// Posts the Left arrow `count` times, with no modifiers, to move the cursor back after a
+    /// paste. Needs the same permission as [`send_paste`](Self::send_paste).
+    fn send_left(&self, count: usize) -> Result<(), KeyError>;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Error)]

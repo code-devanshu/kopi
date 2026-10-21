@@ -6,6 +6,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- **Snippets.** Text you paste often, such as a reply, an address or a signature, written once in the new Snippets tab and pasted with Return like a clip.
+  - Placeholders fill in when it's pasted: `{date}`, `{date:YYYY-MM-DD}`, `{time}`, `{datetime}`, `{clipboard}` (the newest text in your history), `{input:Name}` (asks for a Name first) and `{cursor}` (where the cursor ends up). The editor's Insert menu adds them.
+  - Give a snippet a keyword, such as `sig`, and typing it in the search box puts that snippet first, in History too.
+  - ⌘N makes a new snippet and ⌘E edits the selected one. Changes save as you type.
+  - Save any text clip as a snippet from its menu, or by dragging it onto the Snippets tab.
+  - A pasted snippet isn't added to your history.
+
 ## [0.1.0-alpha.8] - 2026-10-20
 
 Testers on an earlier alpha get this release as an update.

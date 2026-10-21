@@ -43,9 +43,18 @@ export class Paster {
   }
 
   async paste(id: number, plain: boolean) {
+    await this.pasteWith(() => this.#deps.paste(id, plain));
+  }
+
+  async copy(id: number, plain: boolean) {
+    await this.copyWith(() => this.#deps.copy(id, plain));
+  }
+
+  /** Pastes with `paste`, such as a snippet's filled-in text, and shows what happened. */
+  async pasteWith(paste: () => Promise<PasteOutcome>) {
     await this.#run(async () => {
       // "pasted" means the panel is already hidden.
-      if ((await this.#deps.paste(id, plain)) === "copied") {
+      if ((await paste()) === "copied") {
         this.#closeAfter(COPIED_CLOSE_MS, {
           message: `Copied. Press ${keys("⌘V")} to paste.`,
           detail:
@@ -57,9 +66,10 @@ export class Paster {
     }, "Couldn't paste");
   }
 
-  async copy(id: number, plain: boolean) {
+  /** Copies with `copy`, then closes the panel. */
+  async copyWith(copy: () => Promise<unknown>) {
     await this.#run(async () => {
-      await this.#deps.copy(id, plain);
+      await copy();
       this.#closeAfter(COPY_CLOSE_MS, { message: "Copied.", tone: "info" });
     }, "Couldn't copy");
   }

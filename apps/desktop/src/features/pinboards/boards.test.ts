@@ -5,20 +5,21 @@ import { COLORS, nextColor, reorder, stepView, views } from "./boards";
 const board = (id: number): Pinboard => ({ id, name: `Board ${id}`, color: null, clipCount: 0 });
 const boards = [board(4), board(2), board(9)];
 
-test("views run from History through Pinned to each pinboard", () => {
-  expect(views(boards)).toEqual(["history", "pinned", 4, 2, 9]);
-  expect(views([])).toEqual(["history", "pinned"]);
+test("views run from History through Pinned and Snippets to each pinboard", () => {
+  expect(views(boards)).toEqual(["history", "pinned", "snippets", 4, 2, 9]);
+  expect(views([])).toEqual(["history", "pinned", "snippets"]);
 });
 
 test("stepping wraps around", () => {
   expect(stepView(boards, "history", 1)).toBe("pinned");
-  expect(stepView(boards, "pinned", 1)).toBe(4);
+  expect(stepView(boards, "pinned", 1)).toBe("snippets");
+  expect(stepView(boards, "snippets", 1)).toBe(4);
   expect(stepView(boards, 9, 1)).toBe("history");
   expect(stepView(boards, "history", -1)).toBe(9);
-  expect(stepView(boards, 2, -1)).toBe(4);
+  expect(stepView(boards, 4, -1)).toBe("snippets");
   // A pinboard that was deleted counts as History.
   expect(stepView(boards, 77, 1)).toBe("pinned");
-  expect(stepView([], "pinned", 1)).toBe("history");
+  expect(stepView([], "snippets", 1)).toBe("history");
 });
 
 test("a moved pinboard takes the target's place", () => {

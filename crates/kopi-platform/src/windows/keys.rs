@@ -4,8 +4,8 @@ use std::thread;
 use std::time::Duration;
 
 use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
-    GetAsyncKeyState, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_KEYUP, SendInput,
-    VIRTUAL_KEY, VK_CONTROL, VK_SHIFT,
+    GetAsyncKeyState, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBD_EVENT_FLAGS, KEYBDINPUT,
+    KEYEVENTF_EXTENDEDKEY, KEYEVENTF_KEYUP, SendInput, VIRTUAL_KEY, VK_CONTROL, VK_LEFT, VK_SHIFT,
 };
 
 use crate::keys::{KeyError, KeySender, Permission, Permissions};
@@ -37,29 +37,53 @@ impl KeySender for WinKeySender {
             key(VK_V, false),
             key(VK_CONTROL, false),
         ]);
-        // SAFETY: `inputs` holds `inputs.len()` INPUTs of the size passed.
-        let sent = unsafe {
-            SendInput(
-                inputs.len() as u32,
-                inputs.as_ptr(),
-                size_of::<INPUT>() as i32,
-            )
-        };
-        if sent as usize != inputs.len() {
-            return Err(KeyError::EventFailed);
+        send(&inputs)
+    }
+
+    fn send_left(&self, count: usize) -> Result<(), KeyError> {
+        // Shift or Ctrl still held, such as Ctrl from Ctrl+1, would select or move by words.
+        let mut inputs: Vec<INPUT> = [VK_SHIFT, VK_CONTROL]
+            .into_iter()
+            // SAFETY: takes a key code.
+            .filter(|&vk| unsafe { GetAsyncKeyState(i32::from(vk)) } < 0)
+            .map(|vk| key(vk, false))
+            .collect();
+        for _ in 0..count {
+            // The arrow keys are extended keys. Without the flag they're the keypad's.
+            inputs.push(key_with(VK_LEFT, KEYEVENTF_EXTENDEDKEY));
+            inputs.push(key_with(VK_LEFT, KEYEVENTF_EXTENDEDKEY | KEYEVENTF_KEYUP));
         }
-        Ok(())
+        send(&inputs)
     }
 }
 
+fn send(inputs: &[INPUT]) -> Result<(), KeyError> {
+    // SAFETY: `inputs` holds `inputs.len()` INPUTs of the size passed.
+    let sent = unsafe {
+        SendInput(
+            inputs.len() as u32,
+            inputs.as_ptr(),
+            size_of::<INPUT>() as i32,
+        )
+    };
+    if sent as usize != inputs.len() {
+        return Err(KeyError::EventFailed);
+    }
+    Ok(())
+}
+
 fn key(vk: VIRTUAL_KEY, down: bool) -> INPUT {
+    key_with(vk, if down { 0 } else { KEYEVENTF_KEYUP })
+}
+
+fn key_with(vk: VIRTUAL_KEY, flags: KEYBD_EVENT_FLAGS) -> INPUT {
     INPUT {
         r#type: INPUT_KEYBOARD,
         Anonymous: INPUT_0 {
             ki: KEYBDINPUT {
                 wVk: vk,
                 wScan: 0,
-                dwFlags: if down { 0 } else { KEYEVENTF_KEYUP },
+                dwFlags: flags,
                 time: 0,
                 dwExtraInfo: 0,
             },

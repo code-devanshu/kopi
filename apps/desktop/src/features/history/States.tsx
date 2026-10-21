@@ -1,4 +1,4 @@
-import { ClipboardList, LayoutGrid, Pin, SearchX, TriangleAlert } from "lucide-react";
+import { ClipboardList, LayoutGrid, Pin, SearchX, TextQuote, TriangleAlert } from "lucide-react";
 import { KIND_LABELS } from "../../lib/format";
 import type { ClipKind } from "../../lib/ipc";
 import { keys } from "../../lib/platform";
@@ -21,17 +21,31 @@ export function LoadingRows() {
 }
 
 type EmptyProps = {
-  /** "pinned", a pinboard's name, or null for the whole history. */
-  place: "pinned" | { board: string } | null;
+  /** "pinned", "snippets", a pinboard's name, or null for the whole history. */
+  place: "pinned" | "snippets" | { board: string } | null;
   text: string;
   kind: ClipKind | null;
   appName: string | null;
   onClearFilters: () => void;
+  onNewSnippet: () => void;
 };
 
 /** No results: nothing copied yet, or nothing that matches. */
-export function Empty({ place, text, kind, appName, onClearFilters }: EmptyProps) {
-  const filtered = kind !== null || appName !== null;
+export function Empty({ place, text, kind, appName, onClearFilters, onNewSnippet }: EmptyProps) {
+  // The filters are hidden in Snippets, and don't apply there.
+  const filtered = place !== "snippets" && (kind !== null || appName !== null);
+  if (!text.trim() && place === "snippets") {
+    return (
+      <div className="state" role="status">
+        <TextQuote size={28} strokeWidth={1.5} aria-hidden="true" />
+        <h2>No snippets yet</h2>
+        <p>Text you paste often, with the date, the clipboard or a blank to fill in.</p>
+        <button type="button" className="button" onMouseDown={(e) => e.preventDefault()} onClick={onNewSnippet}>
+          New snippet <kbd>{keys("⌘N")}</kbd>
+        </button>
+      </div>
+    );
+  }
   if (!text.trim() && !filtered && place === "pinned") {
     return (
       <div className="state" role="status">
@@ -65,7 +79,7 @@ export function Empty({ place, text, kind, appName, onClearFilters }: EmptyProps
   return (
     <div className="state" role="status">
       <SearchX size={28} strokeWidth={1.5} aria-hidden="true" />
-      <h2>{text.trim() ? <>No matches for “{text.trim()}”</> : "No clips here"}</h2>
+      <h2>{text.trim() ? <>No matches for “{text.trim()}”</> : place === "snippets" ? "No snippets here" : "No clips here"}</h2>
       {filtered ? (
         <p>
           Only showing {scope} clips.{" "}

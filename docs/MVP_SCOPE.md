@@ -38,7 +38,7 @@ The macOS alpha is the first build we hand to testers. Its job is to prove that 
 | --- | --- |
 | **Sync** (Mac ↔ Windows or Mac ↔ Mac) | Added after the first alpha, in 0.1.0-alpha.8: end-to-end encrypted, over the local network ([SYNC_DESIGN.md](SYNC_DESIGN.md), [ADR 0007](decisions/0007-lan-sync.md)). |
 | **Windows** | Next phase ("Windows alpha"). The platform traits are designed for it now. |
-| **Snippets with variables** (templates, `{date}`, cursor placement) | Designed for 0.1.0-alpha.9 ([SNIPPETS_DESIGN.md](SNIPPETS_DESIGN.md), [ADR 0008](decisions/0008-snippets.md)). Pinboards cover saved text until then. |
+| **Snippets with variables** (templates, `{date}`, cursor placement) | Added after the first alpha, in 0.1.0-alpha.9 ([SNIPPETS_DESIGN.md](SNIPPETS_DESIGN.md), [ADR 0008](decisions/0008-snippets.md)). |
 | **OCR** (searching text inside images) | Later. Possible with Vision on macOS. |
 | **Mobile** (iOS, Android) | Not planned |
 | Linux | Not planned for 1.0 |

@@ -11,6 +11,7 @@
 //                   when Accessibility isn't granted, which is the case that shows a message.
 //   ?paste=error    makes pasting and copying fail
 //   ?noboards       starts with no pinboards
+//   ?nosnippets     starts with no snippets
 //   ?granted        Settings shows every permission granted. Without it, neither is.
 //   ?granted=some   Accessibility is granted, and Paste from Other Apps isn't
 //   ?shortcut=taken makes recording a shortcut fail, as when another app holds it
@@ -35,6 +36,8 @@ import type {
   SearchPage,
   SearchQuery,
   Settings,
+  Snippet,
+  SnippetFields,
   SourceApp,
   SyncStatus,
   Theme,
@@ -111,6 +114,60 @@ if (!params.has("empty")) {
   for (let i = 0; i < 400; i++) {
     const [, app] = APPS[i % APPS.length];
     clips.push(clip("text", `Note ${i + 1}: ${["meeting", "invoice", "address", "draft", "reply"][i % 5]} ${i * 37}`, null, app, (i + 20) * 5 * 3_600_000));
+  }
+}
+
+// Snippets, in the user's order.
+let nextSnippetId = 1;
+let snippets: Snippet[] = [];
+
+function addSnippet(fields: SnippetFields): Snippet {
+  const name = fields.name.trim();
+  if (!name) throw "a snippet needs a name";
+  if (fields.keyword && /\s/.test(fields.keyword)) throw "a keyword can't have spaces";
+  const at = Date.now();
+  const s: Snippet = {
+    id: nextSnippetId++,
+    name,
+    keyword: fields.keyword?.trim() || null,
+    body: fields.body,
+    createdAt: at,
+    updatedAt: at,
+    lastUsedAt: null,
+    useCount: 0,
+  };
+  snippets.unshift(s);
+  return s;
+}
+
+function snippet(id: number): Snippet {
+  const s = snippets.find((s) => s.id === id);
+  if (!s) throw "That snippet was deleted.";
+  return s;
+}
+
+function findSnippets(text: string): Snippet[] {
+  const exact = (s: Snippet) => !!text.trim() && s.keyword?.toLowerCase() === text.trim().toLowerCase();
+  const words = text.toLowerCase().split(/\s+/).filter(Boolean);
+  const has = (s: Snippet) => words.every((w) => `${s.name}\n${s.keyword ?? ""}\n${s.body}`.toLowerCase().includes(w));
+  return [...snippets.filter(exact), ...snippets.filter((s) => !exact(s) && has(s))];
+}
+
+function markSnippetUsed(id: number, text: string) {
+  const s = snippet(id);
+  s.useCount++;
+  s.lastUsedAt = Date.now();
+  console.info(`kopi: snippet ${id}:`, JSON.stringify(text));
+}
+
+if (!params.has("nosnippets")) {
+  for (const fields of [
+    { name: "Thanks for your order", keyword: "order", body: "Hi {input:Name},\n\nThanks for your order on {date}. Your tracking link is {clipboard}\n\nDevanshu" },
+    { name: "Signature", keyword: "sig", body: "Thanks,\nDevanshu Verma\nkopi.devanshuverma.in" },
+    { name: "Bold tag", keyword: null, body: "<b>{cursor}</b>" },
+    { name: "Changelog heading", keyword: "cl", body: "## {date:YYYY-MM-DD}\n\n- {cursor}" },
+  ].reverse()) {
+    addSnippet(fields);
   }
 }
 
@@ -339,6 +396,52 @@ mockIPC(
         return boards.filter((b) => items.get(b.id)?.includes(a.id as number)).map((b) => b.id);
       case "source_apps":
         return sourceApps();
+      case "snippet_search":
+        return findSnippets(a.text as string);
+      case "snippet_keyword":
+        return a.text && (a.text as string).trim() ? findSnippets(a.text as string).filter((s) => s.keyword?.toLowerCase() === (a.text as string).trim().toLowerCase()) : [];
+      case "snippet_get":
+        return snippets.find((s) => s.id === a.id) ?? null;
+      case "snippet_create": {
+        const s = addSnippet(a.fields as SnippetFields);
+        void emit("snippets:changed");
+        return s;
+      }
+      case "snippet_update": {
+        const s = snippet(a.id as number);
+        const fields = a.fields as SnippetFields;
+        if (!fields.name.trim()) throw "a snippet needs a name";
+        Object.assign(s, { name: fields.name.trim(), keyword: fields.keyword?.trim() || null, body: fields.body, updatedAt: Date.now() });
+        void emit("snippets:changed");
+        return null;
+      }
+      case "snippet_reorder": {
+        const ids = a.ids as number[];
+        snippets.sort((x, y) => {
+          const i = ids.indexOf(x.id);
+          const j = ids.indexOf(y.id);
+          return (i < 0 ? Infinity : i) - (j < 0 ? Infinity : j);
+        });
+        void emit("snippets:changed");
+        return null;
+      }
+      case "snippet_delete":
+        snippets = snippets.filter((s) => s.id !== a.id);
+        void emit("snippets:changed");
+        return null;
+      case "paste_snippet": {
+        if (params.get("paste") === "error") throw "the pasteboard is busy";
+        markSnippetUsed(a.id as number, a.text as string);
+        const pasted = params.get("paste") === "pasted";
+        if (pasted) console.info(`kopi: hide_panel, then ${a.cursorBack} × ←`);
+        return pasted ? "pasted" : "copied";
+      }
+      case "copy_snippet":
+        if (params.get("paste") === "error") throw "the pasteboard is busy";
+        markSnippetUsed(a.id as number, a.text as string);
+        return null;
+      case "clipboard_text":
+        return [...clips].filter((c) => c.text && ["text", "rich_text", "link", "code", "color"].includes(c.kind)).sort((x, y) => y.lastUsedAt - x.lastUsedAt)[0]?.text ?? null;
       case "paste_clip": {
         markUsed(a.id as number);
         const pasted = params.get("paste") === "pasted";

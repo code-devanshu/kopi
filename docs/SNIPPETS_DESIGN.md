@@ -1,7 +1,7 @@
 # Snippets design
 
 > [!NOTE]
-> **Status: accepted.** Nothing is built yet; it ships in 0.1.0-alpha.9. [ADR 0008](decisions/0008-snippets.md) records the decisions. To comment, open a [discussion](https://github.com/code-devanshu/kopi/discussions) or a pull request against this file.
+> **Status: built on one computer,** for 0.1.0-alpha.9. Syncing snippets between computers comes next, in the second pull request of [Building it](#building-it). [ADR 0008](decisions/0008-snippets.md) records the decisions, and [What changed while building it](#what-changed-while-building-it) lists where the build differs from this design. To comment, open a [discussion](https://github.com/code-devanshu/kopi/discussions) or a pull request against this file.
 
 A **snippet** is text the user writes once and pastes often: a reply, an address, a signature, a command. It can hold **placeholders** that are filled in when it's pasted, such as today's date, what's on the clipboard, a value typed just before pasting, or where the cursor should end up. Snippets live in their own tab in the panel, paste with the same keys as clips, and sync between paired computers like pinboards do.
 
@@ -60,7 +60,7 @@ Keys in the Snippets tab:
 
 ⌥Return pastes the same as Return, because snippets are already plain text. On Windows, Ctrl takes the place of ⌘ and Alt of ⌥, as elsewhere in the panel.
 
-The preview pane shows the snippet's text, with each placeholder drawn as a small chip, and under it what it would paste right now, such as "Tuesday, 21 October 2026".
+The preview pane shows the snippet's text, with each placeholder drawn as a small chip, and under it what it would paste right now, such as "Wednesday, 21 October 2026".
 
 ### Making and editing a snippet
 
@@ -96,7 +96,7 @@ Placeholders are names in curly braces. The set is small on purpose.
 
 | Placeholder | Pastes | Example |
 | --- | --- | --- |
-| `{date}` | Today's date in the system's long format | Tuesday, 21 October 2026 |
+| `{date}` | Today's date in the system's long format | Wednesday, 21 October 2026 |
 | `{date:FORMAT}` | Today's date in a format of your own | `{date:YYYY-MM-DD}` → 2026-10-21 |
 | `{time}` | The time now, in the system's short format | 18:45 |
 | `{datetime}` | Both | 21 Oct 2026, 18:45 |
@@ -109,7 +109,7 @@ Rules:
 - **Unknown names are left as typed.** `{name}` and `{"a": 1}` paste as they are, so most code and JSON need no escaping.
 - **Double braces are never placeholders.** `{{date}}` pastes `{{date}}`, so Handlebars, Jinja, Vue and Mustache templates paste as typed. There's no way to paste a single-brace `{date}` itself in this version. That seems rare enough to wait for someone to ask.
 - **Names are case-insensitive** and spaces inside the braces are ignored: `{ Date }` works.
-- **Format tokens** for `{date:…}`: `YYYY`, `YY`, `MMMM` (October), `MMM` (Oct), `MM`, `M`, `DD`, `D`, `dddd` (Tuesday), `ddd` (Tue), `HH`, `H`, `hh`, `h`, `mm`, `ss`, `A` (AM/PM). Other characters are kept. Text in square brackets is kept as-is, so `[Week of] D MMM` works. Month and day names follow the system language.
+- **Format tokens** for `{date:…}`: `YYYY`, `YY`, `MMMM` (October), `MMM` (Oct), `MM`, `M`, `DD`, `D`, `dddd` (Wednesday), `ddd` (Wed), `HH`, `H`, `hh`, `h`, `mm`, `ss`, `A` (AM/PM). Other characters are kept. Text in square brackets is kept as-is, so `[Week of] D MMM` works. Month and day names follow the system language.
 - **`{input:Label}`**: the form has one field per distinct label, in the order they first appear, so `{input:Name}` used twice asks once. Return in the last field pastes, Esc goes back without pasting. A label is 1–32 characters. `{input}` alone asks for "Text".
 - **`{cursor}`**: only the first one counts. Any others are removed.
 - **`{clipboard}`** is the newest clip in Kopi's history that has text, **not** whatever is on the clipboard right now. That way it never pastes something Kopi chose not to keep: a password from a password manager, a concealed or transient copy, or a copy from an excluded app. If capture is paused, it's the newest clip from before the pause. With no text in the history, it pastes nothing.
@@ -204,6 +204,20 @@ Two pull requests, both in 0.1.0-alpha.9:
 2. **Snippets sync**: the merge, `snippets_from`, the What to sync option, and the tests against alpha.8.
 
 The website's "Snippets" pinboard examples change to show the Snippets tab, and the README and MVP_SCOPE list snippets as built.
+
+## What changed while building it
+
+- **A brace pair across lines isn't a placeholder**, so `{\n  cursor\n}` in code stays as typed. Spaces inside the braces are still ignored, so a one-line `{ date }` does fill in.
+- **Only `{date}` and `{input}` take a value** after a colon. `{time:HH}` and the like paste as typed.
+- **Keyword rows in History** show only while no kind or app filter is set, since a snippet has neither.
+- **Moving snippets**, by dragging or with Move up and Move down, works while the whole list shows. With a search, the rows aren't next to each other in the real order.
+- **⌘N works in every tab.** A snippet made outside the Snippets tab opens that tab when the editor closes, with the new snippet selected.
+- **Dropping a text clip on the Snippets tab** does Save as snippet, as dropping one on a pinboard adds it there.
+- **Duplicate** puts the copy at the top, named "*name* copy", without the keyword, so the two don't share it.
+- **The `{input}` form closes when the panel hides**, since the app the snippet would paste into may have changed.
+- **`{clipboard}`** takes text, rich text (its plain text), links (the URL), code and colors. Images and files have no text.
+- **Before the arrow keys for `{cursor}`**, Kopi waits 60 ms after the paste, since some apps read the clipboard a moment after ⌘V.
+- **Esc in the editor goes back to the list** instead of hiding the panel, and so does ⌘↩.
 
 ## Open questions
 

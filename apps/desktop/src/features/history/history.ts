@@ -1,6 +1,6 @@
 // What the list shows: the search box, the filters, the results and the selected row. It lives
 // outside React so it can be tested without a DOM. Components read it with useHistory().
-import type { ClipKind, SearchHit, SearchPage, SearchQuery } from "../../lib/ipc";
+import type { ClipKind, SearchHit, SearchPage, SearchQuery, Snippet } from "../../lib/ipc";
 
 /** Results asked for at a time. */
 export const PAGE = 50;
@@ -9,31 +9,47 @@ export const MAX_PAGE = 200;
 /** How long to wait after a clip event before searching again, so a burst runs once. */
 export const REFRESH_DELAY_MS = 50;
 
-/** Which clips the list shows: the whole history, the pinned clips, or a pinboard by id. */
-export type View = "history" | "pinned" | number;
+/** What the list shows: the whole history, the pinned clips, the snippets, or a pinboard by
+ * id. */
+export type View = "history" | "pinned" | "snippets" | number;
 
 export type HistoryState = {
   view: View;
   text: string;
   kind: ClipKind | null;
   appId: string | null;
+  /** Rows above the clips: every matching snippet in the Snippets view, and in History the
+   * snippets whose keyword is exactly the search. */
+  snippets: Snippet[];
   hits: SearchHit[];
   hasMore: boolean;
   /** False until the first results arrive. */
   loaded: boolean;
   /** Why the last search failed, until one succeeds. */
   error: string | null;
-  /** The selected row, or -1 when there are no results. */
+  /** The selected row, counting the snippets first, or -1 when there are no results. */
   selected: number;
 };
 
 export type Search = (query: SearchQuery) => Promise<SearchPage>;
+
+/** Searching snippets: every match, or only an exact keyword. */
+export type SnippetSearch = {
+  all: (text: string) => Promise<Snippet[]>;
+  keyword: (text: string) => Promise<Snippet[]>;
+};
+
+const NO_SNIPPETS: SnippetSearch = {
+  all: () => Promise.resolve([]),
+  keyword: () => Promise.resolve([]),
+};
 
 const INITIAL: HistoryState = {
   view: "history",
   text: "",
   kind: null,
   appId: null,
+  snippets: [],
   hits: [],
   hasMore: false,
   loaded: false,
@@ -45,13 +61,15 @@ export class History {
   #state = INITIAL;
   #listeners = new Set<() => void>();
   #search: Search;
+  #snippets: SnippetSearch;
   /** Bumped by every search, so a slower, older answer is dropped. */
   #seq = 0;
   #loadingMore = false;
   #refreshTimer: ReturnType<typeof setTimeout> | undefined;
 
-  constructor(search: Search) {
+  constructor(search: Search, snippets: SnippetSearch = NO_SNIPPETS) {
     this.#search = search;
+    this.#snippets = snippets;
   }
 
   getSnapshot = (): HistoryState => this.#state;
@@ -62,7 +80,11 @@ export class History {
   };
 
   get selectedHit(): SearchHit | undefined {
-    return this.#state.hits[this.#state.selected];
+    return rowAt(this.#state, this.#state.selected)?.hit;
+  }
+
+  get selectedSnippet(): Snippet | undefined {
+    return rowAt(this.#state, this.#state.selected)?.snippet;
   }
 
   setView(view: View) {
@@ -131,7 +153,7 @@ export class History {
   }
 
   select(index: number) {
-    const last = this.#state.hits.length - 1;
+    const last = rowCount(this.#state) - 1;
     if (last < 0) return;
     this.#set({ selected: Math.max(0, Math.min(last, index)) });
   }
@@ -145,26 +167,39 @@ export class History {
     const before = this.#state;
     const limit = keep ? Math.min(Math.max(before.hits.length, PAGE), MAX_PAGE) : PAGE;
     try {
-      const page = await this.#search({ ...this.#query(), offset: 0, limit });
+      const [page, snippets] = await Promise.all([
+        before.view === "snippets"
+          ? Promise.resolve<SearchPage>({ hits: [], hasMore: false })
+          : this.#search({ ...this.#query(), offset: 0, limit }),
+        this.#findSnippets(before),
+      ]);
       if (seq !== this.#seq) return;
       const now = this.#state;
+      const next = { snippets, hits: page.hits };
       let selected = 0;
       if (keep) {
-        // The same clip if it's still there, otherwise the row in its place.
-        const id = now.hits[now.selected]?.id;
-        const found = page.hits.findIndex((h) => h.id === id);
-        selected = found >= 0 ? found : Math.min(now.selected, page.hits.length - 1);
+        // The same row if it's still there, otherwise the row in its place.
+        const was = rowAt(now, now.selected);
+        const found = was ? indexOf(next, was) : -1;
+        selected = found >= 0 ? found : Math.min(now.selected, rowCount(next) - 1);
       }
       this.#set({
-        hits: page.hits,
+        ...next,
         hasMore: page.hasMore,
         loaded: true,
         error: null,
-        selected: page.hits.length ? Math.max(selected, 0) : -1,
+        selected: rowCount(next) ? Math.max(selected, 0) : -1,
       });
     } catch (e) {
       if (seq === this.#seq) this.#set({ loaded: true, error: String(e) });
     }
+  }
+
+  /** The snippet rows for `state`. A failed keyword lookup only leaves them out of History. */
+  #findSnippets({ view, text, kind, appId }: HistoryState): Promise<Snippet[]> {
+    if (view === "snippets") return this.#snippets.all(text);
+    if (view !== "history" || !text.trim() || kind !== null || appId !== null) return Promise.resolve([]);
+    return this.#snippets.keyword(text).catch(() => []);
   }
 
   #query(): SearchQuery {
@@ -182,4 +217,32 @@ export class History {
     this.#state = { ...this.#state, ...patch };
     for (const listener of this.#listeners) listener();
   }
+}
+
+/** A row of the list: a snippet or a clip. */
+export type Row = { snippet: Snippet; hit?: undefined } | { hit: SearchHit; snippet?: undefined };
+
+type Rows = Pick<HistoryState, "snippets" | "hits">;
+
+export function rowCount(rows: Rows): number {
+  return rows.snippets.length + rows.hits.length;
+}
+
+/** The row at `index`, snippets first. */
+export function rowAt(rows: Rows, index: number): Row | undefined {
+  if (index < 0) return undefined;
+  if (index < rows.snippets.length) return { snippet: rows.snippets[index] };
+  const hit = rows.hits[index - rows.snippets.length];
+  return hit && { hit };
+}
+
+/** The element id of a row, for aria-activedescendant. */
+export function rowId(row: Row): string {
+  return row.snippet ? `snippet-${row.snippet.id}` : `clip-${row.hit.id}`;
+}
+
+function indexOf(rows: Rows, row: Row): number {
+  if (row.snippet) return rows.snippets.findIndex((s) => s.id === row.snippet.id);
+  const at = rows.hits.findIndex((h) => h.id === row.hit.id);
+  return at < 0 ? -1 : rows.snippets.length + at;
 }

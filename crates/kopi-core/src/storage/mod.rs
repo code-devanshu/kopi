@@ -17,6 +17,7 @@ mod model;
 mod pinboards;
 mod retention;
 mod settings;
+mod snippets;
 pub mod sync;
 mod thumbs;
 
@@ -31,10 +32,14 @@ use rusqlite::{Connection, OpenFlags, OptionalExtension, TransactionBehavior, pa
 pub use blobs::BlobStore;
 pub use migrate::SCHEMA_VERSION;
 pub use model::{
-    Clip, ClipFormat, ClipKind, ExcludedApp, NewClip, NewFormat, Pinboard, Platform, Upserted,
+    Clip, ClipFormat, ClipKind, ExcludedApp, NewClip, NewFormat, Pinboard, Platform, Snippet,
+    Upserted,
 };
 pub use pinboards::{KEPT, MAX_PINBOARD_NAME_CHARS};
 pub use retention::{DEFAULT_MAX_TOTAL_BYTES, Limits, TOMBSTONE_DAYS};
+pub use snippets::{
+    MAX_SNIPPET_BODY_BYTES, MAX_SNIPPET_KEYWORD_CHARS, MAX_SNIPPET_NAME_CHARS, SnippetEdit,
+};
 pub use thumbs::{THUMBNAIL_SIZE, ThumbnailDone, ThumbnailListener};
 
 use thumbs::{Source, SourceFormat, Thumbnailer};
@@ -702,6 +707,7 @@ impl Tombstone {
     pub(crate) const CLIP: &'static str = "clip";
     pub(crate) const PINBOARD: &'static str = "pinboard";
     pub(crate) const PINBOARD_ITEM: &'static str = "pinboard_item";
+    pub(crate) const SNIPPET: &'static str = "snippet";
 
     /// The key of a pinboard item's tombstone.
     pub(crate) fn item_key(pinboard_uuid: &str, content_hash: &str) -> String {

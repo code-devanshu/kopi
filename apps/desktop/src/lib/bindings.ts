@@ -116,6 +116,48 @@ export const commands = {
 	pinboardRemoveClips: (id: PinboardId, clipIds: ClipId[]) => typedError<null, string>(__TAURI_INVOKE("pinboard_remove_clips", { id, clipIds })),
 	/**  The ids of the pinboards a clip is on, for its menu. */
 	clipPinboards: (id: ClipId) => typedError<PinboardId[], string>(__TAURI_INVOKE("clip_pinboards", { id })),
+	/**
+	 *  The snippets for the search box, an exact keyword first. Empty text lists them all, in the
+	 *  user's order.
+	 */
+	snippetSearch: (text: string) => typedError<Snippet[], string>(__TAURI_INVOKE("snippet_search", { text })),
+	/**  The snippets whose keyword is exactly `text`, which the History tab shows first. */
+	snippetKeyword: (text: string) => typedError<Snippet[], string>(__TAURI_INVOKE("snippet_keyword", { text })),
+	/**  One snippet. None if it was deleted. */
+	snippetGet: (id: SnippetId) => typedError<{
+	id: number,
+	name: string,
+	keyword: string | null,
+	/**  Placeholders and all. The panel fills them in when it pastes. */
+	body: string,
+	/**  Unix milliseconds. */
+	createdAt: number,
+	updatedAt: number,
+	/**  When it was last pasted or copied on this computer. */
+	lastUsedAt: number | null,
+	/**  How many times it was pasted or copied on this computer. */
+	useCount: number,
+} | null, string>(__TAURI_INVOKE("snippet_get", { id })),
+	/**  Adds a snippet at the top of the list. */
+	snippetCreate: (fields: SnippetFields) => typedError<Snippet, string>(__TAURI_INVOKE("snippet_create", { fields })),
+	/**  Saves the editor's fields. */
+	snippetUpdate: (id: SnippetId, fields: SnippetFields) => typedError<null, string>(__TAURI_INVOKE("snippet_update", { id, fields })),
+	/**  Puts the snippets in this order. Any left out keep their order after them. */
+	snippetReorder: (ids: SnippetId[]) => typedError<null, string>(__TAURI_INVOKE("snippet_reorder", { ids })),
+	/**  Deletes a snippet. */
+	snippetDelete: (id: SnippetId) => typedError<null, string>(__TAURI_INVOKE("snippet_delete", { id })),
+	/**
+	 *  Pastes a snippet's filled-in `text` into the app in front as plain text, then moves the
+	 *  cursor `cursor_back` characters left, for `{cursor}`. Without Accessibility it only copies.
+	 */
+	pasteSnippet: (id: SnippetId, text: string, cursorBack: number) => typedError<PasteOutcome, string>(__TAURI_INVOKE("paste_snippet", { id, text, cursorBack })),
+	/**  Puts a snippet's filled-in `text` on the clipboard without pasting it. */
+	copySnippet: (id: SnippetId, text: string) => typedError<null, string>(__TAURI_INVOKE("copy_snippet", { id, text })),
+	/**
+	 *  The newest text in the history, in full, for `{clipboard}`. Never the live clipboard, so
+	 *  it can't be something Kopi chose not to keep.
+	 */
+	clipboardText: () => typedError<string | null, string>(__TAURI_INVOKE("clipboard_text")),
 	/**  Everything Settings → Sync shows. */
 	syncStatus: () => typedError<SyncStatus, string>(__TAURI_INVOKE("sync_status")),
 	/**
@@ -150,6 +192,7 @@ export const events = {
 	panelHidden: makeEvent<PanelHidden>("panel:hidden"),
 	panelShown: makeEvent<PanelShown>("panel:shown"),
 	pinboardsChanged: makeEvent<PinboardsChanged>("pinboards:changed"),
+	snippetsChanged: makeEvent<SnippetsChanged>("snippets:changed"),
 	syncChanged: makeEvent<SyncChanged>("sync:changed"),
 	syncPaired: makeEvent<SyncPaired>("sync:paired"),
 	syncPairingFailed: makeEvent<SyncPairingFailed>("sync:pairing-failed"),
@@ -363,6 +406,36 @@ export type Settings = {
 	/**  Whether Kopi checks for updates by itself and installs them. */
 	autoUpdate: boolean,
 };
+
+/**  A snippet, with its text as typed. */
+export type Snippet = {
+	id: number,
+	name: string,
+	keyword: string | null,
+	/**  Placeholders and all. The panel fills them in when it pastes. */
+	body: string,
+	/**  Unix milliseconds. */
+	createdAt: number,
+	updatedAt: number,
+	/**  When it was last pasted or copied on this computer. */
+	lastUsedAt: number | null,
+	/**  How many times it was pasted or copied on this computer. */
+	useCount: number,
+};
+
+/**  What the editor sends. */
+export type SnippetFields = {
+	name: string,
+	/**  None or empty for no keyword. */
+	keyword: string | null,
+	body: string,
+};
+
+/**  A snippet's id, as a command argument. */
+export type SnippetId = number;
+
+/**  Snippets were added, changed, reordered or deleted. The panel loads them again. */
+export type SnippetsChanged = null;
 
 /**  An app that clips came from. */
 export type SourceApp = {

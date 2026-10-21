@@ -74,7 +74,8 @@ Kopi lives in the menu bar on a Mac and in the notification area on Windows. Pre
 - **History** of text, rich text, links, images, files, colors and code, with the app each copy came from.
 - **Search** as you type, with filters by kind and app, and a preview of the selected clip.
 - **Paste** into the app you're in with Return, as plain text with ⌥Return, or one of the first nine with ⌘1–9.
-- **Pins and pinboards** for the snippets you reuse.
+- **Pins and pinboards** for the clips you reuse.
+- **Snippets** you write once and paste with a keystroke, with the date, your newest clip or a blank to fill in.
 - **Keyboard-first:** open, search, preview and paste without touching the mouse.
 - **Private by default:** history stays on your computer, works offline and needs no account. Copies from password managers and content marked as concealed are skipped, and you can exclude any app.
 - **History limits** by count, age and size. Pinned clips are kept.

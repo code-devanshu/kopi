@@ -1,24 +1,28 @@
-// Dragging clips onto pinboards, and pinboards along the switcher. It follows the pointer
-// instead of using HTML drag and drop, which the Tauri webview takes over for file drops.
+// Dragging clips onto pinboards, pinboards along the switcher, and snippets up and down their
+// list. It follows the pointer instead of using HTML drag and drop, which the Tauri webview
+// takes over for file drops.
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import type { View } from "../history/history";
 
 /** What's being dragged. `label` follows the pointer. */
-export type DragItem = { type: "clip"; id: number; label: string } | { type: "board"; id: number; label: string };
+export type DragItem = { type: "clip" | "board" | "snippet"; id: number; label: string };
+
+/** Where something can be dropped: a tab, or a snippet's row. */
+export type DropTarget = View | { snippet: number };
 
 export type Drag = {
   item: DragItem;
   x: number;
   y: number;
-  /** The view under the pointer, from the nearest `data-drop` element. */
-  over: View | null;
+  /** What's under the pointer, from the nearest `data-drop` element. */
+  over: DropTarget | null;
 };
 
 /** How far the pointer moves before a press becomes a drag, so clicks still work. */
 const THRESHOLD = 5;
 
 /** The drag in progress, and `start` for a source's onPointerDown. */
-export function useDrag(onDrop: (item: DragItem, target: View) => void) {
+export function useDrag(onDrop: (item: DragItem, target: DropTarget) => void) {
   const [drag, setDrag] = useState<Drag | null>(null);
   const onDropRef = useRef(onDrop);
   const stopRef = useRef<() => void>(() => {});
@@ -73,12 +77,18 @@ export function useDrag(onDrop: (item: DragItem, target: View) => void) {
   return { drag, start, cancel };
 }
 
-/** The view a `data-drop` element under the point stands for. */
-function dropAt(x: number, y: number): View | null {
+/** What the `data-drop` element under the point stands for. */
+function dropAt(x: number, y: number): DropTarget | null {
   const el = document.elementFromPoint(x, y)?.closest<HTMLElement>("[data-drop]");
-  const value = el?.dataset.drop;
+  return parseDrop(el?.dataset.drop);
+}
+
+/** A `data-drop` value: a view, or `snippet:<id>`. */
+export function parseDrop(value: string | undefined): DropTarget | null {
   if (!value) return null;
-  if (value === "history" || value === "pinned") return value;
+  if (value === "history" || value === "pinned" || value === "snippets") return value;
+  const snippet = /^snippet:(\d+)$/.exec(value);
+  if (snippet) return { snippet: Number(snippet[1]) };
   const id = Number(value);
   return Number.isInteger(id) ? id : null;
 }

@@ -1,4 +1,4 @@
-import { History as HistoryIcon, Pin, Plus } from "lucide-react";
+import { History as HistoryIcon, Pin, Plus, TextQuote } from "lucide-react";
 import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from "react";
 import type { Pinboard } from "../../lib/ipc";
 import type { View } from "../history/history";
@@ -30,7 +30,8 @@ type Props = {
   onBoardPointerDown: (e: PointerEvent, board: Pinboard) => void;
 };
 
-/** History, Pinned and the pinboards, under the search box. Clips are dropped on the tabs. */
+/** History, Pinned, Snippets and the pinboards, under the search box. Clips are dropped on the
+ * tabs. */
 export function Switcher({
   boards,
   view,
@@ -85,6 +86,14 @@ export function Switcher({
         <>
           <Pin size={13} strokeWidth={1.9} aria-hidden="true" />
           Pinned
+        </>,
+      )}
+      {tab(
+        "snippets",
+        "Snippets",
+        <>
+          <TextQuote size={13} strokeWidth={1.9} aria-hidden="true" />
+          Snippets
         </>,
       )}
       <span className="switcher-divider" aria-hidden="true" />

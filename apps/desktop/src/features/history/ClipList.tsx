@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent } from "react";
-import type { SearchHit } from "../../lib/ipc";
+import type { SearchHit, Snippet } from "../../lib/ipc";
+import { SnippetRow } from "../snippets/SnippetRow";
 import { ClipRow, ROW_HEIGHT } from "./ClipRow";
 
 /** Rows rendered above and below the visible ones, so fast scrolling doesn't show gaps. */
@@ -11,7 +12,14 @@ type Props = {
   id: string;
   /** Changes with the search text and filters. */
   searchKey: string;
+  /** Rows above the clips. */
+  snippets: Snippet[];
   hits: SearchHit[];
+  query: string;
+  /** Whether snippet rows say they're snippets, as in History. */
+  labelSnippets: boolean;
+  /** The snippet a dragged snippet would land on. */
+  dropSnippet: number | null;
   selected: number;
   now: number;
   thumbnailAttempts: ReadonlyMap<string, number>;
@@ -28,7 +36,11 @@ type Props = {
 export function ClipList({
   id,
   searchKey,
+  snippets,
   hits,
+  query,
+  labelSnippets,
+  dropSnippet,
   selected,
   now,
   thumbnailAttempts,
@@ -70,12 +82,51 @@ export function ClipList({
     if (ref.current) ref.current.scrollTop = 0;
   }, [searchKey]);
 
+  const count = snippets.length + hits.length;
   const start = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - OVERSCAN);
-  const end = Math.min(hits.length, Math.ceil((scrollTop + height) / ROW_HEIGHT) + OVERSCAN);
-  const nearEnd = end + LOAD_AHEAD >= hits.length || selected + LOAD_AHEAD >= hits.length;
+  const end = Math.min(count, Math.ceil((scrollTop + height) / ROW_HEIGHT) + OVERSCAN);
+  const nearEnd = end + LOAD_AHEAD >= count || selected + LOAD_AHEAD >= count;
   useEffect(() => {
     if (nearEnd) onNearEnd();
-  }, [nearEnd, hits.length, onNearEnd]);
+  }, [nearEnd, count, onNearEnd]);
+
+  const rows = [];
+  for (let index = start; index < end; index++) {
+    if (index < snippets.length) {
+      const snippet = snippets[index];
+      rows.push(
+        <SnippetRow
+          key={`s${snippet.id}`}
+          snippet={snippet}
+          index={index}
+          selected={index === selected}
+          query={query}
+          labelled={labelSnippets}
+          dropping={dropSnippet === snippet.id}
+          onSelect={onSelect}
+          onPick={onPick}
+          onMenu={onMenu}
+          onDragStart={onDragStart}
+        />,
+      );
+      continue;
+    }
+    const hit = hits[index - snippets.length];
+    rows.push(
+      <ClipRow
+        key={hit.id}
+        hit={hit}
+        index={index}
+        selected={index === selected}
+        now={now}
+        thumbnailAttempt={thumbnailAttempts.get(hit.contentHash) ?? 0}
+        onSelect={onSelect}
+        onPick={onPick}
+        onMenu={onMenu}
+        onDragStart={onDragStart}
+      />,
+    );
+  }
 
   return (
     <div
@@ -83,24 +134,11 @@ export function ClipList({
       id={id}
       className="list"
       role="listbox"
-      aria-label="Clipboard history"
+      aria-label={hits.length || !snippets.length ? "Clipboard history" : "Snippets"}
       onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
     >
-      <div className="list-inner" style={{ height: hits.length * ROW_HEIGHT }}>
-        {hits.slice(start, end).map((hit, i) => (
-          <ClipRow
-            key={hit.id}
-            hit={hit}
-            index={start + i}
-            selected={start + i === selected}
-            now={now}
-            thumbnailAttempt={thumbnailAttempts.get(hit.contentHash) ?? 0}
-            onSelect={onSelect}
-            onPick={onPick}
-            onMenu={onMenu}
-            onDragStart={onDragStart}
-          />
-        ))}
+      <div className="list-inner" style={{ height: count * ROW_HEIGHT }}>
+        {rows}
       </div>
     </div>
   );

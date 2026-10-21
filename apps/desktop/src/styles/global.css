@@ -88,7 +88,8 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
   color: inherit;
 }
@@ -647,6 +648,238 @@ mark {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+/* Snippets: rows, the preview's chips, the editor and the {input} form */
+
+.row-keyword {
+  flex-shrink: 0;
+  max-width: 120px;
+  padding: 1px 6px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--surface);
+  color: var(--muted-foreground);
+  font-family: var(--mono);
+  font-size: 11px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.row[aria-selected="true"] .row-keyword {
+  border-color: transparent;
+  color: var(--accent-text);
+}
+
+/* A snippet being dragged takes this one's place. */
+.row.dropping {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+.chip {
+  display: inline-block;
+  padding: 0 5px;
+  margin: 0 1px;
+  border-radius: 4px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: 0.92em;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.chip-cursor {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.caret {
+  display: inline-block;
+  width: 2px;
+  height: 1.1em;
+  margin: 0 1px;
+  vertical-align: text-bottom;
+  background: var(--accent);
+}
+
+.filled {
+  border-bottom: 1px dotted var(--accent);
+}
+
+.preview-heading {
+  margin: 16px 0 6px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted-foreground);
+}
+
+.snippet-editor,
+.snippet-form {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 16px 14px;
+  overflow-y: auto;
+}
+
+.snippet-form {
+  max-width: 420px;
+  width: 100%;
+  margin: 0 auto;
+  padding-top: 20px;
+}
+
+.editor-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.editor-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.editor-title {
+  font-size: 14px;
+  font-weight: 600;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.editor-status {
+  flex: 1;
+  font-size: 11.5px;
+  color: var(--muted-foreground);
+  text-align: right;
+}
+
+.editor-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.55fr);
+  gap: 10px;
+}
+
+.editor-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.editor-label {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--muted-foreground);
+}
+
+.editor-input,
+.editor-textarea {
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+  outline: 0;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.editor-input {
+  height: 28px;
+  padding: 0 9px;
+}
+
+.editor-input:focus,
+.editor-textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.editor-hint {
+  font-size: 11.5px;
+  color: var(--muted-foreground);
+}
+
+.editor-hint.warn {
+  color: var(--accent-text);
+}
+
+.editor-text-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 2px;
+}
+
+.editor-text-head .link-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+/* The textarea is see-through over a copy of its text, which marks the placeholders. */
+.editor-text {
+  position: relative;
+  flex: 1;
+  min-height: 120px;
+  border-radius: 7px;
+  background: var(--surface);
+}
+
+.editor-marks,
+.editor-textarea {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 8px 10px;
+  font: inherit;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  tab-size: 4;
+}
+
+.editor-marks {
+  border: 1px solid transparent;
+  color: transparent;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.editor-marks mark {
+  color: transparent;
+  background: var(--accent-soft);
+  border-radius: 3px;
+}
+
+.editor-textarea {
+  width: 100%;
+  height: 100%;
+  resize: none;
+  background: transparent;
+  overflow-y: auto;
+}
+
+.editor-textarea::placeholder {
+  color: var(--muted-foreground);
+  opacity: 0.7;
+}
+
+.snippet-form .button-row {
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+
+.button kbd {
+  margin-left: 4px;
+  font-size: 11px;
+  opacity: 0.75;
 }
 
 /* Notice: "Copied", or why a paste failed */
