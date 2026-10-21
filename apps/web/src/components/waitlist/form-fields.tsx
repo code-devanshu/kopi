@@ -28,7 +28,7 @@ export function ChoiceChip({ children, className, ...input }: React.InputHTMLAtt
   return (
     <label className={cn("relative cursor-pointer", className)}>
       <input {...input} className="peer sr-only" />
-      <span className="flex h-10 items-center justify-center rounded-xl border border-border bg-background px-3 text-sm text-muted-foreground transition-colors peer-checked:border-accent peer-checked:bg-accent-soft peer-checked:font-medium peer-checked:text-foreground peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent hover:text-foreground">
+      <span className="flex h-10 items-center justify-center rounded-xl border border-border bg-background px-3 text-sm whitespace-nowrap text-muted-foreground transition-colors peer-checked:border-accent peer-checked:bg-accent-soft peer-checked:font-medium peer-checked:text-foreground peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent hover:text-foreground">
         {children}
       </span>
     </label>

@@ -1,93 +1,132 @@
-"use client";
-
-import { motion } from "motion/react";
-import { History, Keyboard, Pin, RefreshCw, Search, TextQuote } from "lucide-react";
+import { Check, Keyboard, Layers, Pin, Search, SunMoon, TextQuote, Type } from "lucide-react";
+import type { StaticImageData } from "next/image";
 import type { ComponentType, SVGProps } from "react";
 
-import {
-  HistoryIllustration,
-  KeyboardIllustration,
-  PinboardIllustration,
-  SearchIllustration,
-  SnippetsIllustration,
-  SyncIllustration,
-} from "@/components/features/feature-illustrations";
+import boardDark from "@/assets/screens/board-dark.png";
+import boardLight from "@/assets/screens/board-light.png";
+import searchDark from "@/assets/screens/search-dark.png";
+import searchLight from "@/assets/screens/search-light.png";
+import snippetsDark from "@/assets/screens/snippets-dark.png";
+import snippetsLight from "@/assets/screens/snippets-light.png";
+import { AppShot } from "@/components/ui/app-shot";
+import { Reveal } from "@/components/ui/reveal";
 import { Section, SectionHeader } from "@/components/ui/section";
+import { cn } from "@/lib/cn";
+
+type Icon = ComponentType<SVGProps<SVGSVGElement>>;
 
 type Feature = {
+  eyebrow: string;
+  icon: Icon;
   title: string;
   description: string;
-  icon: ComponentType<SVGProps<SVGSVGElement>>;
-  Illustration: ComponentType;
+  points: string[];
+  shot: { light: StaticImageData; dark: StaticImageData; alt: string };
 };
 
 const features: Feature[] = [
   {
-    title: "Unlimited clipboard history",
-    description: "Text, links, images, colors and code are kept as you copy them, so nothing gets lost to the next copy.",
-    icon: History,
-    Illustration: HistoryIllustration,
-  },
-  {
-    title: "Instant search",
-    description: "Type a few letters to find something you copied last week. Narrow it down by type or by the app it came from.",
+    eyebrow: "Search",
     icon: Search,
-    Illustration: SearchIllustration,
+    title: "Find it in a few letters.",
+    description: "Type part of anything you copied, last minute or last month, and it's there. Narrow it down by kind or by the app it came from.",
+    points: ["Matches highlighted as you type", "Filters for kind and source app", "Unlimited history, unless you set a limit"],
+    shot: {
+      light: searchLight,
+      dark: searchDark,
+      alt: "Kopi's panel searching for “invoice”, with the word highlighted in a code snippet, an email and several notes.",
+    },
   },
   {
-    title: "Pinboards",
-    description: "Keep the links, replies and colors you reuse in boards that stay put, one shortcut away.",
-    icon: Pin,
-    Illustration: PinboardIllustration,
-  },
-  {
-    title: "Mac ↔ Windows sync",
-    description: "Copy on one computer and paste on the other, over your local network, end-to-end encrypted and entirely optional.",
-    icon: RefreshCw,
-    Illustration: SyncIllustration,
-  },
-  {
-    title: "Snippets",
-    description: "Write a reply or a signature once, then paste it with the date, your last copy or a name filled in.",
+    eyebrow: "Snippets",
     icon: TextQuote,
-    Illustration: SnippetsIllustration,
+    title: "Write it once. Paste it filled in.",
+    description: "Save the replies, signatures and commands you type again and again. Placeholders fill in the date, your last copy or a name as you paste.",
+    points: ["Type its keyword to bring it to the top", "Placeholders for the date, a clip or your input", "Put the cursor where you'll type next"],
+    shot: {
+      light: snippetsLight,
+      dark: snippetsDark,
+      alt: "Kopi's Snippets tab, previewing a reply whose name, date and tracking link fill in when it's pasted.",
+    },
   },
   {
-    title: "Keyboard-first",
-    description: "Open Kopi, search and paste without reaching for the mouse, as plain text if you like. Every shortcut can be changed.",
-    icon: Keyboard,
-    Illustration: KeyboardIllustration,
+    eyebrow: "Pinboards",
+    icon: Pin,
+    title: "Keep what you reuse close.",
+    description: "Pin a clip so it never ages out, or gather clips into boards for a project, a client or a habit. Each board is one click from the search box.",
+    points: ["Boards with your own names and colors", "Pinned clips are never removed by limits", "Drag clips onto a board"],
+    shot: {
+      light: boardLight,
+      dark: boardDark,
+      alt: "Kopi's panel showing a pinboard called Work, with a link, an invoice note and a git command.",
+    },
   },
 ];
+
+const extras: { icon: Icon; title: string; description: string }[] = [
+  { icon: Keyboard, title: "Keyboard first", description: "Arrows, Return, and ⌘1–9 to paste without the mouse." },
+  { icon: Type, title: "Paste as plain text", description: "⌥Return pastes the words without their formatting." },
+  { icon: Layers, title: "Every kind of copy", description: "Text, rich text, links, images, files, colors and code." },
+  { icon: SunMoon, title: "At home on both", description: "Native shortcuts, light and dark, on Mac and Windows." },
+];
+
+function FeatureRow({ feature, index }: { feature: Feature; index: number }) {
+  const { eyebrow, icon: Icon, title, description, points, shot } = feature;
+  const flip = index % 2 === 1;
+  return (
+    <li className={cn("grid items-center gap-10 lg:gap-14", flip ? "lg:grid-cols-[1.25fr_0.75fr]" : "lg:grid-cols-[0.75fr_1.25fr]")}>
+      <Reveal className={cn(flip && "lg:order-2")}>
+        <p className="inline-flex items-center gap-2 text-sm font-semibold text-accent-text">
+          <Icon className="size-4" aria-hidden="true" />
+          {eyebrow}
+        </p>
+        <h3 className="mt-4 text-3xl leading-tight font-semibold tracking-[-0.03em] sm:text-4xl">{title}</h3>
+        <p className="mt-4 text-lg leading-relaxed text-muted-foreground">{description}</p>
+        <ul className="mt-6 space-y-2.5">
+          {points.map((point) => (
+            <li key={point} className="flex gap-2.5 text-sm text-foreground">
+              <Check className="mt-0.5 size-4 shrink-0 text-accent-text" aria-hidden="true" />
+              {point}
+            </li>
+          ))}
+        </ul>
+      </Reveal>
+
+      {/* The shot sits on a tinted stage, cropped at the far edge so it reads as a window, not a figure. */}
+      <Reveal delay={0.1} className={cn(flip && "lg:order-1")}>
+        <div className="relative overflow-hidden rounded-3xl border border-border bg-[linear-gradient(135deg,var(--accent-soft),var(--surface-muted)_60%)] p-3 sm:p-5">
+          <div className="rounded-[14px] shadow-[0_2px_6px_rgb(var(--shadow-color)/0.08),0_30px_60px_-20px_rgb(var(--shadow-color)/0.4)]">
+            <AppShot {...shot} sizes="(min-width: 1024px) 680px, calc(100vw - 2rem)" />
+          </div>
+        </div>
+      </Reveal>
+    </li>
+  );
+}
 
 export function Features() {
   return (
     <Section id="features" labelledBy="features-title">
       <SectionHeader
         id="features-title"
+        align="center"
         title="A clipboard that keeps up with you"
-        description="Kopi runs in the background and keeps everything you copy, ready to paste again."
+        description="Kopi runs quietly in the background and keeps everything you copy, ready to paste again."
       />
-      <ul className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {features.map(({ title, description, icon: Icon, Illustration }, i) => (
-          <motion.li
-            key={title}
-            initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            whileHover={{ y: -4 }}
-            viewport={{ once: true, margin: "0px 0px -60px 0px" }}
-            transition={{ duration: 0.5, delay: (i % 3) * 0.08, ease: [0.22, 1, 0.36, 1] }}
-            className="flex flex-col rounded-2xl border border-border bg-surface p-5 shadow-soft transition-shadow hover:shadow-lifted"
-          >
-            <Illustration />
-            <div className="mt-5 flex items-center gap-3">
-              <span className="inline-flex size-9 items-center justify-center rounded-xl bg-accent-soft text-accent-text">
-                <Icon className="size-[18px]" aria-hidden="true" />
-              </span>
-              <h3 className="text-lg font-semibold">{title}</h3>
-            </div>
-            <p className="mt-3 leading-relaxed text-muted-foreground">{description}</p>
-          </motion.li>
+
+      <ul className="mt-16 space-y-24 sm:mt-20 sm:space-y-32">
+        {features.map((feature, i) => (
+          <FeatureRow key={feature.eyebrow} feature={feature} index={i} />
+        ))}
+      </ul>
+
+      <ul className="mt-24 grid gap-x-8 gap-y-10 border-t border-border pt-12 sm:mt-32 sm:grid-cols-2 lg:grid-cols-4">
+        {extras.map(({ icon: Icon, title, description }, i) => (
+          <Reveal as="li" key={title} delay={i * 0.06}>
+            <Icon className="size-5 text-accent-text" aria-hidden="true" />
+            <h3 className="mt-3 font-semibold">{title}</h3>
+            <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{description}</p>
+          </Reveal>
         ))}
       </ul>
     </Section>

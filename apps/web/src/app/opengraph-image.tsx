@@ -45,7 +45,7 @@ export default function OpengraphImage() {
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
           <div style={{ fontSize: 76, fontWeight: 700, letterSpacing: -2, lineHeight: 1.05, maxWidth: 900 }}>
-            Everything you copy, on every computer.
+            Your clipboard, with a memory.
           </div>
           <div style={{ fontSize: 28, color: "#6b5444" }}>
             Open-source clipboard manager for macOS and Windows
