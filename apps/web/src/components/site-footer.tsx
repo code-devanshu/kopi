@@ -18,12 +18,12 @@ export function SiteFooter() {
   return (
     <footer className="border-t border-border">
       <Container className="flex flex-col gap-10 py-12 md:flex-row md:items-start md:justify-between">
-        <div className="max-w-xs">
+        <div>
           <Logo />
-          <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+          <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted-foreground">
             An open-source clipboard manager. The alpha is out for macOS and Windows.
           </p>
-          <div className="mt-5 flex flex-wrap items-center gap-3">
+          <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-3">
             <a
               href={siteConfig.links.github}
               data-track="github_click"
@@ -46,6 +46,27 @@ export function SiteFooter() {
                 width="200"
                 height="67"
                 className="dark:invert"
+              />
+            </a>
+            {/* Findly.tools checks the homepage for this link and the light badge, so keep both
+                exact and plain <img>s. The dark badge is lazy so light mode doesn't fetch it. */}
+            <a href="https://findly.tools/kopi?utm_source=kopi" target="_blank" rel="noopener noreferrer">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="https://findly.tools/badges/findly-tools-badge-light.svg"
+                alt="Featured on Findly.tools"
+                width="175"
+                height="55"
+                className="dark:hidden"
+              />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="https://findly.tools/badges/findly-tools-badge-dark.svg"
+                alt="Featured on Findly.tools"
+                width="175"
+                height="55"
+                loading="lazy"
+                className="hidden dark:block"
               />
             </a>
           </div>
