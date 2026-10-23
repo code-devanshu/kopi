@@ -11,6 +11,7 @@ Related docs:
 - [MVP_SCOPE.md](MVP_SCOPE.md): what's in the macOS alpha, and what isn't
 - [SYNC_DESIGN.md](SYNC_DESIGN.md): how sync between computers on the local network works
 - [SNIPPETS_DESIGN.md](SNIPPETS_DESIGN.md): snippets with placeholders
+- [OCR_DESIGN.md](OCR_DESIGN.md): searching text in images (proposed)
 - [decisions/](decisions/): Architecture Decision Records (ADRs)
 
 ## Goals
