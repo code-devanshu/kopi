@@ -790,7 +790,10 @@ impl Store {
             pinned,
             metadata: None,
             copied_on: None,
+            ocr_version: None,
         };
+        // An image's plain_text is the text read from it here, which clipboard_formats leaves
+        // out, so it isn't sent.
         let mut formats: Vec<SyncFormat> = clipboard_formats(&clip, &stored, Content::All)
             .into_iter()
             .map(|f| SyncFormat {
@@ -970,7 +973,7 @@ impl Store {
         applied.added.retain(|id| !removed_ids.contains(id));
         applied.updated.retain(|id| !removed_ids.contains(id));
         applied.removed = removed_ids;
-        for (content_hash, formats) in thumbnails {
+        for (id, content_hash, formats) in thumbnails {
             let sources = formats.into_iter().filter_map(|f: NewFormat| {
                 Some((
                     super::thumbs::SourceFormat::from_format_name(&f.format)?,
@@ -978,6 +981,9 @@ impl Store {
                 ))
             });
             self.queue_thumbnail(&content_hash, sources);
+            // Received images are read here, like copied ones. One removed by this batch is
+            // skipped by the reader.
+            self.image_added(id);
         }
         if !applied.is_empty() {
             self.changed();
@@ -1239,7 +1245,7 @@ impl Store {
         now: i64,
         applied: &mut Applied,
         written_blobs: &mut Vec<String>,
-        thumbnails: &mut Vec<(String, Vec<NewFormat>)>,
+        thumbnails: &mut Vec<(i64, String, Vec<NewFormat>)>,
     ) -> StorageResult<()> {
         let used_hlc = self.clock.observe(clip.used_hlc, now);
         let pinned_hlc = self.clock.observe(clip.pinned_hlc, now);
@@ -1291,7 +1297,7 @@ impl Store {
             let id = self.insert_clip(tx, &clip, used_hlc, pinned_hlc, copied_on, written_blobs)?;
             applied.added.push(id);
             if clip.kind == ClipKind::Image {
-                thumbnails.push((clip.content_hash, clip.formats));
+                thumbnails.push((id, clip.content_hash, clip.formats));
             }
             return Ok(());
         };

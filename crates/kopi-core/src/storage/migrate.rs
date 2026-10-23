@@ -12,6 +12,7 @@ const MIGRATIONS: &[&str] = &[
     include_str!("../../migrations/0003_windows_excluded_apps.sql"),
     include_str!("../../migrations/0004_sync.sql"),
     include_str!("../../migrations/0005_snippets.sql"),
+    include_str!("../../migrations/0006_image_text.sql"),
 ];
 
 /// The schema version this build writes.

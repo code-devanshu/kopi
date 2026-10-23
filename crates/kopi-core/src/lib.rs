@@ -2,6 +2,7 @@
 //! `docs/ARCHITECTURE.md`.
 
 pub mod classifier;
+pub mod ocr;
 pub mod paste;
 pub mod privacy;
 pub mod retention;

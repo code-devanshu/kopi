@@ -1,5 +1,5 @@
-//! The Settings window's commands: the shortcut, what to capture, the theme, updates and
-//! permissions.
+//! The Settings window's commands: the shortcut, what to capture, text in images, the theme,
+//! updates and permissions.
 //! The history limits are in `history`, and launch at login is in `commands`.
 
 use std::sync::Arc;
@@ -9,13 +9,14 @@ use kopi_core::settings;
 use kopi_core::storage::{self, Store};
 use serde::{Deserialize, Serialize};
 use specta::Type;
+use specta_typescript::Number;
 use tauri::{AppHandle, Manager, State};
 use tauri_specta::Event;
 
 use super::clips::{SourceApp, blocking};
 use super::search::ClipKind;
 use crate::events::ThemeChanged;
-use crate::{capture, hotkeys, settings_window};
+use crate::{capture, hotkeys, ocr, settings_window};
 
 /// The settings that aren't in a command of their own.
 #[derive(Debug, Clone, Serialize, Type)]
@@ -28,6 +29,18 @@ pub struct Settings {
     pub theme: Theme,
     /// Whether Kopi checks for updates by itself and installs them.
     pub auto_update: bool,
+}
+
+/// Find text in images, in Settings → Capture.
+#[derive(Debug, Clone, Copy, Serialize, Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ImageTextStatus {
+    /// Whether this build can read text in images. Not on Windows yet.
+    pub available: bool,
+    pub enabled: bool,
+    /// Images in the history whose text hasn't been read yet.
+    #[specta(type = Number)]
+    pub unread: i64,
 }
 
 /// The app's color scheme.
@@ -201,6 +214,50 @@ pub async fn set_theme(
 pub async fn set_auto_update(store: State<'_, Arc<Store>>, enabled: bool) -> Result<(), String> {
     let store = Arc::clone(&store);
     blocking(move || store.set_auto_update(enabled)).await
+}
+
+/// Whether Kopi reads the text in images, and how many are left to read.
+#[tauri::command]
+#[specta::specta]
+pub async fn image_text_status(
+    app: AppHandle,
+    store: State<'_, Arc<Store>>,
+) -> Result<ImageTextStatus, String> {
+    let store = Arc::clone(&store);
+    let (enabled, unread) = blocking(move || {
+        let enabled = store.image_text_enabled()?;
+        Ok((
+            enabled,
+            if enabled {
+                store.images_without_text()?
+            } else {
+                0
+            },
+        ))
+    })
+    .await?;
+    Ok(ImageTextStatus {
+        available: ocr::available(&app),
+        enabled,
+        unread,
+    })
+}
+
+/// Turns Find text in images on or off. Off removes the text read from every image. On reads
+/// the images in the history again, in the background.
+#[tauri::command]
+#[specta::specta]
+pub async fn set_image_text(
+    app: AppHandle,
+    store: State<'_, Arc<Store>>,
+    enabled: bool,
+) -> Result<(), String> {
+    let store = Arc::clone(&store);
+    blocking(move || store.set_image_text_enabled(enabled)).await?;
+    if enabled {
+        ocr::resume(&app);
+    }
+    Ok(())
 }
 
 /// The apps excluded on this OS, by name.

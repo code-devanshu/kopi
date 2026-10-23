@@ -582,6 +582,57 @@ mark {
     16px;
 }
 
+/* An image with the text read from it below. The image gets what the text leaves. */
+.preview-image-stack {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.preview-image-stack > .preview-image,
+.preview-image-stack > .preview-missing {
+  flex: 1;
+  min-height: 0;
+  height: auto;
+}
+
+.image-text {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 40%;
+  min-height: 0;
+}
+
+.image-text-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.image-text-head .preview-heading {
+  margin: 0;
+}
+
+.image-text-body {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--background);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.image-text-status {
+  flex-shrink: 0;
+  font-size: 11.5px;
+}
+
 .preview-missing {
   height: 100%;
   display: flex;

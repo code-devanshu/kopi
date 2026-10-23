@@ -3,7 +3,7 @@
 use kopi_core::search::{
     MAX_CANDIDATES, SearchHit, SearchPage, SearchQuery, SourceApp, search, source_apps,
 };
-use kopi_core::storage::{ClipKind, NewClip, NewFormat, Platform, Store};
+use kopi_core::storage::{ClipKind, IMAGE_TEXT_READER, NewClip, NewFormat, Platform, Store};
 use rusqlite::{Connection, params};
 
 const NOW: i64 = 1_760_000_000_000;
@@ -222,6 +222,48 @@ fn the_app_name_is_searched_too() {
     assert_eq!(shown(hit(slack)), "see you tomorrow");
     assert_eq!(hit(image).snippet, []);
     assert_eq!(hit(image).kind, ClipKind::Image);
+}
+
+#[test]
+fn text_read_from_an_image_is_found_and_shown_only_where_it_matched() {
+    let f = Fixture::new();
+    let image = f.add(ClipKind::Image, "", "Preview", 0);
+    let text = f.text("invoice template", HOUR);
+    assert!(
+        f.store
+            .write_image_text(
+                image,
+                Some("ACME\nInvoice 42\nTotal due"),
+                IMAGE_TEXT_READER
+            )
+            .unwrap()
+    );
+
+    let search = |text: &str, kind: Option<ClipKind>| {
+        f.run(SearchQuery {
+            text: text.into(),
+            kind,
+            ..SearchQuery::default()
+        })
+    };
+    let hit = |page: &SearchPage, id| page.hits.iter().find(|h| h.id == id).cloned().unwrap();
+
+    // The index, a short word with LIKE, and the Images filter.
+    let page = search("invoice", None);
+    assert_eq!(page.hits.len(), 2);
+    assert!(shown(&hit(&page, image)).contains("[Invoice]"), "{page:?}");
+    let page = search("42", None);
+    assert_eq!(ids(&page), [image]);
+    assert!(shown(&hit(&page, image)).contains("[42]"), "{page:?}");
+    assert_eq!(ids(&search("invoice", Some(ClipKind::Image))), [image]);
+
+    // Without a search, or when only the app name matched, the row shows no text.
+    let page = search("", None);
+    assert_eq!(hit(&page, image).snippet, []);
+    assert!(!hit(&page, text).snippet.is_empty());
+    let page = search("preview", None);
+    assert_eq!(ids(&page), [image]);
+    assert_eq!(hit(&page, image).snippet, []);
 }
 
 #[test]

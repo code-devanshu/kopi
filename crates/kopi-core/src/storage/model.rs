@@ -149,6 +149,7 @@ pub struct Clip {
     pub id: i64,
     pub uuid: String,
     pub kind: ClipKind,
+    /// The clip's text. For an image, the text read from it, once it's been read.
     pub plain_text: Option<String>,
     pub content_hash: String,
     pub size_bytes: i64,
@@ -161,6 +162,9 @@ pub struct Clip {
     pub metadata: Option<serde_json::Value>,
     /// The name of the paired computer it was last copied on. None for this computer.
     pub copied_on: Option<String>,
+    /// For an image, the version of the reader that read its text, or none while it hasn't
+    /// been read. None for other kinds.
+    pub ocr_version: Option<u32>,
 }
 
 /// A stored format, with its data loaded from the row or from the blob file.

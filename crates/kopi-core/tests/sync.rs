@@ -2,8 +2,10 @@
 
 use kopi_core::classifier::content_hash;
 use kopi_core::storage::sync::{Changes, Device};
+use std::sync::{Arc, Mutex};
+
 use kopi_core::storage::{
-    ClipKind, NewClip, NewFormat, Platform, SnippetEdit, StorageResult, Store,
+    ClipKind, IMAGE_TEXT_READER, NewClip, NewFormat, Platform, SnippetEdit, StorageResult, Store,
 };
 
 const PLAIN: &str = "public.utf8-plain-text";
@@ -264,6 +266,68 @@ fn large_formats_and_images_sync_whole() {
         .flat_map(|f| f.data)
         .collect();
     assert_eq!(full.len(), 100_000);
+}
+
+#[test]
+fn text_read_from_an_image_isnt_sent_and_the_receiver_reads_its_own() {
+    let (a, b) = (Node::new("a"), Node::new("b"));
+    group(&[&a, &b]);
+    let queued = Arc::new(Mutex::new(Vec::new()));
+    let to_read = Arc::clone(&queued);
+    b.store
+        .set_image_listener(Box::new(move |id| to_read.lock().unwrap().push(id)));
+
+    let png = image_png();
+    let hash = content_hash(ClipKind::Image, &png);
+    let id = a
+        .store
+        .upsert_clip(NewClip {
+            kind: ClipKind::Image,
+            plain_text: None,
+            content_hash: hash.clone(),
+            source_app_name: None,
+            source_app_id: None,
+            metadata: None,
+            platform: Platform::MacOs,
+            formats: vec![NewFormat {
+                item_index: 0,
+                format: "public.png".into(),
+                data: png.clone(),
+            }],
+            local_only: false,
+        })
+        .unwrap()
+        .id;
+    assert!(
+        a.store
+            .write_image_text(id, Some("Invoice 4821"), IMAGE_TEXT_READER)
+            .unwrap()
+    );
+
+    let changes = a
+        .store
+        .changes_since(0, b.store.sync_kinds().unwrap(), false, &a.id)
+        .unwrap();
+    let sent = changes
+        .clips
+        .iter()
+        .find(|c| c.content_hash == hash)
+        .unwrap();
+    assert!(
+        sent.formats.iter().all(|f| f.format == "public.png"),
+        "{:?}",
+        sent.formats.iter().map(|f| &f.format).collect::<Vec<_>>()
+    );
+
+    settle(&[&a, &b]);
+    let received = b
+        .store
+        .clip_id_by_hash(&hash)
+        .unwrap()
+        .expect("image synced");
+    let clip = b.store.get_clip(received).unwrap().unwrap();
+    assert_eq!((clip.plain_text, clip.ocr_version), (None, None));
+    assert_eq!(*queued.lock().unwrap(), [received]);
 }
 
 #[test]

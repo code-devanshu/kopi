@@ -129,7 +129,8 @@ fn make(job: &Job) -> Result<Vec<u8>, String> {
     Ok(png)
 }
 
-fn decode(bytes: &[u8], format: SourceFormat) -> image::ImageResult<DynamicImage> {
+/// Decodes an image clip's format. Text reading uses it too, so both see the same pixels.
+pub(crate) fn decode(bytes: &[u8], format: SourceFormat) -> image::ImageResult<DynamicImage> {
     let format = match format {
         SourceFormat::Png => ImageFormat::Png,
         SourceFormat::Tiff => ImageFormat::Tiff,

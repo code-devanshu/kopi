@@ -192,6 +192,11 @@ export function Panel() {
         void loadBoards();
       }),
       events.snippetsChanged.listen(changed),
+      // Backlog images are read a few a second, so only what shows them is loaded again.
+      events.imageTextRead.listen(({ payload: { id } }) => {
+        if (history.getSnapshot().text.trim()) history.refreshSoon();
+        if (history.selectedHit?.id === id) setVersion((v) => v + 1);
+      }),
       events.syncChanged.listen(() => void loadSync()),
       events.thumbnailReady.listen(({ payload: { contentHash } }) =>
         setThumbnails((m) => new Map(m).set(contentHash, (m.get(contentHash) ?? 0) + 1)),
@@ -437,13 +442,20 @@ export function Panel() {
     history.select(index);
     if (row.snippet) return openSnippetMenu(row.snippet, x, y);
     const hit = row.hit;
-    const on = await unwrap(commands.clipPinboards(hit.id)).catch(() => [] as number[]);
+    const [on, detail] = await Promise.all([
+      unwrap(commands.clipPinboards(hit.id)).catch(() => [] as number[]),
+      // Whether there's text read from the image to copy.
+      hit.kind === "image" ? unwrap(commands.getClip(hit.id)).catch(() => null) : null,
+    ]);
     const view = history.getSnapshot().view;
     const inBoard = typeof view === "number" ? view : null;
     const entries: MenuEntry[] = [
       { type: "item", label: "Paste", shortcut: "↩", run: () => void paster.paste(hit.id, false) },
       { type: "item", label: "Paste as plain text", shortcut: "⌥↩", run: () => void paster.paste(hit.id, true) },
       { type: "item", label: "Copy", shortcut: "⌘C", run: () => void paster.copy(hit.id, false) },
+      ...(detail?.text
+        ? [{ type: "item", label: "Copy Text in Image", run: () => copyImageText(hit.id) } satisfies MenuEntry]
+        : []),
       { type: "separator" },
       {
         type: "item",
@@ -485,6 +497,11 @@ export function Panel() {
       },
     ];
     setMenu({ label: "Clip actions", x, y, entries });
+  }
+
+  /** Copy text in the preview, and Copy Text in Image in the menu. */
+  function copyImageText(id: number) {
+    void paster.copyWith(() => unwrap(commands.copyImageText(id)));
   }
 
   function openSnippetMenu(snippet: Snippet, x: number, y: number) {
@@ -784,7 +801,7 @@ export function Panel() {
           (selectedRow.snippet ? (
             <SnippetPreview snippet={selectedRow.snippet} now={now} version={version} />
           ) : (
-            <Preview id={selectedRow.hit.id} version={version} query={state.text} />
+            <Preview id={selectedRow.hit.id} version={version} query={state.text} onCopyText={copyImageText} />
           ))}
       </div>
     );

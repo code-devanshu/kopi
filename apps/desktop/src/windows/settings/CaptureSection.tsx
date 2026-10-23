@@ -1,15 +1,26 @@
 import { X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { FormError, Group, Select } from "../../components/Form";
+import { FormError, Group, Row, Select, Switch } from "../../components/Form";
 import { KindIcon } from "../../components/KindIcon";
 import { KIND_LABELS, KINDS } from "../../lib/format";
-import { commands, unwrap, type ClipKind, type ExcludedApp, type SourceApp } from "../../lib/ipc";
+import {
+  commands,
+  unwrap,
+  type ClipKind,
+  type ExcludedApp,
+  type ImageTextStatus,
+  type SourceApp,
+} from "../../lib/ipc";
+
+/** How often the count of older images left to read is checked while there are some. */
+const UNREAD_POLL_MS = 3000;
 
 export function CaptureSection() {
   const [kinds, setKinds] = useState<ClipKind[] | null>(null);
   const [excluded, setExcluded] = useState<ExcludedApp[] | null>(null);
   const [running, setRunning] = useState<SourceApp[]>([]);
   const [seen, setSeen] = useState<SourceApp[]>([]);
+  const [imageText, setImageText] = useState<ImageTextStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const loadExcluded = useCallback(
@@ -28,7 +39,32 @@ export function CaptureSection() {
     void loadExcluded();
     unwrap(commands.runningApps()).then(setRunning, () => {});
     unwrap(commands.sourceApps()).then(setSeen, () => {});
+    unwrap(commands.imageTextStatus()).then(setImageText, () => {});
   }, [loadExcluded]);
+
+  // The backlog's count goes down as it's read.
+  const reading = !!imageText?.enabled && imageText.unread > 0;
+  useEffect(() => {
+    if (!reading) return;
+    const timer = setInterval(
+      () => unwrap(commands.imageTextStatus()).then(setImageText, () => {}),
+      UNREAD_POLL_MS,
+    );
+    return () => clearInterval(timer);
+  }, [reading]);
+
+  function toggleImageText(on: boolean) {
+    if (!imageText) return;
+    const was = imageText;
+    setImageText({ ...imageText, enabled: on, unread: on ? imageText.unread : 0 });
+    unwrap(commands.setImageText(on)).then(
+      () => unwrap(commands.imageTextStatus()).then(setImageText, () => {}),
+      (e) => {
+        setImageText(was);
+        setError(`Couldn't change Find text in images. ${e}`);
+      },
+    );
+  }
 
   function toggleKind(kind: ClipKind, on: boolean) {
     if (!kinds) return;
@@ -91,6 +127,20 @@ export function CaptureSection() {
           ))}
         </div>
       </Group>
+      {/* Not on Windows yet. */}
+      {imageText?.available && (
+        <Group
+          footer={reading ? `Reading older images: ${imageText.unread.toLocaleString()} left` : undefined}
+        >
+          <Row
+            label="Find text in images"
+            description="Kopi reads the text in images you copy, on this computer, so search can find them. Nothing is sent anywhere."
+            htmlFor="image-text"
+          >
+            <Switch id="image-text" checked={imageText.enabled} onChange={toggleImageText} />
+          </Row>
+        </Group>
+      )}
       <Group
         title="Excluded apps"
         footer="Kopi never reads copies made in these apps. Copies an app marks as a password are skipped too, whichever app they come from."

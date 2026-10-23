@@ -12,6 +12,7 @@
 
 mod blobs;
 pub mod hlc;
+mod image_text;
 mod migrate;
 mod model;
 mod pinboards;
@@ -30,6 +31,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use rusqlite::{Connection, OpenFlags, OptionalExtension, TransactionBehavior, params};
 
 pub use blobs::BlobStore;
+pub use image_text::{IMAGE_TEXT_READER, ImageListener};
 pub use migrate::SCHEMA_VERSION;
 pub use model::{
     Clip, ClipFormat, ClipKind, ExcludedApp, NewClip, NewFormat, Pinboard, Platform, Snippet,
@@ -42,7 +44,8 @@ pub use snippets::{
 };
 pub use thumbs::{THUMBNAIL_SIZE, ThumbnailDone, ThumbnailListener};
 
-use thumbs::{Source, SourceFormat, Thumbnailer};
+use thumbs::{Source, Thumbnailer};
+pub(crate) use thumbs::{SourceFormat, decode};
 
 /// Format data up to this size is stored in the row. Anything larger goes to a blob file.
 pub const MAX_INLINE_BYTES: usize = 64 * 1024;
@@ -87,6 +90,7 @@ pub struct Store {
     thumbnailer: Thumbnailer,
     clock: hlc::Clock,
     change_listener: RwLock<Option<ChangeListener>>,
+    image_listener: RwLock<Option<ImageListener>>,
 }
 
 impl Store {
@@ -123,6 +127,7 @@ impl Store {
             thumbs_dir,
             clock: hlc::Clock::new(last_hlc),
             change_listener: RwLock::new(None),
+            image_listener: RwLock::new(None),
         })
     }
 
@@ -158,9 +163,10 @@ impl Store {
     /// [`upsert_clip`](Self::upsert_clip) with an explicit time, in Unix milliseconds.
     ///
     /// - A new clip gets its formats stored, with data over 64 KiB written to blob files before
-    ///   the transaction. Image clips get a thumbnail queued.
+    ///   the transaction. Image clips get a thumbnail queued, and the image listener is told.
     /// - An existing clip gets `last_used_at`, `use_count` and the source app updated. Rich text
-    ///   also gets its formats replaced, since the formatting may have changed.
+    ///   also gets its formats replaced, since the formatting may have changed. An image keeps
+    ///   the text read from it.
     /// - A plain-text format that is an exact copy of `plain_text` isn't stored. Pass the full
     ///   text as a format when `plain_text` would be cut, or the rest is lost.
     /// - Either way the clip gets a new HLC and `sync_seq`, and counts as copied here.
@@ -217,7 +223,10 @@ impl Store {
                                     used_hlc, sync_seq, local_only)
                  VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?8, ?9, ?10, ?11, ?12)
                  ON CONFLICT (content_hash) DO UPDATE SET
-                   size_bytes = excluded.size_bytes,
+                   -- An image's plain_text is the text read from it, which a copy doesn't have.
+                   size_bytes = excluded.size_bytes
+                                + CASE WHEN kind = 'image' THEN coalesce(octet_length(plain_text), 0)
+                                       ELSE 0 END,
                    source_app_name = excluded.source_app_name,
                    source_app_id = excluded.source_app_id,
                    last_used_at = excluded.last_used_at,
@@ -294,6 +303,7 @@ impl Store {
                     Some((format, source))
                 });
             self.queue_thumbnail(&clip.content_hash, source);
+            self.image_added(id);
         }
 
         Ok(Upserted { id, uuid, inserted })
@@ -344,7 +354,8 @@ impl Store {
                 .prepare_cached(
                     "SELECT id, uuid, kind, plain_text, content_hash, size_bytes, source_app_name,
                             source_app_id, created_at, last_used_at, use_count, pinned, metadata,
-                            (SELECT d.name FROM sync_devices d WHERE d.device_id = copied_on)
+                            (SELECT d.name FROM sync_devices d WHERE d.device_id = copied_on),
+                            ocr_version
                      FROM clips WHERE id = ?1",
                 )?
                 .query_row([id], |row| {
@@ -364,6 +375,7 @@ impl Store {
                             pinned: row.get(11)?,
                             metadata: None,
                             copied_on: row.get(13)?,
+                            ocr_version: row.get(14)?,
                         },
                         row.get::<_, String>(2)?,
                         row.get::<_, Option<String>>(12)?,

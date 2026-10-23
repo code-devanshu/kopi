@@ -23,8 +23,10 @@ pub struct ClipDetail {
     #[specta(type = Number)]
     pub id: i64,
     pub kind: ClipKind,
-    /// The clip's text, cut to 64 KiB. None for images.
+    /// The clip's text, cut to 64 KiB. For an image, the text read from it, if any.
     pub text: Option<String>,
+    /// An image whose text Kopi hasn't read yet. The preview says it's looking.
+    pub reading_text: bool,
     /// Names the image, for `kopi://…/image/<hash>`.
     pub content_hash: String,
     pub source_app_name: Option<String>,
@@ -46,10 +48,14 @@ pub struct ClipDetail {
     pub copied_on: Option<String>,
 }
 
-impl From<storage::Clip> for ClipDetail {
-    fn from(clip: storage::Clip) -> Self {
+impl ClipDetail {
+    /// `reading` says whether Kopi reads text in images here: it's available and turned on.
+    fn new(clip: storage::Clip, reading: bool) -> Self {
         Self {
             id: clip.id,
+            reading_text: reading
+                && clip.kind == storage::ClipKind::Image
+                && clip.ocr_version.is_none(),
             kind: clip.kind.into(),
             text: clip.plain_text,
             content_hash: clip.content_hash,
@@ -83,13 +89,20 @@ pub struct SourceApp {
 #[tauri::command]
 #[specta::specta]
 pub async fn get_clip(
+    app: AppHandle,
     store: State<'_, Arc<Store>>,
     id: ClipId,
 ) -> Result<Option<ClipDetail>, String> {
     let store = Arc::clone(&store);
-    blocking(move || store.get_clip(id.0))
-        .await
-        .map(|clip| clip.map(Into::into))
+    let available = crate::ocr::available(&app);
+    blocking(move || {
+        let Some(clip) = store.get_clip(id.0)? else {
+            return Ok(None);
+        };
+        let reading = available && store.image_text_enabled()?;
+        Ok(Some(ClipDetail::new(clip, reading)))
+    })
+    .await
 }
 
 /// Deletes clips, and sends `clip:removed` with the ids that were found.

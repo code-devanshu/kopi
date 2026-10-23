@@ -1,8 +1,9 @@
-//! macOS: NSPasteboard, NSWorkspace, CGEvent and the Accessibility API.
+//! macOS: NSPasteboard, NSWorkspace, CGEvent, the Accessibility API and Vision.
 
 mod apps;
 mod keys;
 mod pasteboard;
+mod text;
 
 use std::sync::mpsc;
 use std::time::Duration;
@@ -13,6 +14,8 @@ use objc2::MainThreadMarker;
 pub use apps::{MacForegroundApp, MacUserIdle, running_apps};
 pub use keys::{MacKeySender, MacPermissions};
 pub use pasteboard::MacPasteboard;
+pub(crate) use text::lower_thread_priority;
+pub use text::{MacPowerMode, VisionRecognizer};
 
 /// How long a background thread waits for the main thread to run a call. Pasteboard calls
 /// take milliseconds, so hitting this means the main thread is stuck or not running its loop.

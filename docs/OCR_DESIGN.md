@@ -1,7 +1,7 @@
 # Text in images (OCR) design
 
 > [!NOTE]
-> **Status: proposed,** for 0.1.0-alpha.11. Nothing is built yet. [ADR 0009](decisions/0009-text-in-images.md) records the decisions. To comment, open a [discussion](https://github.com/code-devanshu/kopi/discussions) or a pull request against this file.
+> **Status: built on macOS,** for 0.1.0-alpha.11. Windows is next (see [Building it](#building-it)). [ADR 0009](decisions/0009-text-in-images.md) records the decisions. To comment, open a [discussion](https://github.com/code-devanshu/kopi/discussions) or a pull request against this file.
 
 Kopi keeps every image the user copies, but search can't find them: an image clip has no text, so the only way back to last week's screenshot of an error message is scrolling. With this feature, Kopi reads the text in each copied image, on the computer, with the OS's own text recognition, and puts it where search already looks. Typing a few letters of the error then finds the screenshot.
 
@@ -100,7 +100,7 @@ trait TextRecognizer {
 `kopi-core` gets an `ocr` module, shaped like the thumbnailer: one thread, `kopi-ocr`, fed by a queue, that reads one image at a time.
 
 1. **What goes in the queue.** Every image clip that's inserted, by a copy or by sync, is queued right after its thumbnail, while **Find text in images** is on. These go to the front. The backlog (below) feeds the back.
-2. **Decode and scale.** The worker reads the image's best format (PNG, then TIFF, then DIB) from the store and decodes it with the `image` crate, with the same limits as thumbnails. This is the decoder thumbnails use, so both platforms handle the same formats in the same way. An image smaller than 16 px on either edge is skipped. One larger than `max_dimension` on its longest edge is scaled down to fit, keeping its shape.
+2. **Decode and scale.** The worker reads the image's best format (PNG, then TIFF, then DIB) from the store and decodes it with the `image` crate, with the same limits as thumbnails. This is the decoder thumbnails use, so both platforms handle the same formats in the same way. An image smaller than 16 px on either edge is skipped. One larger than `max_dimension` on its longest edge is scaled down to fit, keeping its shape, by averaging 8-bit pixels (`thumbnail`), which needs far less memory than `resize`. Transparent pixels are put on white, so dark text on a transparent background can be read.
 3. **Recognize.** The recognizer runs, at a low priority: `QOS_CLASS_UTILITY` on macOS, `THREAD_MODE_BACKGROUND_BEGIN` on Windows.
 4. **Tidy the text.** Lines are trimmed and joined with `\n`, and empty lines are dropped. Windows puts a space between every character of Chinese and Japanese text, and those spaces are removed between two CJK characters, so a search for a word finds it. The result is cut to 64 KiB, as clip text is.
 5. **Write.** One `UPDATE` sets `plain_text` (or leaves it `NULL` when there's no text), `ocr_version` and `size_bytes`, only while `kind = 'image' AND ocr_version IS NULL`. A clip deleted while it was read is left alone. The existing `clips_au` trigger updates the search index, so search needs no change. The app shell sends `clip:updated`, so an open panel shows the text.
@@ -142,7 +142,7 @@ CREATE INDEX clips_ocr_pending ON clips (last_used_at DESC)
 - **`ocr_version` isn't in `metadata`**, because copying an image again replaces its metadata, which would make it read again every time.
 - **Copying the same image again keeps its text.** The upsert doesn't touch `plain_text` or `ocr_version`. It does replace `size_bytes`, so for images it adds the text's length back.
 - **`size_bytes` counts the text,** so the history size limit includes it.
-- **The reader's version is 1.** A later change that reads better, such as a newer Vision request, bumps it, and the backlog then reads every image with an older version again. Until it's read again, an image keeps its old text.
+- **The reader's version is 1.** A later change that reads better, such as a newer Vision request, bumps it, with a migration that sets older versions back to `NULL`, so the backlog reads those images again. Until it's read again, an image keeps its old text.
 - **Turning the setting off** sets `plain_text` and `ocr_version` back to `NULL` for every image, in one transaction, and `size_bytes` back to the formats alone.
 - **The setting** is `capture.image_text`: `true` or `false`, `true` by default.
 - Deleting a clip, limits and Clear history remove its text with it. FTS5's `secure-delete` purges it from the index.
@@ -181,15 +181,18 @@ Why not send the text with the image, so the other computer doesn't read it agai
 
 ## Performance
 
-Targets, to be measured on an M1 MacBook Air and a mid-range Windows laptop and written here when it's built:
+Targets, and what an M1 MacBook Air measured on macOS 27.0.1, reading screenshots of text in a release build outside the app. The Windows column comes with the Windows build.
 
-| | Target |
-| --- | --- |
-| A 1080p screenshot, from copy to searchable | Under 1 s |
-| A 5K screenshot | Under 3 s |
-| Memory while reading | Under 150 MB more than idle, released after |
-| A backlog of 1,000 screenshots | Finishes in under 30 minutes, without fans or a noticeable slowdown |
-| Copying while the backlog runs | No slower than with the feature off |
+| | Target | M1 MacBook Air |
+| --- | --- | --- |
+| A 1080p screenshot, from copy to searchable | Under 1 s | 0.3 s |
+| A 5K screenshot | Under 3 s | 0.4 s (0.09 s of it decoding and scaling) |
+| Memory while reading | Under 150 MB more than idle, released after | 126 MB peak for the whole process with a 1080p image. **270 MB with a 5K image**, over the target. |
+| A backlog of 1,000 screenshots | Finishes in under 30 minutes, without fans or a noticeable slowdown | Not measured yet. At 0.3–0.5 s each plus the 250 ms pause, about 10–13 minutes. |
+| Copying while the backlog runs | No slower than with the feature off | Not measured yet |
+
+- **Vision's first request can take about a minute.** In about 30 test runs, the first request in a process took about 60 s four times, and a later request in the same process took 37 s once, for the first real website screenshot. The same images then took under a second, in that process and in new ones. It may be macOS loading and caching Vision's models, but nothing in the system log confirmed it, so it isn't worked around. The reading thread waits, at a low priority, so it only delays when that image becomes searchable.
+- **Tall screenshots lose most of their text,** as expected in [Open questions](#open-questions). A 1440 × 9800 full-page screenshot gave 714 characters, and a 1280 × 12,000 one gave none, because scaling to 4,096 px makes the text too small. A limit of 3,072 px made it much worse (8 characters) and saved little memory, so it stays at 4,096.
 
 ## Testing
 

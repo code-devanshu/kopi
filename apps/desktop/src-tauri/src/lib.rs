@@ -6,6 +6,7 @@ mod commands;
 mod events;
 mod hotkeys;
 mod login_item;
+mod ocr;
 mod onboarding;
 mod panel;
 mod protocol;
@@ -43,6 +44,8 @@ pub fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::settings::set_capture_kinds,
             commands::settings::set_theme,
             commands::settings::set_auto_update,
+            commands::settings::image_text_status,
+            commands::settings::set_image_text,
             commands::settings::excluded_apps,
             commands::settings::add_excluded_app,
             commands::settings::remove_excluded_app,
@@ -55,6 +58,7 @@ pub fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::onboarding::open_privacy_design,
             commands::paste::paste_clip,
             commands::paste::copy_clip,
+            commands::paste::copy_image_text,
             commands::pinboards::set_pinned,
             commands::pinboards::pinboard_list,
             commands::pinboards::pinboard_create,
@@ -93,6 +97,7 @@ pub fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             events::PinboardsChanged,
             events::SnippetsChanged,
             events::ThumbnailReady,
+            events::ImageTextRead,
             events::PanelShown,
             events::PanelHidden,
             events::ThemeChanged,
@@ -167,6 +172,9 @@ pub fn run() {
                 }),
             )?;
             app.manage(retention);
+
+            // Before capture and sync, which add the images it reads.
+            ocr::start(app.handle(), &store)?;
 
             // No Dock icon or app switcher entry. Info.plist sets LSUIElement for bundled
             // builds; this covers `tauri dev`.

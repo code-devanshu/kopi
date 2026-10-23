@@ -69,7 +69,8 @@ pub struct SearchHit {
     pub pinned: bool,
     pub metadata: Option<serde_json::Value>,
     /// The text around the first match, with the matches marked, or the start of the text when
-    /// there's nothing to mark. Empty for clips without text, such as images.
+    /// there's nothing to mark. Empty for clips without text. For images, the text read from
+    /// them, only when the search matched it.
     pub snippet: Vec<Span>,
 }
 
@@ -181,6 +182,11 @@ fn finish(
     (mut hit, kind, metadata): (SearchHit, String, Option<String>),
 ) -> StorageResult<SearchHit> {
     hit.kind = kind.parse()?;
+    // Text read from a screenshot of an app is often noise, so an image row shows it only
+    // where it's why the image was found.
+    if hit.kind == ClipKind::Image && !hit.snippet.iter().any(|span| span.matched) {
+        hit.snippet.clear();
+    }
     hit.metadata = metadata
         .map(|m| serde_json::from_str(&m))
         .transpose()
