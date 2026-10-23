@@ -569,6 +569,9 @@ mark {
 .preview-image {
   height: 100%;
   display: grid;
+  /* A track the size of the box, so the image's max-height has a height to be a share of.
+     Sized to its content, a large image would grow it and spill over the text below. */
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
   place-items: center;
 }
 
