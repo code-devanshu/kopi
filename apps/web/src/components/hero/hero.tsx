@@ -33,8 +33,8 @@ export function Hero() {
 
         <Reveal delay={0.1}>
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
-            Everything you copy on your Mac or PC, a keystroke away. Private, open source, and synced
-            between your computers over your own network.
+            Everything you copy on your Mac or PC, a keystroke away, even the words in your
+            screenshots. Private, open source, and synced between your computers over your own network.
           </p>
         </Reveal>
 
