@@ -31,7 +31,7 @@ Decide what Kopi looks like and how it's built before writing the app.
 - ✅ Define the keyboard shortcuts
 - ✅ Spike the risky parts on macOS: pasteboard privacy, the panel window and pasting into the active app ([docs/spikes/](docs/spikes/))
 
-## 3. macOS alpha 🔨
+## 3. macOS alpha ✅
 
 Usable builds for early testers on macOS, out now on [GitHub Releases](https://github.com/code-devanshu/kopi/releases). The scope is in [docs/MVP_SCOPE.md](docs/MVP_SCOPE.md), and each release is in [CHANGELOG.md](CHANGELOG.md).
 
@@ -46,6 +46,9 @@ Usable builds for early testers on macOS, out now on [GitHub Releases](https://g
 - ✅ Settings, onboarding, menu bar icon and launch at login
 - ✅ Signed releases and automatic updates, without paying for notarization ([ADR 0006](docs/decisions/0006-macos-distribution-without-notarization.md))
 - ✅ An easier first install: a one-line install from Terminal, and a `.dmg` that shows the steps ([#39](https://github.com/code-devanshu/kopi/issues/39))
+
+Carried over, while testers use it:
+
 - ⏳ Retest pasteboard privacy on macOS 27.2 ([#21](https://github.com/code-devanshu/kopi/issues/21))
 - ⏳ Fixes from testers' reports
 
@@ -80,7 +83,7 @@ A stable release on macOS and Windows that anyone can download for free.
 - ⏳ User docs and FAQ
 - ⏳ Security review of local storage
 
-## 7. Encrypted sync 🔨
+## 7. Encrypted sync ✅
 
 Optional sync between your Mac and Windows computers, directly over your local network, in the alpha since 0.1.0-alpha.8.
 
@@ -88,6 +91,9 @@ Optional sync between your Mac and Windows computers, directly over your local n
 - ✅ End-to-end encryption, with keys that never leave your computers
 - ✅ Pairing with a code
 - ✅ Conflict handling, deletes, and sync for pins, pinboards and snippets
+
+Carried over:
+
 - 🔨 Testing on real networks, Mac and Windows, with testers
 - ⏳ Sync away from home, through a relay that can't read your clips, in its own design
 
