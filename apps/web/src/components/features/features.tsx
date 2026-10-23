@@ -29,8 +29,13 @@ const features: Feature[] = [
     eyebrow: "Search",
     icon: Search,
     title: "Find it in a few letters.",
-    description: "Type part of anything you copied, last minute or last month, and it's there. Narrow it down by kind or by the app it came from.",
-    points: ["Matches highlighted as you type", "Filters for kind and source app", "Unlimited history, unless you set a limit"],
+    description: "Type part of anything you copied, last minute or last month, even the words in a screenshot, and it's there. Narrow it down by kind or by the app it came from.",
+    points: [
+      "Matches highlighted as you type",
+      "Finds the text in screenshots and images",
+      "Filters for kind and source app",
+      "Unlimited history, unless you set a limit",
+    ],
     shot: {
       light: searchLight,
       dark: searchDark,

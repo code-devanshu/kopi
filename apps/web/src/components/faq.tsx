@@ -56,7 +56,7 @@ const faqs: Array<{ question: string; answer: ReactNode }> = [
   {
     question: "Is my data private?",
     answer:
-      "Your history is stored locally on your computer. Sync is optional and off until you turn it on. When it's on, clips go straight between your computers on your local network, end-to-end encrypted, and never through a server. Kopi skips copies from password managers and content marked as sensitive, and because the code is open, anyone can verify how it all works.",
+      "Your history is stored locally on your computer. Sync is optional and off until you turn it on. When it's on, clips go straight between your computers on your local network, end-to-end encrypted, and never through a server. The text in images you copy is read on your computer too, never sent anywhere, and you can turn that off. Kopi skips copies from password managers and content marked as sensitive, and because the code is open, anyone can verify how it all works.",
   },
   {
     question: "Which platforms will it support?",
