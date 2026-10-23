@@ -35,8 +35,11 @@ pub struct Settings {
 #[derive(Debug, Clone, Copy, Serialize, Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ImageTextStatus {
-    /// Whether this build can read text in images. Not on Windows yet.
+    /// Whether this build can read text in images.
     pub available: bool,
+    /// False on Windows when no language has text recognition installed. Settings then says
+    /// how to add one, and the switch is off.
+    pub language_installed: bool,
     pub enabled: bool,
     /// Images in the history whose text hasn't been read yet.
     #[specta(type = Number)]
@@ -216,19 +219,24 @@ pub async fn set_auto_update(store: State<'_, Arc<Store>>, enabled: bool) -> Res
     blocking(move || store.set_auto_update(enabled)).await
 }
 
-/// Whether Kopi reads the text in images, and how many are left to read.
+/// Whether Kopi reads the text in images, and how many are left to read. Checks for an OCR
+/// language each time, and has the reading thread look again when there's one, so a language
+/// installed while Kopi runs is used.
 #[tauri::command]
 #[specta::specta]
 pub async fn image_text_status(
     app: AppHandle,
     store: State<'_, Arc<Store>>,
 ) -> Result<ImageTextStatus, String> {
+    let available = ocr::available(&app);
     let store = Arc::clone(&store);
-    let (enabled, unread) = blocking(move || {
+    let (language_installed, enabled, unread) = blocking(move || {
+        let language_installed = available && ocr::language_installed();
         let enabled = store.image_text_enabled()?;
         Ok((
+            language_installed,
             enabled,
-            if enabled {
+            if enabled && language_installed {
                 store.images_without_text()?
             } else {
                 0
@@ -236,11 +244,29 @@ pub async fn image_text_status(
         ))
     })
     .await?;
+    if enabled && language_installed {
+        ocr::resume(&app);
+    }
     Ok(ImageTextStatus {
-        available: ocr::available(&app),
+        available,
+        language_installed,
         enabled,
         unread,
     })
+}
+
+/// Opens Windows Settings at Time & language → Language & region, where a language's
+/// Optical character recognition feature is installed. Does nothing outside Windows.
+#[tauri::command]
+#[specta::specta]
+pub fn open_language_settings() {
+    #[cfg(target_os = "windows")]
+    {
+        // Explorer hands the link to Settings and exits. Its exit code is 1 even then.
+        let _ = std::process::Command::new("explorer")
+            .arg("ms-settings:regionlanguage")
+            .spawn();
+    }
 }
 
 /// Turns Find text in images on or off. Off removes the text read from every image. On reads

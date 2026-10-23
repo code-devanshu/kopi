@@ -94,12 +94,12 @@ pub async fn get_clip(
     id: ClipId,
 ) -> Result<Option<ClipDetail>, String> {
     let store = Arc::clone(&store);
-    let available = crate::ocr::available(&app);
+    let readable = crate::ocr::readable(&app);
     blocking(move || {
         let Some(clip) = store.get_clip(id.0)? else {
             return Ok(None);
         };
-        let reading = available && store.image_text_enabled()?;
+        let reading = readable && store.image_text_enabled()?;
         Ok(Some(ClipDetail::new(clip, reading)))
     })
     .await

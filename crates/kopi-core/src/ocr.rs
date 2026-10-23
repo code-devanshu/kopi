@@ -7,6 +7,7 @@
 
 use std::collections::VecDeque;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender, TryRecvError};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
@@ -43,6 +44,7 @@ enum Message {
 /// Owns the reading thread. Dropping it stops the thread once the image being read is done.
 pub struct Ocr {
     tx: Sender<Message>,
+    readable: Arc<AtomicBool>,
     worker: Option<JoinHandle<()>>,
 }
 
@@ -57,11 +59,13 @@ impl Ocr {
         listener: OcrListener,
     ) -> std::io::Result<Self> {
         let (tx, rx) = mpsc::channel();
+        let readable = Arc::new(AtomicBool::new(false));
         let added = tx.clone();
         store.set_image_listener(Box::new(move |id| {
             // The thread only stops when the Ocr is dropped. Then there's no one to tell.
             let _ = added.send(Message::Added(id));
         }));
+        let worker_readable = Arc::clone(&readable);
         let worker = thread::Builder::new()
             .name("kopi-ocr".into())
             .spawn(move || {
@@ -72,6 +76,7 @@ impl Ocr {
                     power,
                     pause,
                     listener,
+                    readable: worker_readable,
                     rx,
                     new: VecDeque::new(),
                 }
@@ -79,13 +84,21 @@ impl Ocr {
             })?;
         Ok(Self {
             tx,
+            readable,
             worker: Some(worker),
         })
     }
 
-    /// The setting was turned on: start on the images in the history.
+    /// The setting was turned on, or a recognizer may have become available: start on the
+    /// images in the history.
     pub fn resume(&self) {
         let _ = self.tx.send(Message::Resume);
+    }
+
+    /// Whether the recognizer could run when the thread last looked, so a preview doesn't wait
+    /// for text that won't come. False until it first looks, and while the setting is off.
+    pub fn readable(&self) -> bool {
+        self.readable.load(Ordering::Relaxed)
     }
 }
 
@@ -104,6 +117,7 @@ struct Worker {
     power: Box<dyn PowerMode>,
     pause: Duration,
     listener: OcrListener,
+    readable: Arc<AtomicBool>,
     rx: Receiver<Message>,
     /// Images that just arrived. They go before the backlog, without its pause.
     new: VecDeque<i64>,
@@ -120,15 +134,6 @@ enum Next {
 
 impl Worker {
     fn run(mut self) {
-        if !self.recognizer.available() {
-            // Nothing to read with. Waits to be stopped.
-            while let Ok(message) = self.rx.recv() {
-                if let Message::Stop = message {
-                    return;
-                }
-            }
-            return;
-        }
         // When the backlog may take its next image.
         let mut backlog_at = Instant::now();
         loop {
@@ -177,6 +182,7 @@ impl Worker {
             Ok(true) => {}
             // Turning it on again reads everything as backlog.
             Ok(false) => {
+                self.readable.store(false, Ordering::Relaxed);
                 self.new.clear();
                 return Next::Sleep;
             }
@@ -184,6 +190,14 @@ impl Worker {
                 eprintln!("kopi: couldn't read the image text setting: {e}");
                 return Next::Wait(ERROR_PAUSE);
             }
+        }
+        // On Windows there's none until a language with text recognition is installed. The
+        // images wait as backlog, and a resume looks again.
+        let available = self.recognizer.available();
+        self.readable.store(available, Ordering::Relaxed);
+        if !available {
+            self.new.clear();
+            return Next::Sleep;
         }
         if let Some(id) = self.new.pop_front() {
             self.read(id);

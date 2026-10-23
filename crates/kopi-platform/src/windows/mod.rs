@@ -1,4 +1,4 @@
-//! Windows: the Win32 clipboard, the foreground window and `SendInput`.
+//! Windows: the Win32 clipboard, the foreground window, `SendInput` and `Windows.Media.Ocr`.
 //!
 //! The clipboard speaks the macOS format names (UTIs) that the rest of Kopi uses, so the core
 //! doesn't know which OS it runs on: `CF_UNICODETEXT` reads as `public.utf8-plain-text`,
@@ -8,12 +8,15 @@
 mod apps;
 mod keys;
 mod pasteboard;
+mod text;
 
 pub use apps::{
     WinForegroundApp, WinUserIdle, WindowRef, activate, foreground_window, running_apps,
 };
 pub use keys::{WinKeySender, WinPermissions};
 pub use pasteboard::WinPasteboard;
+pub(crate) use text::lower_thread_priority;
+pub use text::{WinPowerMode, WinRecognizer};
 
 /// `s` as a NUL-terminated UTF-16 string, for the `W` functions.
 fn wide(s: &str) -> Vec<u16> {

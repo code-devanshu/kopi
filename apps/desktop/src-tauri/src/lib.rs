@@ -46,6 +46,7 @@ pub fn specta_builder() -> tauri_specta::Builder<tauri::Wry> {
             commands::settings::set_auto_update,
             commands::settings::image_text_status,
             commands::settings::set_image_text,
+            commands::settings::open_language_settings,
             commands::settings::excluded_apps,
             commands::settings::add_excluded_app,
             commands::settings::remove_excluded_app,

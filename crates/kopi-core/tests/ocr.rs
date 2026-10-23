@@ -16,16 +16,18 @@ use kopi_platform::{OcrError, PowerMode, RgbaImage, TextRecognizer};
 /// How long a test waits for the thread before failing.
 const WAIT: Duration = Duration::from_secs(10);
 
-/// Reads every image as "image <width>", and fails for the widths in `fail`.
+/// Reads every image as "image <width>", and fails for the widths in `fail`. With `missing`
+/// set, it can't run, as on Windows without an OCR language.
 #[derive(Clone, Default)]
 struct FakeRecognizer {
     read: Arc<Mutex<Vec<u32>>>,
     fail: Vec<u32>,
+    missing: Arc<AtomicBool>,
 }
 
 impl TextRecognizer for FakeRecognizer {
     fn available(&self) -> bool {
-        true
+        !self.missing.load(Ordering::SeqCst)
     }
     fn max_dimension(&self) -> u32 {
         4096
@@ -233,6 +235,24 @@ fn turning_it_off_clears_the_text_and_stops_reading_until_it_is_on_again() {
     read.sort();
     assert_eq!(read, [id, off]);
     assert_eq!(f.text_of(id).0.as_deref(), Some("image 100"));
+}
+
+#[test]
+fn without_a_recognizer_images_wait_until_a_resume_finds_one() {
+    let f = Fixture::new();
+    f.recognizer.missing.store(true, Ordering::SeqCst);
+    let old = f.image(100, 1_000);
+    let (ocr, rx) = f.start(Duration::ZERO);
+    let new = f.image(200, 2_000);
+    assert!(rx.recv_timeout(Duration::from_millis(300)).is_err());
+    assert!(!ocr.readable());
+    assert_eq!(f.text_of(new), (None, None));
+
+    // A language with text recognition was installed.
+    f.recognizer.missing.store(false, Ordering::SeqCst);
+    ocr.resume();
+    assert_eq!([next(&rx), next(&rx)], [new, old]);
+    assert!(ocr.readable());
 }
 
 #[test]

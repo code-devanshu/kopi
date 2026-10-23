@@ -1,7 +1,7 @@
 # Text in images (OCR) design
 
 > [!NOTE]
-> **Status: built on macOS,** for 0.1.0-alpha.11. Windows is next (see [Building it](#building-it)). [ADR 0009](decisions/0009-text-in-images.md) records the decisions. To comment, open a [discussion](https://github.com/code-devanshu/kopi/discussions) or a pull request against this file.
+> **Status: built on macOS and Windows,** for 0.1.0-alpha.11. Windows isn't tested by hand or measured yet (see [Performance](#performance)). [ADR 0009](decisions/0009-text-in-images.md) records the decisions. To comment, open a [discussion](https://github.com/code-devanshu/kopi/discussions) or a pull request against this file.
 
 Kopi keeps every image the user copies, but search can't find them: an image clip has no text, so the only way back to last week's screenshot of an error message is scrolling. With this feature, Kopi reads the text in each copied image, on the computer, with the OS's own text recognition, and puts it where search already looks. Typing a few letters of the error then finds the screenshot.
 
@@ -60,7 +60,7 @@ Paste is unchanged. Return pastes the image, and ⌥Return (plain text) also pas
 - While the backlog runs, a line under it says "Reading older images: 1,240 left". When it's done, the line goes away.
 - Turning it **off** stops reading and removes the text it read from this computer, so search stops finding images. Turning it on again reads them all again.
 - With **Images** unticked in the kinds to capture, the switch is still available, for the images already in the history.
-- On Windows, when no language on the computer has text recognition installed, the switch is off and greyed out with "Add a language with Optical character recognition in Windows Settings → Time & language." and a button that opens that page. Kopi checks again each time Settings opens.
+- On Windows, when no language on the computer has text recognition installed, the switch is off and greyed out with "Add a language with Optical character recognition in Windows Settings → Time & language." and a button that opens that page. Kopi checks again each time Settings → Capture opens or the Settings window comes back to the front, and starts reading when there's one, without a restart.
 
 It's **on by default**, for new users and for people updating, because it adds no permission and sends nothing anywhere. The release notes for 0.1.0-alpha.11 say that older images are read once after the update and how to turn it off.
 
@@ -93,7 +93,7 @@ trait TextRecognizer {
 `RgbaImage` is plain width, height and RGBA8 pixels, so `kopi-platform` doesn't decode anything.
 
 - **macOS:** `VNRecognizeTextRequest` from Vision, through `objc2-vision`. The pixels become a `CGImage` (`objc2-core-graphics`), handed to `VNImageRequestHandler`. Settings: `recognitionLevel = .accurate`, `usesLanguageCorrection = true`, `automaticallyDetectsLanguage = true` (macOS 13+, so always available on Kopi's macOS 14 minimum). Each observation's top candidate is one line. Lines with a confidence under 0.3 are dropped. `max_dimension` is 4,096. Vision doesn't need the main thread.
-- **Windows:** `OcrEngine::TryCreateFromUserProfileLanguages` from `Windows.Media.Ocr`, through the `windows` crate (which Tauri already pulls in). The pixels become a `SoftwareBitmap` in BGRA8, and `RecognizeAsync` is waited on from the worker thread. Each `OcrLine` is one line. `max_dimension` is `OcrEngine::MaxImageDimension`. The engine is made once and kept. It's available on Windows 10 and 11.
+- **Windows:** `OcrEngine::TryCreateFromUserProfileLanguages` from `Windows.Media.Ocr`, through the `windows` crate (which Tauri already pulls in). The pixels become a `SoftwareBitmap` in BGRA8, and `RecognizeAsync` is waited on from the worker thread. Each `OcrLine` is one line, and Windows gives no confidence to filter by. `max_dimension` is `OcrEngine::MaxImageDimension` or 4,096 px, whichever is smaller, as on macOS, so memory stays the same. Until a language with text recognition is installed there's no engine: the reading thread checks again each time it's woken, and images wait as backlog meanwhile. Once made, the engine is kept. It's available on Windows 10 and 11.
 
 ### The core: the `ocr` worker
 
@@ -181,7 +181,7 @@ Why not send the text with the image, so the other computer doesn't read it agai
 
 ## Performance
 
-Targets, and what an M1 MacBook Air measured on macOS 27.0.1, reading screenshots of text in a release build outside the app. The Windows column comes with the Windows build.
+Targets, and what an M1 MacBook Air measured on macOS 27.0.1, reading screenshots of text in a release build outside the app. Windows isn't measured yet: it needs a Windows computer, and is done before the release.
 
 | | Target | M1 MacBook Air |
 | --- | --- | --- |
