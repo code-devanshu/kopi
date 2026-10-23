@@ -44,6 +44,7 @@ A dropped copy leaves no trace: no row, no file and no log line with content. A 
 - If a password manager doesn't mark its copies, and the user hasn't excluded it, the copy is captured like any other. Onboarding says this plainly, and the panel makes it easy to delete one clip or exclude the app it came from.
 - The source app is a best guess on both platforms (see PLATFORM_NOTES), so an exclusion can miss a copy made by a background helper of an excluded app.
 - Pattern-based secret detection (API keys, card numbers) isn't in the alpha. It's a candidate for later, as an opt-in that hides or skips matches.
+- Reading text in images (planned, [OCR_DESIGN.md](OCR_DESIGN.md)) happens on the computer, with the OS's own engine, and only for images the filter let through. It makes text in a screenshot searchable, and secret detection would cover that text too.
 
 ## Local only by default
 
