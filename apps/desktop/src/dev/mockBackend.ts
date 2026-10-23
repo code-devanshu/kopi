@@ -20,7 +20,8 @@
 //   ?sync           starts with sync on and two paired computers. ?sync=denied adds the
 //                   Local Network problem. Pairing works with the code 482913.
 //   ?tab=Snippets   opens that tab of the panel: Pinned, Snippets or a pinboard's name
-//   ?shot           leaves the page behind the panel transparent, for the website's screenshots
+//   ?shot           leaves the page behind the panel transparent and hides the text cursor, for
+//                   the website's screenshots
 //   ?reading        the sample image's text hasn't been read yet, and Settings shows a backlog
 //   ?nolanguage     Settings → Capture shows Windows without a language for text recognition
 // Open /settings.html for the Settings window, and /onboarding.html for onboarding.
@@ -60,7 +61,8 @@ const APPS: [string, string][] = [
   ["com.apple.finder", "Finder"],
 ];
 
-const SAMPLES: [ClipKind, string | null, ClipMetadata | null, string][] = [
+// An image can name its picture in src/dev/images, which stands in for its content hash.
+const SAMPLES: [ClipKind, string | null, ClipMetadata | null, string, string?][] = [
   ["text", "Standup moved to 10:30 tomorrow. Same room, same snacks.", null, "Slack"],
   ["link", "https://github.com/code-devanshu/kopi/pull/29", { host: "github.com" }, "Safari"],
   [
@@ -89,6 +91,48 @@ const SAMPLES: [ClipKind, string | null, ClipMetadata | null, string][] = [
   ["link", "https://developer.apple.com/documentation/appkit/nspanel", { host: "developer.apple.com" }, "Safari"],
   ["color", "rgba(30, 144, 255, 0.5)", { rgba: [30, 144, 255, 128] }, "Figma"],
   ["text", "Café au lait, résumé, naïve: accents should match without them.", null, "Notes"],
+  // A booking confirmation, with the text Vision read from it. ?q=lisbon finds it.
+  [
+    "image",
+    [
+      "Northwind Air",
+      "Confirmed",
+      "You're going to Lisbon",
+      "Booking reference QX7P2M",
+      "LHR",
+      "London Heathrow",
+      "07:25",
+      "NW 2491",
+      "LIS",
+      "Lisbon",
+      "10:05",
+      "DATE",
+      "Fri 14 Nov",
+      "PASSENGER",
+      "Sam Carter",
+      "SEAT",
+      "14A",
+      "GATE",
+      "B32",
+      "Book",
+      "My trips",
+      "Check in",
+      "Help",
+      "Check-in opens Thursday",
+      "Online check-in opens 24 hours",
+      "before departure. Bring your passport",
+      "to the gate.",
+      "Add to Wallet",
+      "Baggage",
+      "1 cabin bag, 1 checked bag up to",
+      "23 kg",
+    ].join("\n"),
+    { w: 1440, h: 900 },
+    "Safari",
+    "boarding-pass.png",
+  ],
+  ["text", "Lisbon: Rua das Flores 28, check-in from 3 pm", null, "Notes"],
+  ["text", "Sam lands in Lisbon at 10:05 on Friday, can someone grab him?", null, "Slack"],
 ];
 
 const params = new URLSearchParams(location.search);
@@ -96,20 +140,27 @@ const now = Date.now();
 let nextId = 1;
 let clips: Clip[] = [];
 
-function clip(kind: ClipKind, text: string | null, metadata: ClipMetadata | null, app: string, ago: number): Clip {
+function clip(
+  kind: ClipKind,
+  text: string | null,
+  metadata: ClipMetadata | null,
+  app: string,
+  ago: number,
+  image?: string,
+): Clip {
   const id = nextId++;
   const appId = APPS.find(([, name]) => name === app)?.[0] ?? null;
   return {
     id,
     kind,
     text,
-    contentHash: id.toString(16).padStart(64, "0"),
+    contentHash: image ?? id.toString(16).padStart(64, "0"),
     sourceAppName: app,
     sourceAppId: appId,
     createdAt: now - ago - 3_600_000,
     lastUsedAt: now - ago,
     useCount: 1 + (id % 4),
-    sizeBytes: (text?.length ?? 1_500_000) * (kind === "rich_text" ? 6 : 1),
+    sizeBytes: kind === "image" ? 1_480_000 : (text?.length ?? 0) * (kind === "rich_text" ? 6 : 1),
     pinned: id % 11 === 0,
     metadata,
     copiedOn: id % 5 === 0 ? "Windows PC" : null,
@@ -141,8 +192,8 @@ function tail(i: number): string {
 
 if (!params.has("empty")) {
   // The samples first, then a long tail of notes so paging and scrolling can be tried.
-  SAMPLES.forEach(([kind, text, metadata, app], i) => {
-    clips.push(clip(kind, text, metadata, app, i * 7 * 60_000 + i * i * 3_600_000));
+  SAMPLES.forEach(([kind, text, metadata, app, image], i) => {
+    clips.push(clip(kind, text, metadata, app, i * 7 * 60_000 + i * i * 3_600_000, image));
   });
   if (params.has("reading")) {
     for (const c of clips) if (c.kind === "image") Object.assign(c, { text: null, readingText: true });
@@ -651,6 +702,9 @@ if (!/\/(settings|onboarding)\.html$/.test(location.pathname) && !params.has("sh
   document.documentElement.style.background = "#7a6a5c";
   document.body.style.padding = "0";
 }
+
+// A blinking text cursor would show in some shots and not others.
+if (params.has("shot")) document.documentElement.style.caretColor = "transparent";
 
 Object.assign(window, {
   kopiDev: {
