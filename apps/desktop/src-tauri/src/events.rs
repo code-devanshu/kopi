@@ -50,6 +50,15 @@ pub struct ThumbnailReady {
     pub content_hash: String,
 }
 
+/// The text in an image clip was read, or it was found to have none. An open preview of it
+/// loads it again, and so does a search, which may now find it.
+#[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
+#[tauri_specta(event_name = "image-text:read")]
+pub struct ImageTextRead {
+    #[specta(type = Number)]
+    pub id: i64,
+}
+
 /// The panel was shown. The search box takes focus.
 #[derive(Debug, Clone, Serialize, Deserialize, Type, Event)]
 #[tauri_specta(event_name = "panel:shown")]

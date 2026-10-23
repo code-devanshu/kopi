@@ -21,6 +21,7 @@
 //                   Local Network problem. Pairing works with the code 482913.
 //   ?tab=Snippets   opens that tab of the panel: Pinned, Snippets or a pinboard's name
 //   ?shot           leaves the page behind the panel transparent, for the website's screenshots
+//   ?reading        the sample image's text hasn't been read yet, and Settings shows a backlog
 // Open /settings.html for the Settings window, and /onboarding.html for onboarding.
 // In the console, kopiDev.copy("text") adds a clip as a copy would.
 import { emit } from "@tauri-apps/api/event";
@@ -68,7 +69,13 @@ const SAMPLES: [ClipKind, string | null, ClipMetadata | null, string][] = [
     "Zed",
   ],
   ["color", "#D08A3A", { rgba: [208, 138, 58, 255] }, "Figma"],
-  ["image", null, { w: 1440, h: 900 }, "Safari"],
+  // The text read from the screenshot.
+  [
+    "image",
+    "Build failed\nerror[E0425]: cannot find value `clips` in this scope\n--> src/main.rs:2:9",
+    { w: 1440, h: 900 },
+    "Safari",
+  ],
   [
     "rich_text",
     "Q3 invoice summary\nTotal due: $4,280.00 by 31 October. Please reference INV-2291 on the transfer.",
@@ -105,6 +112,7 @@ function clip(kind: ClipKind, text: string | null, metadata: ClipMetadata | null
     pinned: id % 11 === 0,
     metadata,
     copiedOn: id % 5 === 0 ? "Windows PC" : null,
+    readingText: false,
   };
 }
 
@@ -135,6 +143,9 @@ if (!params.has("empty")) {
   SAMPLES.forEach(([kind, text, metadata, app], i) => {
     clips.push(clip(kind, text, metadata, app, i * 7 * 60_000 + i * i * 3_600_000));
   });
+  if (params.has("reading")) {
+    for (const c of clips) if (c.kind === "image") Object.assign(c, { text: null, readingText: true });
+  }
   for (let i = 0; i < 400; i++) {
     const [, app] = APPS[i % APPS.length];
     clips.push(clip("text", tail(i), null, app, (i + 20) * 5 * 3_600_000));
@@ -230,6 +241,13 @@ function matches(c: Clip, words: string[]): boolean {
   return words.every((w) => hay.includes(w));
 }
 
+/** The row's text. An image shows the text read from it only where the search matched it. */
+function snippetOf(c: Clip, text: string) {
+  if (!c.text) return [];
+  const spans = highlight(c.text.slice(0, 200), text);
+  return c.kind === "image" && !spans.some((s) => s.matched) ? [] : spans;
+}
+
 function search(query: SearchQuery): SearchPage {
   const words = (query.text ?? "").toLowerCase().split(/\s+/).filter(Boolean);
   const onBoard = query.pinboardId != null ? (items.get(query.pinboardId) ?? []) : null;
@@ -256,7 +274,7 @@ function search(query: SearchQuery): SearchPage {
     lastUsedAt: c.lastUsedAt,
     pinned: c.pinned,
     metadata: c.metadata,
-    snippet: c.text ? highlight(c.text.slice(0, 200), query.text ?? "") : [],
+    snippet: snippetOf(c, query.text ?? ""),
   }));
   return { hits, hasMore: offset + limit < found.length };
 }
@@ -280,6 +298,7 @@ const settings: Settings = {
 };
 let limits: HistoryLimits = { maxItems: null, maxAgeDays: null, maxTotalBytes: 2 * 1024 ** 3 };
 let launchAtLogin = false;
+let imageText = { enabled: true, unread: params.has("reading") ? 1240 : 0 };
 let excluded: ExcludedApp[] = [
   { id: "com.1password.1password", name: "1Password", isDefault: true },
   { id: "com.apple.keychainaccess", name: "Keychain Access", isDefault: true },
@@ -477,6 +496,15 @@ mockIPC(
       case "copy_clip":
         markUsed(a.id as number);
         console.info(`kopi: copy_clip ${a.id}${a.plain ? " as plain text" : ""}`);
+        return null;
+      case "copy_image_text":
+        console.info(`kopi: copy_image_text ${a.id}`);
+        return null;
+      case "image_text_status":
+        return { available: true, ...imageText };
+      case "set_image_text":
+        imageText = { enabled: a.enabled as boolean, unread: a.enabled ? 1240 : 0 };
+        for (const c of clips) if (c.kind === "image") c.readingText = imageText.enabled;
         return null;
       case "hide_panel":
         console.info("kopi: hide_panel");

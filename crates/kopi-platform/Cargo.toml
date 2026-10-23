@@ -1,6 +1,6 @@
 [package]
 name = "kopi-platform"
-description = "OS APIs behind small traits: the pasteboard, the frontmost app, key events and permissions."
+description = "OS APIs behind small traits: the pasteboard, the frontmost app, key events, permissions and text recognition."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -21,15 +21,37 @@ objc2-app-kit = { version = "0.3", default-features = false, features = [
     "NSRunningApplication",
     "NSWorkspace",
 ] }
+objc2-core-foundation = { version = "0.3", default-features = false, features = [
+    "std",
+    "CFData",
+] }
+objc2-core-graphics = { version = "0.3", default-features = false, features = [
+    "std",
+    "objc2",
+    "CGColorSpace",
+    "CGDataProvider",
+    "CGImage",
+] }
 objc2-foundation = { version = "0.3", default-features = false, features = [
     "std",
     "NSArray",
     "NSData",
     "NSDictionary",
     "NSEnumerator",
+    "NSError",
+    "NSProcessInfo",
     "NSString",
     "NSURL",
     "NSValue",
+] }
+objc2-vision = { version = "0.3", default-features = false, features = [
+    "std",
+    "objc2-core-graphics",
+    "VNObservation",
+    "VNRecognizeTextRequest",
+    "VNRequest",
+    "VNRequestHandler",
+    "VNTypes",
 ] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
@@ -46,6 +68,9 @@ windows-sys = { version = "0.61", features = [
     "Win32_UI_Shell",
     "Win32_UI_WindowsAndMessaging",
 ] }
+
+[dev-dependencies]
+image = { version = "0.25", default-features = false, features = ["png"] }
 
 [[test]]
 name = "macos_pasteboard"

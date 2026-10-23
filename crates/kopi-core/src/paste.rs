@@ -58,6 +58,9 @@ pub enum PasteError {
     NotFound(i64),
     #[error("no snippet {0}")]
     NoSnippet(i64),
+    /// The clip isn't an image, or no text has been read from it.
+    #[error("no text in clip {0}")]
+    NoImageText(i64),
     #[error(transparent)]
     Storage(#[from] StorageError),
     #[error(transparent)]
@@ -113,6 +116,18 @@ impl PasteEngine {
     ) -> Result<Pasted, PasteError> {
         self.copy(store, id, content)?;
         self.post_paste(hide, 0)
+    }
+
+    /// Puts the text read from image clip `id` on the clipboard as plain text, marked as Kopi's,
+    /// so it doesn't become a clip. The image doesn't move in the history.
+    pub fn copy_image_text(&self, store: &Store, id: i64) -> Result<(), PasteError> {
+        let clip = store.get_clip(id)?.ok_or(PasteError::NotFound(id))?;
+        let text = match (clip.kind, clip.plain_text) {
+            (ClipKind::Image, Some(text)) if !text.is_empty() => text,
+            _ => return Err(PasteError::NoImageText(id)),
+        };
+        self.write(&[text_format(text.into_bytes())])?;
+        Ok(())
     }
 
     /// Puts snippet `id`'s filled-in `text` on the clipboard as plain text, and counts the use.
@@ -217,9 +232,10 @@ pub fn clipboard_formats(clip: &Clip, stored: &[ClipFormat], content: Content) -
         })
         .collect();
     // The store drops a plain-text format that's a copy of `plain_text`, so put it back. A
-    // file clip's text is its paths, which Kopi made up, so it isn't added.
+    // file clip's text is its paths, and an image's is what was read from it, which Kopi made
+    // up, so neither is added.
     if stored_text.is_empty()
-        && clip.kind != ClipKind::File
+        && !matches!(clip.kind, ClipKind::File | ClipKind::Image)
         && let Some(text) = &clip.plain_text
     {
         let first = out.iter().map(|f| f.item_index).min().unwrap_or(0);
@@ -236,7 +252,11 @@ pub fn clipboard_formats(clip: &Clip, stored: &[ClipFormat], content: Content) -
 
 /// The text ⌥Return pastes: `plain_text`, which for a link is the URL, or a file clip's full
 /// paths. When `plain_text` was cut for the index, the full text comes from the stored formats.
+/// None for an image, which pastes as it was copied, whatever text was read from it.
 fn plain_text(clip: &Clip, stored: &[&ClipFormat], stored_text: &[&[u8]]) -> Option<Vec<u8>> {
+    if clip.kind == ClipKind::Image {
+        return None;
+    }
     if clip.kind == ClipKind::File {
         let paths: Vec<String> = stored
             .iter()
@@ -489,6 +509,53 @@ mod tests {
             .unwrap();
         let id = save(&h.store, vec![raw(0, uti::PNG, &png)]);
         assert_eq!(written(&h, id, Content::PlainText), [f(0, uti::PNG, &png)]);
+
+        // Text read from it is for search. It's never pasted, plain or not.
+        assert!(
+            h.store
+                .write_image_text(id, Some("Invoice 42"), crate::storage::IMAGE_TEXT_READER)
+                .unwrap()
+        );
+        for content in [Content::All, Content::PlainText] {
+            assert_eq!(written(&h, id, content), [f(0, uti::PNG, &png)]);
+        }
+    }
+
+    #[test]
+    fn copy_image_text_writes_only_the_text_marked_and_leaves_the_image_in_place() {
+        let h = harness(true);
+        let mut png = Vec::new();
+        image::RgbaImage::new(2, 2)
+            .write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png)
+            .unwrap();
+        let image = save(&h.store, vec![raw(0, uti::PNG, &png)]);
+        let text = save(&h.store, vec![raw(0, uti::PLAIN_TEXT, b"Hello")]);
+        assert!(matches!(
+            h.engine.copy_image_text(&h.store, image),
+            Err(PasteError::NoImageText(_))
+        ));
+        assert!(matches!(
+            h.engine.copy_image_text(&h.store, text),
+            Err(PasteError::NoImageText(_))
+        ));
+
+        h.store
+            .write_image_text(image, Some("Invoice 42"), crate::storage::IMAGE_TEXT_READER)
+            .unwrap();
+        h.engine.copy_image_text(&h.store, image).unwrap();
+        let log = h.fake.log();
+        assert_eq!(log.writes.len(), 1);
+        let (formats, marker) = &log.writes[0];
+        assert_eq!(
+            formats
+                .iter()
+                .map(|f| (f.format.as_str(), &f.data[..]))
+                .collect::<Vec<_>>(),
+            [(uti::PLAIN_TEXT, &b"Invoice 42"[..])]
+        );
+        assert_eq!(marker.as_deref(), Some(KOPI));
+        let clip = h.store.get_clip(image).unwrap().unwrap();
+        assert_eq!((clip.use_count, clip.last_used_at), (1, 1_000));
     }
 
     #[test]

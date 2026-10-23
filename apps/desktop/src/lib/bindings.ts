@@ -19,8 +19,10 @@ export const commands = {
 	getClip: (id: ClipId) => typedError<{
 	id: number,
 	kind: ClipKind,
-	/**  The clip's text, cut to 64 KiB. None for images. */
+	/**  The clip's text, cut to 64 KiB. For an image, the text read from it, if any. */
 	text: string | null,
+	/**  An image whose text Kopi hasn't read yet. The preview says it's looking. */
+	readingText: boolean,
 	/**  Names the image, for `kopi://…/image/<hash>`. */
 	contentHash: string,
 	sourceAppName: string | null,
@@ -66,6 +68,13 @@ export const commands = {
 	setTheme: (theme: Theme) => typedError<null, string>(__TAURI_INVOKE("set_theme", { theme })),
 	/**  Turns automatic update checks on or off. The next scheduled check follows it. */
 	setAutoUpdate: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("set_auto_update", { enabled })),
+	/**  Whether Kopi reads the text in images, and how many are left to read. */
+	imageTextStatus: () => typedError<ImageTextStatus, string>(__TAURI_INVOKE("image_text_status")),
+	/**
+	 *  Turns Find text in images on or off. Off removes the text read from every image. On reads
+	 *  the images in the history again, in the background.
+	 */
+	setImageText: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("set_image_text", { enabled })),
 	/**  The apps excluded on this OS, by name. */
 	excludedApps: () => typedError<ExcludedApp[], string>(__TAURI_INVOKE("excluded_apps")),
 	/**  Stops capturing from an app. The next copy from it is skipped. */
@@ -96,6 +105,11 @@ export const commands = {
 	pasteClip: (id: ClipId, plain: boolean) => typedError<PasteOutcome, string>(__TAURI_INVOKE("paste_clip", { id, plain })),
 	/**  Puts a clip on the clipboard without pasting it. `plain` copies only its plain text. */
 	copyClip: (id: ClipId, plain: boolean) => typedError<null, string>(__TAURI_INVOKE("copy_clip", { id, plain })),
+	/**
+	 *  Puts the text read from an image clip on the clipboard, for Copy text in the preview and
+	 *  Copy Text in Image in the clip menu. The image stays where it is in the history.
+	 */
+	copyImageText: (id: ClipId) => typedError<null, string>(__TAURI_INVOKE("copy_image_text", { id })),
 	/**  Pins or unpins a clip, and sends `clip:updated`. */
 	setPinned: (id: ClipId, pinned: boolean) => typedError<null, string>(__TAURI_INVOKE("set_pinned", { id, pinned })),
 	/**  Every pinboard, in the user's order. */
@@ -194,6 +208,7 @@ export const events = {
 	clipAdded: makeEvent<ClipAdded>("clip:added"),
 	clipRemoved: makeEvent<ClipsRemoved>("clip:removed"),
 	clipUpdated: makeEvent<ClipUpdated>("clip:updated"),
+	imageTextRead: makeEvent<ImageTextRead>("image-text:read"),
 	panelHidden: makeEvent<PanelHidden>("panel:hidden"),
 	panelShown: makeEvent<PanelShown>("panel:shown"),
 	pinboardsChanged: makeEvent<PinboardsChanged>("pinboards:changed"),
@@ -223,8 +238,10 @@ export type ClipAdded = {
 export type ClipDetail = {
 	id: number,
 	kind: ClipKind,
-	/**  The clip's text, cut to 64 KiB. None for images. */
+	/**  The clip's text, cut to 64 KiB. For an image, the text read from it, if any. */
 	text: string | null,
+	/**  An image whose text Kopi hasn't read yet. The preview says it's looking. */
+	readingText: boolean,
 	/**  Names the image, for `kopi://…/image/<hash>`. */
 	contentHash: string,
 	sourceAppName: string | null,
@@ -294,6 +311,23 @@ export type HistoryLimits = {
 	maxAgeDays: number | null,
 	/**  The most space all clips may take, pinned or not. */
 	maxTotalBytes: number | null,
+};
+
+/**
+ *  The text in an image clip was read, or it was found to have none. An open preview of it
+ *  loads it again, and so does a search, which may now find it.
+ */
+export type ImageTextRead = {
+	id: number,
+};
+
+/**  Find text in images, in Settings → Capture. */
+export type ImageTextStatus = {
+	/**  Whether this build can read text in images. Not on Windows yet. */
+	available: boolean,
+	enabled: boolean,
+	/**  Images in the history whose text hasn't been read yet. */
+	unread: number,
 };
 
 export type NearbyComputer = {

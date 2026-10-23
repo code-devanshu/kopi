@@ -10,16 +10,18 @@ type Loaded = { id: number; version: number; detail: ClipDetail | null; error: s
 
 /**
  * The selected clip in full. `version` changes when any clip changes, so a clip that was
- * copied again or deleted is fetched again.
+ * copied again or deleted is fetched again. `onCopyText` copies the text read from an image.
  */
 export function Preview({
   id,
   version,
   query,
+  onCopyText,
 }: {
   id: number;
   version: number;
   query: string;
+  onCopyText: (id: number) => void;
 }) {
   const [loaded, setLoaded] = useState<Loaded | null>(null);
 
@@ -50,7 +52,7 @@ export function Preview({
   return (
     <aside className="preview" aria-label="Preview" aria-busy={stale}>
       <div className="preview-body" key={detail.id}>
-        <Body detail={detail} query={query} />
+        <Body detail={detail} query={query} onCopyText={onCopyText} />
       </div>
       <dl className="preview-meta">
         <dt>Kind</dt>
@@ -90,11 +92,24 @@ export function Preview({
   );
 }
 
-function Body({ detail, query }: { detail: ClipDetail; query: string }) {
+function Body({
+  detail,
+  query,
+  onCopyText,
+}: {
+  detail: ClipDetail;
+  query: string;
+  onCopyText: (id: number) => void;
+}) {
   const m = detail.metadata;
   switch (detail.kind) {
     case "image":
-      return <PreviewImage key={detail.contentHash} hash={detail.contentHash} />;
+      return (
+        <div className="preview-image-stack">
+          <PreviewImage key={detail.contentHash} hash={detail.contentHash} />
+          <ImageText detail={detail} query={query} onCopy={() => onCopyText(detail.id)} />
+        </div>
+      );
     case "color": {
       const color = hex(m?.rgba);
       return (
@@ -125,6 +140,29 @@ function Body({ detail, query }: { detail: ClipDetail; query: string }) {
         span.matched ? <mark key={i}>{span.text}</mark> : span.text,
       )}
     </pre>
+  );
+}
+
+/** The text Kopi read from an image, while Find text in images is on. */
+function ImageText({ detail, query, onCopy }: { detail: ClipDetail; query: string; onCopy: () => void }) {
+  if (detail.readingText) return <p className="image-text-status muted">Looking for text…</p>;
+  if (!detail.text) return null;
+  return (
+    <section className="image-text" aria-labelledby="image-text-title">
+      <div className="image-text-head">
+        <h3 id="image-text-title" className="preview-heading">
+          Text in image
+        </h3>
+        <button type="button" className="link-button" onClick={onCopy}>
+          Copy text
+        </button>
+      </div>
+      <pre className="preview-text image-text-body">
+        {highlight(detail.text, query).map((span, i) =>
+          span.matched ? <mark key={i}>{span.text}</mark> : span.text,
+        )}
+      </pre>
+    </section>
   );
 }
 

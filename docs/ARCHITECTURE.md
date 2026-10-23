@@ -11,7 +11,7 @@ Related docs:
 - [MVP_SCOPE.md](MVP_SCOPE.md): what's in the macOS alpha, and what isn't
 - [SYNC_DESIGN.md](SYNC_DESIGN.md): how sync between computers on the local network works
 - [SNIPPETS_DESIGN.md](SNIPPETS_DESIGN.md): snippets with placeholders
-- [OCR_DESIGN.md](OCR_DESIGN.md): searching text in images (proposed)
+- [OCR_DESIGN.md](OCR_DESIGN.md): searching text in images (built on macOS)
 - [decisions/](decisions/): Architecture Decision Records (ADRs)
 
 ## Goals
@@ -126,9 +126,12 @@ trait UserIdle      { fn idle_time(&self) -> Option<Duration>; }  // slows polli
 trait KeySender     { fn send_paste(&self) -> Result<()>;          // Cmd+V or Ctrl+V
                       fn send_left(&self, count: usize) -> Result<()>; } // a snippet's {cursor}
 trait Permissions   { fn is_granted(&self, p: Permission) -> bool; fn request(&self, p: Permission); fn open_settings(&self, p: Permission); }
+trait TextRecognizer { fn available(&self) -> bool; fn max_dimension(&self) -> u32;
+                       fn recognize(&self, image: &RgbaImage) -> Result<Vec<String>>; } // Vision
+trait PowerMode     { fn saving_power(&self) -> bool; }           // Low Power Mode
 ```
 
-All of them exist on macOS. The Windows versions arrive with the Windows alpha. On macOS every AppKit call runs on the main thread: from another thread it's queued on the main queue and waited for, with a 5 s limit so a thread being joined from the main thread can't deadlock with it.
+All of them exist on macOS. The Windows versions arrive with the Windows alpha, and `TextRecognizer` after it. On macOS every AppKit call runs on the main thread: from another thread it's queued on the main queue and waited for, with a 5 s limit so a thread being joined from the main thread can't deadlock with it.
 
 On Windows, change notifications are pushed (`WM_CLIPBOARDUPDATE`). On macOS the watcher polls `change_count()`. Both feed the same channel in the core.
 
@@ -144,6 +147,7 @@ On Windows, change notifications are pushed (`WM_CLIPBOARDUPDATE`). On macOS the
 | `paste` | Writes a clip back to the clipboard (all stored formats, or plain text only), returns focus to the target app and sends the paste keystroke through `KeySender`. Falls back to "copied, press ⌘V" when paste permission is missing. Pastes a snippet the same way, as the plain text the panel filled in, then moves the cursor back for `{cursor}`. |
 | `settings` | Typed settings with defaults, stored in the `settings` table: the shortcut, the kinds to capture, the theme and whether onboarding is done. The history limits are with `retention`. The app shell applies a change where it's used: the shortcut plugin, the privacy filter, the windows. |
 | `retention` | Applies history limits (count, age, total size) on its own thread, never touches pinned or pinboard clips, and sweeps orphaned blob and thumbnail files at startup. The queries live in `storage`. |
+| `ocr` | Reads the text in image clips on its own low-priority thread, new images first, then the rest of the history newest first, and writes it to the image's `plain_text` for search. See [OCR_DESIGN.md](OCR_DESIGN.md). |
 
 ### App shell (`src-tauri`)
 

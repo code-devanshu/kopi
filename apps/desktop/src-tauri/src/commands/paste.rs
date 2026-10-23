@@ -1,5 +1,5 @@
 //! `paste_clip` and `copy_clip`: Return, ⌥Return, ⌘1–9 and ⌘C in the panel. And the same
-//! for snippets, whose text the panel fills in first.
+//! for snippets, whose text the panel fills in first, and for the text read from an image.
 
 use std::sync::Arc;
 
@@ -63,6 +63,20 @@ pub async fn copy_clip(
     run(move || engine.copy(&store, id.0, content(plain))).await?;
     let _ = ClipUpdated { id: id.0 }.emit(&app);
     Ok(())
+}
+
+/// Puts the text read from an image clip on the clipboard, for Copy text in the preview and
+/// Copy Text in Image in the clip menu. The image stays where it is in the history.
+#[tauri::command]
+#[specta::specta]
+pub async fn copy_image_text(
+    app: AppHandle,
+    store: State<'_, Arc<Store>>,
+    id: ClipId,
+) -> Result<(), String> {
+    let engine = engine(&app)?;
+    let store = Arc::clone(&store);
+    run(move || engine.copy_image_text(&store, id.0)).await
 }
 
 /// Pastes a snippet's filled-in `text` into the app in front as plain text, then moves the

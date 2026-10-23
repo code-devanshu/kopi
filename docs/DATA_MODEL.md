@@ -71,7 +71,7 @@ CREATE TABLE clips (
 | `link` | The URL |
 | `color` | Normalised hex, such as `#1E90FFFF` |
 | `file` | File names, one per line (full paths go in `clip_formats`) |
-| `image` | The text read from the image, once it's been read, or `NULL` ([OCR_DESIGN.md](OCR_DESIGN.md), planned) |
+| `image` | The text read from the image, once it's been read, or `NULL` ([OCR_DESIGN.md](OCR_DESIGN.md)) |
 
 The classifier (`kopi-core`'s `classifier` module) picks the first kind that fits:
 
@@ -330,4 +330,4 @@ Migration `0005` adds the `snippets` table: text the user writes, with a name, a
 
 ## Text in images
 
-Migration `0006` is planned to add `clips.ocr_version`, which records that an image's text has been read, and a partial index of the images still to read. The text goes in the image's `plain_text`, so the search index needs no change. It's never written to the clipboard with the image, and it isn't synced: each computer reads its own images. The setting `capture.image_text` turns it on or off, on by default. See [OCR_DESIGN.md](OCR_DESIGN.md#data-model).
+Migration `0006` adds `clips.ocr_version`, which records that an image's text has been read, and a partial index of the images still to read. The text goes in the image's `plain_text`, so the search index needs no change. It's never written to the clipboard with the image, and it isn't synced: each computer reads its own images. The setting `capture.image_text` turns it on or off, on by default. See [OCR_DESIGN.md](OCR_DESIGN.md#data-model).
