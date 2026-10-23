@@ -68,13 +68,22 @@ export const commands = {
 	setTheme: (theme: Theme) => typedError<null, string>(__TAURI_INVOKE("set_theme", { theme })),
 	/**  Turns automatic update checks on or off. The next scheduled check follows it. */
 	setAutoUpdate: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("set_auto_update", { enabled })),
-	/**  Whether Kopi reads the text in images, and how many are left to read. */
+	/**
+	 *  Whether Kopi reads the text in images, and how many are left to read. Checks for an OCR
+	 *  language each time, and has the reading thread look again when there's one, so a language
+	 *  installed while Kopi runs is used.
+	 */
 	imageTextStatus: () => typedError<ImageTextStatus, string>(__TAURI_INVOKE("image_text_status")),
 	/**
 	 *  Turns Find text in images on or off. Off removes the text read from every image. On reads
 	 *  the images in the history again, in the background.
 	 */
 	setImageText: (enabled: boolean) => typedError<null, string>(__TAURI_INVOKE("set_image_text", { enabled })),
+	/**
+	 *  Opens Windows Settings at Time & language → Language & region, where a language's
+	 *  Optical character recognition feature is installed. Does nothing outside Windows.
+	 */
+	openLanguageSettings: () => __TAURI_INVOKE<void>("open_language_settings"),
 	/**  The apps excluded on this OS, by name. */
 	excludedApps: () => typedError<ExcludedApp[], string>(__TAURI_INVOKE("excluded_apps")),
 	/**  Stops capturing from an app. The next copy from it is skipped. */
@@ -323,8 +332,13 @@ export type ImageTextRead = {
 
 /**  Find text in images, in Settings → Capture. */
 export type ImageTextStatus = {
-	/**  Whether this build can read text in images. Not on Windows yet. */
+	/**  Whether this build can read text in images. */
 	available: boolean,
+	/**
+	 *  False on Windows when no language has text recognition installed. Settings then says
+	 *  how to add one, and the switch is off.
+	 */
+	languageInstalled: boolean,
 	enabled: boolean,
 	/**  Images in the history whose text hasn't been read yet. */
 	unread: number,

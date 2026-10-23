@@ -8,9 +8,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
-- **Find text in images (macOS).** Kopi reads the text in the images you copy, on your Mac with macOS's own text recognition, so searching for a few words of an error message finds the screenshot it was in. Nothing is sent anywhere.
+- **Find text in images.** Kopi reads the text in the images you copy, on your computer with the text recognition built into macOS and Windows, so searching for a few words of an error message finds the screenshot it was in. Nothing is sent anywhere.
   - Image rows show the matching text during a search. The preview shows all the text read from the image, with **Copy text**, and the clip menu (⌘K) has **Copy Text in Image**.
-  - Images already in your history are read once, in the background, newest first, and not while Low Power Mode is on.
+  - Images already in your history are read once, in the background, newest first, and not while Low Power Mode (macOS) or Energy saver (Windows) is on.
+  - On Windows it needs a language with Optical character recognition installed, which most languages have. When none is, Settings → Capture says how to add one.
   - Turn it off in Settings → Capture → **Find text in images**, which also removes the text it read.
   - An image still pastes as the image, with Return and ⌥Return. The text read from it isn't synced: each computer reads its own images.
 

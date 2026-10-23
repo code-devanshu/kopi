@@ -22,6 +22,7 @@
 //   ?tab=Snippets   opens that tab of the panel: Pinned, Snippets or a pinboard's name
 //   ?shot           leaves the page behind the panel transparent, for the website's screenshots
 //   ?reading        the sample image's text hasn't been read yet, and Settings shows a backlog
+//   ?nolanguage     Settings → Capture shows Windows without a language for text recognition
 // Open /settings.html for the Settings window, and /onboarding.html for onboarding.
 // In the console, kopiDev.copy("text") adds a clip as a copy would.
 import { emit } from "@tauri-apps/api/event";
@@ -501,7 +502,7 @@ mockIPC(
         console.info(`kopi: copy_image_text ${a.id}`);
         return null;
       case "image_text_status":
-        return { available: true, ...imageText };
+        return { available: true, languageInstalled: !params.has("nolanguage"), ...imageText };
       case "set_image_text":
         imageText = { enabled: a.enabled as boolean, unread: a.enabled ? 1240 : 0 };
         for (const c of clips) if (c.kind === "image") c.readingText = imageText.enabled;
@@ -620,6 +621,9 @@ mockIPC(
         return "Work laptop";
       case "open_local_network_settings":
         console.info("kopi: open Local Network settings");
+        return null;
+      case "open_language_settings":
+        console.info("kopi: open Language settings");
         return null;
       case "open_privacy_design":
         window.open("https://github.com/code-devanshu/kopi/blob/main/docs/PRIVACY_DESIGN.md", "_blank");

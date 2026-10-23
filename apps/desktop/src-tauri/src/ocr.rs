@@ -9,9 +9,8 @@ use tauri_specta::Event;
 
 use crate::events::ImageTextRead;
 
-/// Starts reading new images and the ones already in the history, on macOS. Must run before
-/// capture and sync start, so no new image is missed. Elsewhere there's no recognizer yet, and
-/// nothing is managed.
+/// Starts reading new images and the ones already in the history. Must run before capture and
+/// sync start, so no new image is missed. Where there's no recognizer, nothing is managed.
 pub fn start(app: &AppHandle, store: &Arc<Store>) -> std::io::Result<()> {
     let Some((recognizer, power)) = platform() else {
         return Ok(());
@@ -35,7 +34,29 @@ pub fn available(app: &AppHandle) -> bool {
     app.try_state::<Ocr>().is_some()
 }
 
-/// The setting was turned on: start on the images in the history.
+/// Whether images are being read: the recognizer could run when the reading thread last
+/// looked. False on Windows without an OCR language.
+pub fn readable(app: &AppHandle) -> bool {
+    app.try_state::<Ocr>().is_some_and(|ocr| ocr.readable())
+}
+
+/// Whether a language with text recognition is installed, checked now. Always on macOS. On
+/// Windows it makes an OCR engine, so it's for Settings, not for every clip. Blocks.
+pub fn language_installed() -> bool {
+    #[cfg(target_os = "windows")]
+    {
+        use kopi_platform::TextRecognizer;
+
+        kopi_platform::windows::WinRecognizer::default().available()
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        true
+    }
+}
+
+/// The setting was turned on, or a language may have been installed: start on the images in
+/// the history.
 pub fn resume(app: &AppHandle) {
     if let Some(ocr) = app.try_state::<Ocr>() {
         ocr.resume();
@@ -54,7 +75,14 @@ fn platform() -> Option<Platform> {
     Some((Box::new(VisionRecognizer), Box::new(MacPowerMode)))
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(target_os = "windows")]
+fn platform() -> Option<Platform> {
+    use kopi_platform::windows::{WinPowerMode, WinRecognizer};
+
+    Some((Box::new(WinRecognizer::default()), Box::new(WinPowerMode)))
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
 fn platform() -> Option<Platform> {
     None
 }

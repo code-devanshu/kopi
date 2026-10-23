@@ -23,6 +23,11 @@ export function CaptureSection() {
   const [imageText, setImageText] = useState<ImageTextStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const loadImageText = useCallback(
+    () => unwrap(commands.imageTextStatus()).then(setImageText, () => {}),
+    [],
+  );
+
   const loadExcluded = useCallback(
     () =>
       unwrap(commands.excludedApps()).then(setExcluded, (e) =>
@@ -39,26 +44,33 @@ export function CaptureSection() {
     void loadExcluded();
     unwrap(commands.runningApps()).then(setRunning, () => {});
     unwrap(commands.sourceApps()).then(setSeen, () => {});
-    unwrap(commands.imageTextStatus()).then(setImageText, () => {});
-  }, [loadExcluded]);
+    void loadImageText();
+  }, [loadExcluded, loadImageText]);
 
   // The backlog's count goes down as it's read.
-  const reading = !!imageText?.enabled && imageText.unread > 0;
+  const reading = !!imageText?.enabled && imageText.languageInstalled && imageText.unread > 0;
   useEffect(() => {
     if (!reading) return;
-    const timer = setInterval(
-      () => unwrap(commands.imageTextStatus()).then(setImageText, () => {}),
-      UNREAD_POLL_MS,
-    );
+    const timer = setInterval(() => void loadImageText(), UNREAD_POLL_MS);
     return () => clearInterval(timer);
-  }, [reading]);
+  }, [reading, loadImageText]);
+
+  // Coming back from Windows Settings, where a language with text recognition may have been
+  // installed.
+  const needsLanguage = !!imageText?.available && !imageText.languageInstalled;
+  useEffect(() => {
+    if (!needsLanguage) return;
+    const check = () => void loadImageText();
+    window.addEventListener("focus", check);
+    return () => window.removeEventListener("focus", check);
+  }, [needsLanguage, loadImageText]);
 
   function toggleImageText(on: boolean) {
     if (!imageText) return;
     const was = imageText;
     setImageText({ ...imageText, enabled: on, unread: on ? imageText.unread : 0 });
     unwrap(commands.setImageText(on)).then(
-      () => unwrap(commands.imageTextStatus()).then(setImageText, () => {}),
+      () => loadImageText(),
       (e) => {
         setImageText(was);
         setError(`Couldn't change Find text in images. ${e}`);
@@ -127,17 +139,32 @@ export function CaptureSection() {
           ))}
         </div>
       </Group>
-      {/* Not on Windows yet. */}
       {imageText?.available && (
         <Group
           footer={reading ? `Reading older images: ${imageText.unread.toLocaleString()} left` : undefined}
         >
           <Row
             label="Find text in images"
-            description="Kopi reads the text in images you copy, on this computer, so search can find them. Nothing is sent anywhere."
+            description={
+              imageText.languageInstalled ? (
+                "Kopi reads the text in images you copy, on this computer, so search can find them. Nothing is sent anywhere."
+              ) : (
+                <>
+                  Add a language with Optical character recognition in Windows Settings → Time &amp; language.{" "}
+                  <button type="button" className="link-button" onClick={() => void commands.openLanguageSettings()}>
+                    Open Language Settings
+                  </button>
+                </>
+              )
+            }
             htmlFor="image-text"
           >
-            <Switch id="image-text" checked={imageText.enabled} onChange={toggleImageText} />
+            <Switch
+              id="image-text"
+              checked={imageText.enabled && imageText.languageInstalled}
+              disabled={!imageText.languageInstalled}
+              onChange={toggleImageText}
+            />
           </Row>
         </Group>
       )}

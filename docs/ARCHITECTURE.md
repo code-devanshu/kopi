@@ -11,7 +11,7 @@ Related docs:
 - [MVP_SCOPE.md](MVP_SCOPE.md): what's in the macOS alpha, and what isn't
 - [SYNC_DESIGN.md](SYNC_DESIGN.md): how sync between computers on the local network works
 - [SNIPPETS_DESIGN.md](SNIPPETS_DESIGN.md): snippets with placeholders
-- [OCR_DESIGN.md](OCR_DESIGN.md): searching text in images (built on macOS)
+- [OCR_DESIGN.md](OCR_DESIGN.md): searching text in images
 - [decisions/](decisions/): Architecture Decision Records (ADRs)
 
 ## Goals
@@ -127,11 +127,11 @@ trait KeySender     { fn send_paste(&self) -> Result<()>;          // Cmd+V or C
                       fn send_left(&self, count: usize) -> Result<()>; } // a snippet's {cursor}
 trait Permissions   { fn is_granted(&self, p: Permission) -> bool; fn request(&self, p: Permission); fn open_settings(&self, p: Permission); }
 trait TextRecognizer { fn available(&self) -> bool; fn max_dimension(&self) -> u32;
-                       fn recognize(&self, image: &RgbaImage) -> Result<Vec<String>>; } // Vision
-trait PowerMode     { fn saving_power(&self) -> bool; }           // Low Power Mode
+                       fn recognize(&self, image: &RgbaImage) -> Result<Vec<String>>; } // Vision, Windows.Media.Ocr
+trait PowerMode     { fn saving_power(&self) -> bool; }           // Low Power Mode, Energy saver
 ```
 
-All of them exist on macOS. The Windows versions arrive with the Windows alpha, and `TextRecognizer` after it. On macOS every AppKit call runs on the main thread: from another thread it's queued on the main queue and waited for, with a 5 s limit so a thread being joined from the main thread can't deadlock with it.
+All of them exist on macOS. So do the Windows versions, `TextRecognizer` included. On macOS every AppKit call runs on the main thread: from another thread it's queued on the main queue and waited for, with a 5 s limit so a thread being joined from the main thread can't deadlock with it.
 
 On Windows, change notifications are pushed (`WM_CLIPBOARDUPDATE`). On macOS the watcher polls `change_count()`. Both feed the same channel in the core.
 

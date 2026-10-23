@@ -21,7 +21,8 @@ pub enum OcrError {
 
 /// The OS's text recognition. It runs on the computer and needs no network.
 pub trait TextRecognizer: Send {
-    /// Whether recognition can run here.
+    /// Whether recognition can run here: false on Windows until a language with text
+    /// recognition is installed. It can change while Kopi runs.
     fn available(&self) -> bool;
 
     /// The longest edge it takes, in pixels. The caller scales larger images down first.
@@ -31,7 +32,8 @@ pub trait TextRecognizer: Send {
     fn recognize(&self, image: &RgbaImage) -> Result<Vec<String>, OcrError>;
 }
 
-/// Whether the user asked the computer to save power: Low Power Mode on macOS.
+/// Whether the user asked the computer to save power: Low Power Mode on macOS, Energy saver on
+/// Windows.
 pub trait PowerMode: Send {
     fn saving_power(&self) -> bool;
 }
@@ -41,4 +43,6 @@ pub trait PowerMode: Send {
 pub fn lower_thread_priority() {
     #[cfg(target_os = "macos")]
     crate::macos::lower_thread_priority();
+    #[cfg(target_os = "windows")]
+    crate::windows::lower_thread_priority();
 }
