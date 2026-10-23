@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Fixed
+
+- A large image in the preview no longer covers the text read from it.
+
 ## [0.1.0-alpha.11] - 2026-10-23
 
 Testers on an earlier alpha get this release as an update. After it, an earlier alpha can't open your history, so reinstalling one by hand starts it with an error.

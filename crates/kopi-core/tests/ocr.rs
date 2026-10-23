@@ -211,9 +211,10 @@ fn saving_power_pauses_the_backlog_but_not_new_images() {
 #[test]
 fn turning_it_off_clears_the_text_and_stops_reading_until_it_is_on_again() {
     let f = Fixture::new();
-    let (ocr, rx) = f.start(Duration::ZERO);
     let id = f.image(100, 1_000);
+    // Taken before reading starts, so it can't include the text.
     let size = f.store.get_clip(id).unwrap().unwrap().size_bytes;
+    let (ocr, rx) = f.start(Duration::ZERO);
     assert_eq!(next(&rx), id);
 
     f.store.set_image_text_enabled(false).unwrap();

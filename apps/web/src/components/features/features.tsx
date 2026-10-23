@@ -1,9 +1,11 @@
-import { Check, Keyboard, Layers, Pin, Search, SunMoon, TextQuote, Type } from "lucide-react";
+import { Check, Keyboard, Layers, Pin, ScanText, Search, SunMoon, TextQuote, Type } from "lucide-react";
 import type { StaticImageData } from "next/image";
 import type { ComponentType, SVGProps } from "react";
 
 import boardDark from "@/assets/screens/board-dark.png";
 import boardLight from "@/assets/screens/board-light.png";
+import imagesDark from "@/assets/screens/images-dark.png";
+import imagesLight from "@/assets/screens/images-light.png";
 import searchDark from "@/assets/screens/search-dark.png";
 import searchLight from "@/assets/screens/search-light.png";
 import snippetsDark from "@/assets/screens/snippets-dark.png";
@@ -35,6 +37,23 @@ const features: Feature[] = [
       light: searchLight,
       dark: searchDark,
       alt: "Kopi's panel searching for “invoice”, with the word highlighted in a code snippet, an email and several notes.",
+    },
+  },
+  {
+    eyebrow: "Text in images",
+    icon: ScanText,
+    title: "Search your screenshots.",
+    description: "Kopi reads the words in the screenshots and images you copy, so the booking reference, the error message or the slide from a call turns up when you search for it. It's read on your computer and never uploaded.",
+    points: [
+      "Matches highlighted in the image's text",
+      "Copy just the text from any image",
+      "Uses the text recognition built into macOS and Windows",
+      "Turn it off in Settings whenever you like",
+    ],
+    shot: {
+      light: imagesLight,
+      dark: imagesDark,
+      alt: "Kopi's panel searching for “lisbon”. The top result is a screenshot of a flight booking, found by the words in it, and the preview shows the text Kopi read from the image with a Copy text button.",
     },
   },
   {

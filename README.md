@@ -73,6 +73,7 @@ Kopi lives in the menu bar on a Mac and in the notification area on Windows. Pre
 
 - **History** of text, rich text, links, images, files, colors and code, with the app each copy came from.
 - **Search** as you type, with filters by kind and app, and a preview of the selected clip.
+- **Text in images:** Kopi reads the words in screenshots and other images you copy, on your computer, so search finds them and you can copy just the text. Turn it off in Settings → Capture.
 - **Paste** into the app you're in with Return, as plain text with ⌥Return, or one of the first nine with ⌘1–9.
 - **Pins and pinboards** for the clips you reuse.
 - **Snippets** you write once and paste with a keystroke, with the date, your newest clip or a blank to fill in.
