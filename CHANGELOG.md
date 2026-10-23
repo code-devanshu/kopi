@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.1.0-alpha.11] - 2026-10-23
+
+Testers on an earlier alpha get this release as an update. After it, an earlier alpha can't open your history, so reinstalling one by hand starts it with an error.
+
 ### Added
 
 - **Find text in images.** Kopi reads the text in the images you copy, on your computer with the text recognition built into macOS and Windows, so searching for a few words of an error message finds the screenshot it was in. Nothing is sent anywhere.
@@ -14,6 +18,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   - On Windows it needs a language with Optical character recognition installed, which most languages have. When none is, Settings → Capture says how to add one.
   - Turn it off in Settings → Capture → **Find text in images**, which also removes the text it read.
   - An image still pastes as the image, with Return and ⌥Return. The text read from it isn't synced: each computer reads its own images.
+
+### Changed
+
+- The website is redesigned around screenshots of the app.
 
 ## [0.1.0-alpha.10] - 2026-10-21
 
@@ -155,7 +163,8 @@ The first macOS alpha.
 - Release workflow: a version tag builds a universal macOS `.dmg` and attaches it to a draft GitHub Release. Releases are signed with a self-signed certificate, so testers keep their permissions across updates, and aren't notarized ([ADR 0006](docs/decisions/0006-macos-distribution-without-notarization.md)). Install steps for testers are in `docs/INSTALL_ALPHA.md`.
 - Automatic updates on macOS with the Tauri updater: Kopi checks GitHub a little after launch and every 6 hours, installs updates in the background and offers Restart to Update in the menu bar, with Check for Updates… there too and an **Update automatically** switch in Settings. Updates aren't quarantined, so Gatekeeper only blocks the first install. Publishing a release offers it to the app.
 
-[Unreleased]: https://github.com/code-devanshu/kopi/compare/v0.1.0-alpha.10...HEAD
+[Unreleased]: https://github.com/code-devanshu/kopi/compare/v0.1.0-alpha.11...HEAD
+[0.1.0-alpha.11]: https://github.com/code-devanshu/kopi/compare/v0.1.0-alpha.10...v0.1.0-alpha.11
 [0.1.0-alpha.10]: https://github.com/code-devanshu/kopi/compare/v0.1.0-alpha.9...v0.1.0-alpha.10
 [0.1.0-alpha.9]: https://github.com/code-devanshu/kopi/compare/v0.1.0-alpha.8...v0.1.0-alpha.9
 [0.1.0-alpha.8]: https://github.com/code-devanshu/kopi/compare/v0.1.0-alpha.7...v0.1.0-alpha.8
