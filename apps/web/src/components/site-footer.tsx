@@ -1,5 +1,6 @@
 import { GitHubIcon } from "@/components/brand/brand-icons";
 import { Logo } from "@/components/brand/logo";
+import { ProductHuntBadge, SHOW_PH_LAUNCH_BADGE_IN_HERO } from "@/components/brand/product-hunt-badge";
 import { Container } from "@/components/ui/section";
 import { siteConfig } from "@/lib/site";
 
@@ -69,6 +70,9 @@ export function SiteFooter() {
                 className="hidden dark:block"
               />
             </a>
+            {/* After launch day, the launch badge leaves the hero for here. */}
+            {SHOW_PH_LAUNCH_BADGE_IN_HERO ? null : <ProductHuntBadge variant="launch" location="footer" />}
+            <ProductHuntBadge variant="follow" location="footer" />
           </div>
         </div>
 

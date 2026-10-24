@@ -1,3 +1,4 @@
+import { ProductHuntLaunch } from "@/components/brand/product-hunt-badge";
 import { HeroDownloads } from "@/components/hero/hero-downloads";
 import { HeroShot } from "@/components/hero/hero-shot";
 import { InstallCommand } from "@/components/hero/install-command";
@@ -40,6 +41,7 @@ export function Hero() {
 
         <Reveal delay={0.15} className="mt-9">
           <HeroDownloads className="justify-center" />
+          <ProductHuntLaunch location="hero" className="mt-6" />
         </Reveal>
 
         <Reveal delay={0.2} className="mt-5 space-y-3">
