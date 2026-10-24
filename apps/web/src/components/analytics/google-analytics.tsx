@@ -5,7 +5,7 @@ import { GA_ID } from "@/lib/analytics";
 /**
  * GA4 base tag. Production builds only. On localhost (a `next start` preview) the
  * official ga-disable flag stops any hits, so local testing stays out of the reports.
- * GA's own page_view covers navigation: the site is one page with hash links.
+ * GA's own page_view covers navigation, client-side page changes included.
  */
 export function GoogleAnalytics() {
   if (process.env.NODE_ENV !== "production") return null;

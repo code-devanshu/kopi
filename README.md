@@ -23,6 +23,11 @@ An open-source clipboard manager for macOS and Windows.
   <a href="CONTRIBUTING.md">Contributing</a>
 </p>
 
+<p>
+  <a href="https://www.producthunt.com/products/kopi-2?embed=true&utm_source=badge-featured&utm_medium=badge&utm_campaign=badge-kopi-2" target="_blank" rel="noopener noreferrer"><picture><source media="(prefers-color-scheme: dark)" srcset="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1290235&theme=dark&t=1792835471369" /><img alt="Kopi - Open-source clipboard manager for Mac and Windows | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1290235&theme=light&t=1792835471369" /></picture></a>
+  <a href="https://www.producthunt.com/products/kopi-2/reviews/new?utm_source=badge-product_review&utm_medium=badge&utm_source=badge-kopi-2" target="_blank" rel="noopener noreferrer"><picture><source media="(prefers-color-scheme: dark)" srcset="https://api.producthunt.com/widgets/embed-image/v1/product_review.svg?product_id=1353893&theme=dark" /><img alt="Kopi - Open-source clipboard manager for Mac and Windows | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/product_review.svg?product_id=1353893&theme=light" /></picture></a>
+</p>
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/panel-dark.png" />
   <img src="docs/images/panel-light.png" alt="The Kopi panel: clip history with search, kind and app filters, pinboards and a preview of the selected clip" width="760" />

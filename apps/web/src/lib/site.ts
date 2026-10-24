@@ -17,14 +17,14 @@ export const siteConfig = {
     license: "https://github.com/code-devanshu/kopi/blob/main/LICENSE",
     author: "https://www.devanshuverma.in",
     contact: "mailto:code.devanshu@gmail.com", // TODO: real contact address
-    privacy: "#privacy", // TODO: link to a privacy policy page once one exists
+    privacy: "/#privacy", // TODO: link to a privacy policy page once one exists
   },
 } as const;
 
 export const navLinks = [
-  { href: "#features", label: "Features" },
-  { href: "#sync", label: "Sync" },
-  { href: "#privacy", label: "Privacy" },
-  { href: "#open-source", label: "Open Source" },
-  { href: "#faq", label: "FAQ" },
+  { href: "/#features", label: "Features" },
+  { href: "/#sync", label: "Sync" },
+  { href: "/#privacy", label: "Privacy" },
+  { href: "/#open-source", label: "Open Source" },
+  { href: "/#faq", label: "FAQ" },
 ] as const;
