@@ -2,7 +2,7 @@ import { siteConfig } from "@/lib/site";
 
 const link = "font-medium text-foreground underline decoration-border underline-offset-4 hover:decoration-foreground";
 
-/** What each download needs. The download dialog explains what the OS says the first time. */
+/** What each download needs. The page after a download explains what the OS says the first time. */
 export function PlatformNote() {
   return (
     <p className="text-sm text-muted-foreground">

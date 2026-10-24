@@ -10,7 +10,7 @@ import { siteConfig } from "@/lib/site";
  * The one-line install, folded away. macOS doesn't block Kopi installed this way, unlike the .dmg
  * from a browser, but most people want the button.
  */
-export function InstallCommand() {
+export function InstallCommand({ location = "hero" }: { location?: string }) {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -38,7 +38,7 @@ export function InstallCommand() {
       <div className="mt-2 flex items-center gap-2 rounded-xl text-left border border-border bg-surface py-1.5 pr-1.5 pl-4 shadow-soft">
         {/* Copying the command by hand counts too, not only the button. */}
         <code
-          onCopy={() => trackEvent("install_command_copy", { location: "hero", method: "manual" })}
+          onCopy={() => trackEvent("install_command_copy", { location, method: "manual" })}
           className="min-w-0 flex-1 overflow-x-auto font-mono text-sm whitespace-nowrap text-foreground"
         >
           {siteConfig.installCommand}
@@ -46,7 +46,7 @@ export function InstallCommand() {
         <button
           type="button"
           onClick={copy}
-          data-track="install_command_copy" data-track-location="hero" data-track-method="button"
+          data-track="install_command_copy" data-track-location={location} data-track-method="button"
           aria-label={copied ? "Copied" : "Copy the install command"}
           className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground"
         >

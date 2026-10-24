@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { Menu, X } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { GitHubIcon } from "@/components/brand/brand-icons";
@@ -30,9 +31,9 @@ export function SiteNav() {
   return (
     <header className="sticky top-0 z-50 border-b border-border/70 bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/70">
       <Container className="flex h-16 items-center justify-between gap-4">
-        <a href="#top" className="rounded-lg" aria-label="Kopi, back to top">
+        <Link href="/#top" className="rounded-lg" aria-label="Kopi home">
           <Logo />
-        </a>
+        </Link>
 
         <nav aria-label="Main" className="hidden md:block">
           <ul className="flex items-center gap-1">
@@ -41,7 +42,7 @@ export function SiteNav() {
                 <a
                   href={link.href}
                   data-track="nav_click"
-                  data-track-section={link.href.slice(1)}
+                  data-track-section={link.href.slice(2)}
                   data-track-location="nav"
                   className="rounded-full px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
                 >
@@ -97,7 +98,7 @@ export function SiteNav() {
                   key={link.href}
                   href={link.href}
                   data-track="nav_click"
-                  data-track-section={link.href.slice(1)}
+                  data-track-section={link.href.slice(2)}
                   data-track-location="nav_mobile"
                   onClick={() => setOpen(false)}
                   className="rounded-xl px-3 py-3 text-base text-foreground hover:bg-surface-muted"
